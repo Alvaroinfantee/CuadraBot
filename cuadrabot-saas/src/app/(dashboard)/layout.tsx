@@ -159,7 +159,7 @@ export default function DashboardLayout({
                 </main>
             </div>
 
-            <style jsx global>{`
+            <style>{`
         @media (max-width: 768px) {
           .dashboard-sidebar { display: none !important; }
           .dashboard-main { margin-left: 0 !important; padding: 24px 16px !important; }

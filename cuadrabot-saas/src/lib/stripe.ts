@@ -1,8 +1,25 @@
 import Stripe from "stripe";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2024-12-18.acacia",
-    typescript: true,
+const globalForStripe = globalThis as unknown as {
+    stripe: Stripe | undefined;
+};
+
+function getStripeClient() {
+    if (!globalForStripe.stripe) {
+        globalForStripe.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
+            apiVersion: "2026-01-28.clover",
+            typescript: true,
+        });
+    }
+
+    return globalForStripe.stripe;
+}
+
+export const stripe = new Proxy({} as Stripe, {
+    get(_target, prop, receiver) {
+        const client = getStripeClient();
+        return Reflect.get(client, prop, receiver);
+    },
 });
 
 export const PLANS = {

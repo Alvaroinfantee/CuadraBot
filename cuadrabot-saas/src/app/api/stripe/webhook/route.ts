@@ -1,3 +1,4 @@
+import type Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { stripe } from "@/lib/stripe";
@@ -34,7 +35,14 @@ export async function POST(req: Request) {
 
                 if (userId && subscriptionId) {
                     const subscription =
-                        await stripe.subscriptions.retrieve(subscriptionId);
+                        (await stripe.subscriptions.retrieve(subscriptionId)) as Stripe.Subscription;
+                    const primaryItem = subscription.items.data[0];
+                    const currentPeriodStart = new Date(
+                        (primaryItem?.current_period_start ?? subscription.billing_cycle_anchor) * 1000
+                    );
+                    const currentPeriodEnd = new Date(
+                        (primaryItem?.current_period_end ?? subscription.billing_cycle_anchor) * 1000
+                    );
 
                     await prisma.subscription.upsert({
                         where: { userId },
@@ -44,24 +52,16 @@ export async function POST(req: Request) {
                             stripePriceId: subscription.items.data[0]?.price.id,
                             plan: planKey,
                             status: "ACTIVE",
-                            currentPeriodStart: new Date(
-                                subscription.current_period_start * 1000
-                            ),
-                            currentPeriodEnd: new Date(
-                                subscription.current_period_end * 1000
-                            ),
+                            currentPeriodStart,
+                            currentPeriodEnd,
                         },
                         update: {
                             stripeSubscriptionId: subscriptionId,
                             stripePriceId: subscription.items.data[0]?.price.id,
                             plan: planKey,
                             status: "ACTIVE",
-                            currentPeriodStart: new Date(
-                                subscription.current_period_start * 1000
-                            ),
-                            currentPeriodEnd: new Date(
-                                subscription.current_period_end * 1000
-                            ),
+                            currentPeriodStart,
+                            currentPeriodEnd,
                         },
                     });
                 }
@@ -69,22 +69,25 @@ export async function POST(req: Request) {
             }
 
             case "invoice.paid": {
-                const invoice = event.data.object;
-                const subscriptionId = invoice.subscription as string;
+                const invoice = event.data.object as Stripe.Invoice;
+                const subscriptionRef = invoice.parent?.subscription_details?.subscription;
+                const subscriptionId =
+                    typeof subscriptionRef === "string" ? subscriptionRef : subscriptionRef?.id;
 
                 if (subscriptionId) {
                     const subscription =
-                        await stripe.subscriptions.retrieve(subscriptionId);
+                        (await stripe.subscriptions.retrieve(subscriptionId)) as Stripe.Subscription;
+                    const primaryItem = subscription.items.data[0];
 
                     await prisma.subscription.updateMany({
                         where: { stripeSubscriptionId: subscriptionId },
                         data: {
                             status: "ACTIVE",
                             currentPeriodStart: new Date(
-                                subscription.current_period_start * 1000
+                                (primaryItem?.current_period_start ?? subscription.billing_cycle_anchor) * 1000
                             ),
                             currentPeriodEnd: new Date(
-                                subscription.current_period_end * 1000
+                                (primaryItem?.current_period_end ?? subscription.billing_cycle_anchor) * 1000
                             ),
                         },
                     });
@@ -115,7 +118,8 @@ export async function POST(req: Request) {
                                 | "INCOMPLETE") || "INCOMPLETE",
                         cancelAtPeriodEnd: subscription.cancel_at_period_end,
                         currentPeriodEnd: new Date(
-                            subscription.current_period_end * 1000
+                            (subscription.items.data[0]?.current_period_end ?? subscription.billing_cycle_anchor) *
+                                1000
                         ),
                     },
                 });

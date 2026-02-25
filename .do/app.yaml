@@ -1,0 +1,17 @@
+name: cuadrabot
+services:
+  - name: web
+    source_dir: cuadrabot-saas
+    github:
+      branch: main
+      deploy_on_push: true
+    run_command: npm run start
+    build_command: npx prisma generate && npm run build
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 3000
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_AND_BUILD_TIME

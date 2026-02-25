@@ -1,0 +1,17 @@
+{
+  "name": "cuadrabot-monorepo",
+  "private": true,
+  "workspaces": [
+    "cuadrabot-saas"
+  ],
+  "scripts": {
+    "dev": "npm --workspace cuadrabot-saas run dev",
+    "build": "npm --workspace cuadrabot-saas run build",
+    "start": "npm --workspace cuadrabot-saas run start",
+    "lint": "npm --workspace cuadrabot-saas run lint",
+    "prisma:generate": "npm --workspace cuadrabot-saas exec prisma generate"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
