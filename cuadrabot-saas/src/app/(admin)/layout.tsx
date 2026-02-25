@@ -178,7 +178,7 @@ export default function AdminLayout({
                 </main>
             </div>
 
-            <style jsx global>{`
+            <style>{`
         @media (max-width: 768px) {
           .admin-sidebar { display: none !important; }
           .admin-main { margin-left: 0 !important; padding: 24px 16px !important; }
