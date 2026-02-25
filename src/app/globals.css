@@ -200,6 +200,13 @@
   }
 }
 
+@media (max-width: 768px) {
+  .dashboard-sidebar { display: none !important; }
+  .dashboard-main { margin-left: 0 !important; padding: 24px 16px !important; }
+  .admin-sidebar { display: none !important; }
+  .admin-main { margin-left: 0 !important; padding: 24px 16px !important; }
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-20px); }
