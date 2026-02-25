@@ -4,12 +4,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-function createPrismaClient(): PrismaClient {
-  // During next build, DATABASE_URL may not be available.
-  // PrismaClient in v7 with prisma.config.ts picks up the URL automatically.
-  return new PrismaClient();
+function getPrismaClient(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient();
+  }
+  return globalForPrisma.prisma;
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Lazy proxy: prisma.xxx() calls are forwarded to the real instance at runtime
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const instance = getPrismaClient();
+    const value = Reflect.get(instance, prop, receiver);
+    if (typeof value === "function") {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});
