@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
-    ExternalLink,
+    Monitor,
     CreditCard,
     Calendar,
     CheckCircle2,
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
                             marginBottom: 20,
                         }}
                     >
-                        <ExternalLink
+                        <Monitor
                             size={24}
                             color={isActive ? "var(--accent-green)" : "#64748B"}
                         />
@@ -115,16 +115,14 @@ export default async function DashboardPage() {
                             : "Necesitas una suscripción activa para acceder a la aplicación."}
                     </p>
                     {isActive ? (
-                        <a
-                            href="https://cpa-app-7xheb.ondigitalocean.app/"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <Link
+                            href="/dashboard/app"
                             className="btn-primary"
                             style={{ width: "100%", textAlign: "center" }}
                         >
                             Acceder a CuadraBot
-                            <ExternalLink size={16} />
-                        </a>
+                            <ArrowRight size={16} />
+                        </Link>
                     ) : (
                         <Link
                             href="/precios"

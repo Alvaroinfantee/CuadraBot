@@ -1,7 +1,7 @@
 import Providers from "@/components/Providers";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, CreditCard, Settings, LogOut, ExternalLink } from "lucide-react";
+import { LayoutDashboard, CreditCard, Settings, LogOut, Monitor } from "lucide-react";
 
 export default function DashboardLayout({
     children,
@@ -102,10 +102,8 @@ export default function DashboardLayout({
 
                         <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.06)", margin: "12px 0" }} />
 
-                        <a
-                            href={process.env.CPA_APP_URL || "https://cpa-app-7xheb.ondigitalocean.app/"}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <Link
+                            href="/dashboard/app"
                             style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -118,9 +116,9 @@ export default function DashboardLayout({
                                 fontWeight: 600,
                             }}
                         >
-                            <ExternalLink size={18} />
-                            Abrir CuadraBot App
-                        </a>
+                            <Monitor size={18} />
+                            CuadraBot App
+                        </Link>
                     </nav>
 
                     <div style={{ paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
