@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 
 export const metadata: Metadata = {
     title: "Contacto",
@@ -126,29 +126,6 @@ export default function ContactoPage() {
                                 </div>
                             </div>
 
-                            <div
-                                className="glass-card"
-                                style={{ padding: 24, display: "flex", alignItems: "center", gap: 16 }}
-                            >
-                                <div
-                                    style={{
-                                        width: 44,
-                                        height: 44,
-                                        borderRadius: 12,
-                                        background: "rgba(59,130,246,0.1)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        flexShrink: 0,
-                                    }}
-                                >
-                                    <Phone size={20} color="#3B82F6" />
-                                </div>
-                                <div>
-                                    <p style={{ color: "#64748B", fontSize: "0.85rem", marginBottom: 2 }}>Teléfono</p>
-                                    <p style={{ color: "white", fontWeight: 500 }}>+1 (809) 000-0000</p>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
