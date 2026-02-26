@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 export const authConfig: NextAuthConfig = {
     adapter: PrismaAdapter(prisma),
     session: { strategy: "jwt" },
+    trustHost: true,
     pages: {
         signIn: "/iniciar-sesion",
         newUser: "/dashboard",
