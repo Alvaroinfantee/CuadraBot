@@ -1,13 +1,9 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { CheckCircle2, ArrowRight, Zap, Clock } from "lucide-react";
+"use client";
 
-export const metadata: Metadata = {
-    title: "Precios — CuadraBot",
-    description:
-        "Un solo plan con todo incluido. $30/mes con 48 horas de prueba gratis. Automatiza tu contabilidad fiscal en República Dominicana.",
-    alternates: { canonical: "/precios" },
-};
+import { CheckoutButton } from "@/components/CheckoutButton";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import { CheckCircle2, Zap, Clock } from "lucide-react";
 
 const features = [
     "Empresas ilimitadas",
@@ -19,6 +15,9 @@ const features = [
 ];
 
 export default function PreciosPage() {
+    const { data: session } = useSession();
+    const isLoggedIn = !!session?.user;
+
     return (
         <>
             <script
@@ -182,15 +181,21 @@ export default function PreciosPage() {
                             ))}
                         </div>
 
-                        <Link
-                            href="/registrarse"
-                            className="btn-gold"
-                            style={{ width: "100%", textAlign: "center" }}
-                        >
-                            <Zap size={16} />
-                            Prueba 48 Horas Gratis
-                            <ArrowRight size={16} />
-                        </Link>
+                        {isLoggedIn ? (
+                            <CheckoutButton
+                                label="Prueba 48 Horas Gratis"
+                                style={{ width: "100%", textAlign: "center" }}
+                            />
+                        ) : (
+                            <Link
+                                href="/registrarse"
+                                className="btn-gold"
+                                style={{ width: "100%", textAlign: "center" }}
+                            >
+                                <Zap size={16} />
+                                Prueba 48 Horas Gratis
+                            </Link>
+                        )}
 
                         <p
                             style={{

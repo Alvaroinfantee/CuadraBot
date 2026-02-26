@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { CheckoutButton } from "@/components/CheckoutButton";
 import {
     Monitor,
     CreditCard,
@@ -122,14 +123,10 @@ export default async function DashboardPage() {
                             <ArrowRight size={16} />
                         </Link>
                     ) : (
-                        <Link
-                            href="/precios"
-                            className="btn-gold"
+                        <CheckoutButton
+                            label="Comenzar Prueba Gratis"
                             style={{ width: "100%", textAlign: "center" }}
-                        >
-                            Ver Planes
-                            <ArrowRight size={16} />
-                        </Link>
+                        />
                     )}
                 </div>
 
