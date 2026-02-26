@@ -66,7 +66,7 @@ export default function DashboardLayout({
                             Panel Principal
                         </Link>
                         <Link
-                            href="/dashboard"
+                            href="/dashboard/suscripcion"
                             style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -83,7 +83,7 @@ export default function DashboardLayout({
                             Suscripción
                         </Link>
                         <Link
-                            href="/dashboard"
+                            href="/dashboard/configuracion"
                             style={{
                                 display: "flex",
                                 alignItems: "center",
