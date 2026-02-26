@@ -155,7 +155,7 @@ export default function Navbar() {
                                 className="btn-primary"
                                 style={{ padding: "8px 20px", fontSize: "0.9rem" }}
                             >
-                                Empezar Gratis
+                                Prueba Gratis
                             </Link>
                         </div>
                     )}
@@ -233,7 +233,7 @@ export default function Navbar() {
                                     Iniciar Sesión
                                 </Link>
                                 <Link href="/registrarse" className="btn-primary" onClick={() => setIsOpen(false)}>
-                                    Empezar Gratis
+                                    Prueba Gratis
                                 </Link>
                             </>
                         )}

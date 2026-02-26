@@ -1,54 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2, ArrowRight } from "lucide-react";
+import { CheckCircle2, ArrowRight, Zap, Clock } from "lucide-react";
 
 export const metadata: Metadata = {
-    title: "Precios",
-    description: "Planes accesibles de contabilidad inteligente para República Dominicana. Desde $29/mes. Elige el plan perfecto para tu negocio.",
+    title: "Precios — CuadraBot",
+    description:
+        "Un solo plan con todo incluido. $30/mes con 48 horas de prueba gratis. Automatiza tu contabilidad fiscal en República Dominicana.",
     alternates: { canonical: "/precios" },
 };
 
-const plans = [
-    {
-        key: "basico",
-        name: "Básico",
-        description: "Ideal para freelancers y negocios pequeños",
-        price: 29,
-        features: [
-            "1 empresa",
-            "Reportes fiscales básicos",
-            "Soporte por email",
-            "Actualizaciones mensuales",
-        ],
-    },
-    {
-        key: "profesional",
-        name: "Profesional",
-        description: "Para contadores y firmas en crecimiento",
-        price: 59,
-        popular: true,
-        features: [
-            "Hasta 5 empresas",
-            "Reportes fiscales completos",
-            "Soporte prioritario",
-            "Actualizaciones semanales",
-            "Exportación avanzada",
-        ],
-    },
-    {
-        key: "empresarial",
-        name: "Empresarial",
-        description: "Para grandes firmas y corporaciones",
-        price: 99,
-        features: [
-            "Empresas ilimitadas",
-            "Reportes fiscales completos",
-            "Soporte 24/7",
-            "Actualizaciones en tiempo real",
-            "API de integración",
-            "Gestor de cuenta dedicado",
-        ],
-    },
+const features = [
+    "Empresas ilimitadas",
+    "Todos los reportes fiscales DGII",
+    "Clasificación con IA",
+    "Exportación de reportes",
+    "Soporte prioritario",
+    "Actualizaciones continuas",
 ];
 
 export default function PreciosPage() {
@@ -60,15 +27,16 @@ export default function PreciosPage() {
                     __html: JSON.stringify({
                         "@context": "https://schema.org",
                         "@type": "Product",
-                        name: "CuadraBot",
-                        description: "Contabilidad inteligente para República Dominicana",
-                        offers: plans.map((p) => ({
+                        name: "CuadraBot Pro",
+                        description:
+                            "Contabilidad inteligente para República Dominicana",
+                        offers: {
                             "@type": "Offer",
-                            name: p.name,
-                            price: p.price,
+                            name: "CuadraBot Pro",
+                            price: 30,
                             priceCurrency: "USD",
                             priceValidUntil: "2027-12-31",
-                        })),
+                        },
                     }),
                 }}
             />
@@ -84,8 +52,8 @@ export default function PreciosPage() {
                             letterSpacing: "-0.02em",
                         }}
                     >
-                        Planes que se adaptan a tu{" "}
-                        <span className="gradient-text">negocio</span>
+                        Un solo plan.{" "}
+                        <span className="gradient-text">Todo incluido.</span>
                     </h1>
                     <p
                         style={{
@@ -95,7 +63,8 @@ export default function PreciosPage() {
                             margin: "0 auto",
                         }}
                     >
-                        Sin contratos largos. Cancela cuando quieras. Comienza hoy y automatiza tu contabilidad.
+                        Sin complicaciones. Sin niveles. Acceso completo a toda
+                        la plataforma por un precio justo.
                     </p>
                 </div>
             </section>
@@ -104,82 +73,150 @@ export default function PreciosPage() {
                 <div
                     className="section-container"
                     style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                        gap: 24,
-                        alignItems: "start",
+                        display: "flex",
+                        justifyContent: "center",
                     }}
                 >
-                    {plans.map((plan) => (
+                    <div
+                        className="glass-card"
+                        style={{
+                            padding: 44,
+                            position: "relative",
+                            border: "1px solid rgba(16,185,129,0.3)",
+                            maxWidth: 460,
+                            width: "100%",
+                        }}
+                    >
+                        {/* Trial badge */}
                         <div
-                            key={plan.key}
-                            className="glass-card"
                             style={{
-                                padding: 36,
-                                position: "relative",
-                                border: plan.popular
-                                    ? "1px solid rgba(245,158,11,0.3)"
-                                    : "1px solid rgba(255,255,255,0.1)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "6px 14px",
+                                background: "rgba(16,185,129,0.1)",
+                                border: "1px solid rgba(16,185,129,0.2)",
+                                borderRadius: 20,
+                                marginBottom: 24,
+                                fontSize: "0.85rem",
+                                color: "var(--accent-green)",
+                                fontWeight: 600,
                             }}
                         >
-                            {plan.popular && <div className="badge-popular">Más Popular</div>}
-                            <h3
+                            <Clock size={14} />
+                            48 horas de prueba gratis
+                        </div>
+
+                        <h3
+                            style={{
+                                fontSize: "1.4rem",
+                                fontWeight: 700,
+                                color: "white",
+                                marginBottom: 8,
+                            }}
+                        >
+                            CuadraBot Pro
+                        </h3>
+                        <p
+                            style={{
+                                color: "#94A3B8",
+                                fontSize: "0.95rem",
+                                marginBottom: 28,
+                            }}
+                        >
+                            Acceso completo a la plataforma de contabilidad
+                            inteligente
+                        </p>
+
+                        <div style={{ marginBottom: 32 }}>
+                            <span
                                 style={{
-                                    fontSize: "1.3rem",
-                                    fontWeight: 700,
+                                    fontSize: "3.5rem",
+                                    fontWeight: 800,
                                     color: "white",
-                                    marginBottom: 8,
+                                    letterSpacing: "-0.03em",
                                 }}
                             >
-                                {plan.name}
-                            </h3>
-                            <p style={{ color: "#94A3B8", fontSize: "0.9rem", marginBottom: 24 }}>
-                                {plan.description}
-                            </p>
-                            <div style={{ marginBottom: 28 }}>
-                                <span
+                                $30
+                            </span>
+                            <span
+                                style={{
+                                    color: "#64748B",
+                                    fontSize: "1rem",
+                                }}
+                            >
+                                /mes
+                            </span>
+                        </div>
+
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 14,
+                                marginBottom: 36,
+                            }}
+                        >
+                            {features.map((f, i) => (
+                                <div
+                                    key={i}
                                     style={{
-                                        fontSize: "3rem",
-                                        fontWeight: 800,
-                                        color: "white",
-                                        letterSpacing: "-0.03em",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 10,
                                     }}
                                 >
-                                    ${plan.price}
-                                </span>
-                                <span style={{ color: "#64748B", fontSize: "0.95rem" }}>/mes</span>
-                            </div>
-                            <div
-                                style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: 14,
-                                    marginBottom: 32,
-                                }}
-                            >
-                                {plan.features.map((f, i) => (
-                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                        <CheckCircle2 size={18} color="var(--accent-green)" />
-                                        <span style={{ color: "#CBD5E1", fontSize: "0.95rem" }}>{f}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <Link
-                                href="/registrarse"
-                                className={plan.popular ? "btn-gold" : "btn-primary"}
-                                style={{ width: "100%", textAlign: "center" }}
-                            >
-                                Empezar Ahora
-                                <ArrowRight size={16} />
-                            </Link>
+                                    <CheckCircle2
+                                        size={18}
+                                        color="var(--accent-green)"
+                                    />
+                                    <span
+                                        style={{
+                                            color: "#CBD5E1",
+                                            fontSize: "0.95rem",
+                                        }}
+                                    >
+                                        {f}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+
+                        <Link
+                            href="/registrarse"
+                            className="btn-gold"
+                            style={{ width: "100%", textAlign: "center" }}
+                        >
+                            <Zap size={16} />
+                            Prueba 48 Horas Gratis
+                            <ArrowRight size={16} />
+                        </Link>
+
+                        <p
+                            style={{
+                                color: "#64748B",
+                                fontSize: "0.8rem",
+                                textAlign: "center",
+                                marginTop: 16,
+                            }}
+                        >
+                            Sin compromiso. Cancela cuando quieras.
+                        </p>
+                    </div>
                 </div>
             </section>
 
             {/* FAQ */}
-            <section style={{ padding: "60px 24px 100px", background: "var(--navy-800)" }}>
-                <div className="section-container" style={{ maxWidth: 700 }}>
+            <section
+                style={{
+                    padding: "60px 24px 100px",
+                    background: "var(--navy-800)",
+                }}
+            >
+                <div
+                    className="section-container"
+                    style={{ maxWidth: 700 }}
+                >
                     <h2
                         style={{
                             fontSize: "1.8rem",
@@ -193,16 +230,16 @@ export default function PreciosPage() {
                     </h2>
                     {[
                         {
-                            q: "¿Puedo cambiar de plan en cualquier momento?",
-                            a: "Sí, puedes actualizar o degradar tu plan cuando quieras. Los cambios se aplican inmediatamente.",
+                            q: "¿Cómo funciona la prueba gratis?",
+                            a: "Al registrarte, tienes 48 horas de acceso completo sin costo. Si no cancelas, se activa la suscripción mensual de $30.",
                         },
                         {
                             q: "¿Qué métodos de pago aceptan?",
                             a: "Aceptamos todas las tarjetas de crédito y débito principales (Visa, Mastercard, American Express).",
                         },
                         {
-                            q: "¿Hay un período de prueba?",
-                            a: "Sí, puedes crear tu cuenta gratis y explorar la plataforma antes de suscribirte.",
+                            q: "¿Puedo cancelar en cualquier momento?",
+                            a: "Sí, puedes cancelar tu suscripción cuando quieras. No hay contratos ni penalidades.",
                         },
                         {
                             q: "¿Mis datos están seguros?",
@@ -212,10 +249,28 @@ export default function PreciosPage() {
                         <div
                             key={i}
                             className="glass-card"
-                            style={{ padding: 24, marginBottom: 12 }}
+                            style={{
+                                padding: 24,
+                                marginBottom: 12,
+                            }}
                         >
-                            <h4 style={{ color: "white", fontWeight: 600, marginBottom: 8 }}>{faq.q}</h4>
-                            <p style={{ color: "#94A3B8", fontSize: "0.95rem" }}>{faq.a}</p>
+                            <h4
+                                style={{
+                                    color: "white",
+                                    fontWeight: 600,
+                                    marginBottom: 8,
+                                }}
+                            >
+                                {faq.q}
+                            </h4>
+                            <p
+                                style={{
+                                    color: "#94A3B8",
+                                    fontSize: "0.95rem",
+                                }}
+                            >
+                                {faq.a}
+                            </p>
                         </div>
                     ))}
                 </div>

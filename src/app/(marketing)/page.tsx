@@ -106,9 +106,8 @@ export default function HomePage() {
                         operatingSystem: "Web",
                         description: "Contabilidad inteligente para República Dominicana. Automatiza reportes fiscales con IA.",
                         offers: {
-                            "@type": "AggregateOffer",
-                            lowPrice: "29",
-                            highPrice: "99",
+                            "@type": "Offer",
+                            price: "30",
                             priceCurrency: "USD",
                         },
                         aggregateRating: {
@@ -226,7 +225,7 @@ export default function HomePage() {
                             className="animate-slide-up"
                         >
                             <Link href="/registrarse" className="btn-gold">
-                                Empezar Gratis
+                                Prueba 48 Horas Gratis
                                 <ArrowRight size={18} />
                             </Link>
                             <Link href="/caracteristicas" className="btn-secondary">
@@ -485,7 +484,7 @@ export default function HomePage() {
                             }}
                         >
                             <Link href="/registrarse" className="btn-gold">
-                                Crear Cuenta Gratis
+                                Prueba 48 Horas Gratis
                                 <ArrowRight size={18} />
                             </Link>
                             <Link href="/precios" className="btn-secondary">

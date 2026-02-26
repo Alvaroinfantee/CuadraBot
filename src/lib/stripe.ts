@@ -21,51 +21,27 @@ export const stripe = new Proxy({} as Stripe, {
     },
 });
 
+export const PLAN = {
+    key: "pro",
+    name: "CuadraBot Pro",
+    description: "Acceso completo a la plataforma de contabilidad inteligente",
+    price: 30,
+    currency: "USD",
+    trialDays: 2, // 48 hours
+    priceId: process.env.STRIPE_PRICE_PRO!,
+    features: [
+        "Empresas ilimitadas",
+        "Todos los reportes fiscales DGII",
+        "Clasificación con IA",
+        "Exportación de reportes",
+        "Soporte prioritario",
+        "Actualizaciones continuas",
+    ],
+} as const;
+
+// Keep backwards-compatible PLANS export for any code that references it
 export const PLANS = {
-    basico: {
-        name: "Básico",
-        description: "Ideal para freelancers y negocios pequeños",
-        price: 29,
-        currency: "USD",
-        priceId: process.env.STRIPE_PRICE_BASICO!,
-        features: [
-            "1 empresa",
-            "Reportes fiscales básicos",
-            "Soporte por email",
-            "Actualizaciones mensuales",
-        ],
-    },
-    profesional: {
-        name: "Profesional",
-        description: "Para contadores y firmas en crecimiento",
-        price: 59,
-        currency: "USD",
-        priceId: process.env.STRIPE_PRICE_PROFESIONAL!,
-        features: [
-            "Hasta 5 empresas",
-            "Reportes fiscales completos",
-            "Soporte prioritario",
-            "Actualizaciones semanales",
-            "Exportación avanzada",
-        ],
-        popular: true,
-    },
-    empresarial: {
-        name: "Empresarial",
-        description: "Para grandes firmas y corporaciones",
-        price: 99,
-        currency: "USD",
-        priceId: process.env.STRIPE_PRICE_EMPRESARIAL!,
-        features: [
-            "Empresas ilimitadas",
-            "Reportes fiscales completos",
-            "Soporte 24/7",
-            "Actualizaciones en tiempo real",
-            "API de integración",
-            "Gestor de cuenta dedicado",
-        ],
-    },
+    pro: PLAN,
 } as const;
 
 export type PlanKey = keyof typeof PLANS;
-

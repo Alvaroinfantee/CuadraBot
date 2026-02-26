@@ -13,9 +13,7 @@ import {
 } from "lucide-react";
 
 const planNames: Record<string, string> = {
-    basico: "Básico",
-    profesional: "Profesional",
-    empresarial: "Empresarial",
+    pro: "CuadraBot Pro",
 };
 
 const statusLabels: Record<string, { label: string; color: string }> = {

@@ -6,6 +6,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { User, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
+async function redirectToCheckout() {
+    const res = await fetch("/api/stripe/checkout", { method: "POST" });
+    const data = await res.json();
+    if (data.url) {
+        window.location.href = data.url;
+    } else {
+        // Fallback: if checkout fails, go to dashboard (subscription guard will handle)
+        window.location.href = "/dashboard";
+    }
+}
+
 export default function RegistrarsePage() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -56,7 +67,8 @@ export default function RegistrarsePage() {
             if (result?.error) {
                 setError("Cuenta creada. Por favor inicia sesión.");
             } else {
-                window.location.href = "/dashboard";
+                // Redirect to Stripe checkout instead of dashboard
+                await redirectToCheckout();
             }
         } catch {
             setError("Error al crear la cuenta");
@@ -108,7 +120,7 @@ export default function RegistrarsePage() {
                         Crea tu cuenta
                     </h1>
                     <p style={{ color: "#94A3B8", fontSize: "0.95rem" }}>
-                        Empieza a automatizar tu contabilidad hoy
+                        Regístrate y comienza tu prueba gratis de 48 horas
                     </p>
                 </div>
 
@@ -242,7 +254,7 @@ export default function RegistrarsePage() {
                         disabled={loading}
                         style={{ width: "100%", marginTop: 8, opacity: loading ? 0.7 : 1 }}
                     >
-                        {loading ? <Loader2 size={18} className="animate-spin" /> : "Crear Cuenta"}
+                        {loading ? <Loader2 size={18} className="animate-spin" /> : "Crear Cuenta y Comenzar Prueba"}
                     </button>
                 </form>
 

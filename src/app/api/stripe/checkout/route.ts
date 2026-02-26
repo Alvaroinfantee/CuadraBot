@@ -1,27 +1,20 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { stripe, PLANS, PlanKey } from "@/lib/stripe";
+import { stripe, PLAN } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
+export async function POST() {
     try {
         const session = await auth();
         if (!session?.user?.id) {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 });
         }
 
-        const { planKey } = await req.json();
-
-        if (!planKey || !(planKey in PLANS)) {
-            return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
-        }
-
-        const plan = PLANS[planKey as PlanKey];
-
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
+            include: { subscription: true },
         });
 
         if (!user) {
@@ -29,6 +22,16 @@ export async function POST(req: Request) {
                 { error: "Usuario no encontrado" },
                 { status: 404 }
             );
+        }
+
+        // If user already has an active subscription, redirect to dashboard
+        if (
+            user.subscription?.status === "ACTIVE" ||
+            user.subscription?.status === "TRIALING"
+        ) {
+            return NextResponse.json({
+                url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+            });
         }
 
         let customerId = user.stripeCustomerId;
@@ -51,15 +54,18 @@ export async function POST(req: Request) {
             payment_method_types: ["card"],
             line_items: [
                 {
-                    price: plan.priceId,
+                    price: PLAN.priceId,
                     quantity: 1,
                 },
             ],
+            subscription_data: {
+                trial_period_days: PLAN.trialDays,
+            },
             success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
             cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/precios?cancelled=true`,
             metadata: {
                 userId: user.id,
-                planKey: planKey,
+                planKey: PLAN.key,
             },
         });
 

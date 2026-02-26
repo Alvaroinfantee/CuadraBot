@@ -1,4 +1,5 @@
 // Prisma config for Prisma 7.x
+import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({

@@ -42,7 +42,7 @@ export async function POST(req: Request) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const session = event.data.object as any;
                 const userId = session.metadata?.userId;
-                const planKey = session.metadata?.planKey || "basico";
+                const planKey = session.metadata?.planKey || "pro";
                 const subscriptionId = session.subscription as string;
 
                 if (userId && subscriptionId) {

@@ -6,6 +6,27 @@ import Link from "next/link";
 import Image from "next/image";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
+async function checkSubscriptionAndRedirect() {
+    try {
+        const res = await fetch("/api/auth/subscription-status");
+        const data = await res.json();
+        if (data.hasActiveSubscription) {
+            window.location.href = "/dashboard";
+        } else {
+            // No active subscription — redirect to checkout
+            const checkoutRes = await fetch("/api/stripe/checkout", { method: "POST" });
+            const checkoutData = await checkoutRes.json();
+            if (checkoutData.url) {
+                window.location.href = checkoutData.url;
+            } else {
+                window.location.href = "/dashboard";
+            }
+        }
+    } catch {
+        window.location.href = "/dashboard";
+    }
+}
+
 export default function IniciarSesionPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -28,7 +49,7 @@ export default function IniciarSesionPage() {
             if (result?.error) {
                 setError("Email o contraseña incorrectos");
             } else {
-                window.location.href = "/dashboard";
+                await checkSubscriptionAndRedirect();
             }
         } catch {
             setError("Error al iniciar sesión");
