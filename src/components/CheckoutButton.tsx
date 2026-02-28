@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Loader2, Zap, CreditCard } from "lucide-react";
+import { ArrowRight, Loader2, Key } from "lucide-react";
 
 export function CheckoutButton({
     variant = "gold",
-    label = "Prueba 48 Horas Gratis",
+    label = "Activar Código",
     className,
     style,
 }: {
@@ -15,19 +15,36 @@ export function CheckoutButton({
     style?: React.CSSProperties;
 }) {
     const [loading, setLoading] = useState(false);
+    const [code, setCode] = useState("");
+    const [error, setError] = useState("");
 
-    const handleCheckout = async () => {
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!code.trim()) {
+            setError("Ingresa un código");
+            return;
+        }
+
         setLoading(true);
+        setError("");
+
         try {
-            const res = await fetch("/api/stripe/checkout", { method: "POST" });
+            const res = await fetch("/api/subscription/code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code })
+            });
+
             const data = await res.json();
-            if (data.url) {
-                window.location.href = data.url;
+
+            if (res.ok && data.success) {
+                window.location.href = data.url || "/dashboard?success=true";
             } else {
-                alert(data.error || "Error al iniciar el checkout");
+                setError(data.error || "Error al validar el código");
             }
         } catch {
-            alert("Error de conexión. Intenta de nuevo.");
+            setError("Error de conexión. Intenta de nuevo.");
         } finally {
             setLoading(false);
         }
@@ -40,29 +57,56 @@ export function CheckoutButton({
                 ? "btn-primary"
                 : "btn-secondary";
 
-    const icon =
-        variant === "gold" ? (
-            <Zap size={16} />
-        ) : (
-            <CreditCard size={16} />
-        );
-
     return (
-        <button
-            onClick={handleCheckout}
-            disabled={loading}
-            className={className || btnClass}
-            style={{ ...style, opacity: loading ? 0.7 : 1 }}
-        >
-            {loading ? (
-                <Loader2 size={18} className="animate-spin" />
-            ) : (
-                <>
-                    {icon}
-                    {label}
-                    <ArrowRight size={16} />
-                </>
+        <form onSubmit={handleSubmit} style={{ width: "100%", ...style }}>
+            <div style={{ position: "relative", marginBottom: 12 }}>
+                <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
+                    <Key size={18} color="#94A3B8" />
+                </div>
+                <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => {
+                        setCode(e.target.value);
+                        setError("");
+                    }}
+                    placeholder="CUADRA-PRO-XXXX"
+                    style={{
+                        width: "100%",
+                        padding: "12px 14px 12px 42px",
+                        background: "rgba(15, 23, 42, 0.6)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 10,
+                        color: "white",
+                        fontSize: "0.95rem",
+                        outline: "none",
+                        transition: "all 0.2s"
+                    }}
+                    disabled={loading}
+                />
+            </div>
+
+            {error && (
+                <p style={{ color: "#F87171", fontSize: "0.85rem", marginBottom: 12, textAlign: "center" }}>
+                    {error}
+                </p>
             )}
-        </button>
+
+            <button
+                type="submit"
+                disabled={loading || !code.trim()}
+                className={className || btnClass}
+                style={{ width: "100%", opacity: loading || !code.trim() ? 0.7 : 1 }}
+            >
+                {loading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                ) : (
+                    <>
+                        {label}
+                        <ArrowRight size={16} />
+                    </>
+                )}
+            </button>
+        </form>
     );
 }

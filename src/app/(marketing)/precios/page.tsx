@@ -41,6 +41,25 @@ export default function PreciosPage() {
             />
 
             <section style={{ padding: "100px 24px 60px" }}>
+                <div className="section-container" style={{ textAlign: "center", marginBottom: 40 }}>
+                    <div style={{
+                        background: "rgba(245, 158, 11, 0.1)",
+                        border: "1px solid rgba(245, 158, 11, 0.3)",
+                        padding: "16px 24px",
+                        borderRadius: 12,
+                        color: "#FCD34D",
+                        maxWidth: 700,
+                        margin: "0 auto",
+                        textAlign: "left"
+                    }}>
+                        <h4 style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                            ⚠️ Problemas Técnicos con Stripe
+                        </h4>
+                        <p style={{ fontSize: "0.95rem", lineHeight: 1.5 }}>
+                            Debido a problemas técnicos con nuestra pasarela de pagos, temporalmente el acceso a la plataforma se realiza mediante <strong>códigos de acceso</strong>. Solicita tu código escribiéndonos a <strong>info@cuadrabot.com</strong>.
+                        </p>
+                    </div>
+                </div>
                 <div className="section-container" style={{ textAlign: "center" }}>
                     <h1
                         style={{

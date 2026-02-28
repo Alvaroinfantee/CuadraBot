@@ -1,42 +1,11 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { CreditCard } from "lucide-react";
+import { CheckoutButton } from "@/components/CheckoutButton";
 
 export default function SuscripcionPage() {
     const { data: session } = useSession();
-    const [loading, setLoading] = useState(false);
-
-    const handleManageBilling = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch("/api/stripe/portal", { method: "POST" });
-            const data = await res.json();
-            if (data.url) {
-                window.location.href = data.url;
-            }
-        } catch {
-            alert("Error al abrir el portal de facturación");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSubscribe = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch("/api/stripe/checkout", { method: "POST" });
-            const data = await res.json();
-            if (data.url) {
-                window.location.href = data.url;
-            }
-        } catch {
-            alert("Error al iniciar el checkout");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     return (
         <div>
@@ -76,36 +45,30 @@ export default function SuscripcionPage() {
                         <h2 style={{ color: "white", fontWeight: 600, fontSize: "1.1rem" }}>
                             CuadraBot Pro
                         </h2>
-                        <p style={{ color: "#94A3B8", fontSize: "0.85rem" }}>$30 USD/mes</p>
+                        <p style={{ color: "#94A3B8", fontSize: "0.85rem" }}>Acceso Completo</p>
                     </div>
+                </div>
+
+                <div style={{
+                    background: "rgba(245, 158, 11, 0.1)",
+                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                    padding: "16px",
+                    borderRadius: 12,
+                    color: "#FCD34D",
+                    marginBottom: 24,
+                    fontSize: "0.9rem"
+                }}>
+                    <p style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, marginBottom: 4 }}>
+                        ⚠️ Aviso Importante
+                    </p>
+                    <p>
+                        Por problemas técnicos con Stripe, los pagos directos están desactivados. Solicita tu <strong>código de acceso</strong> escribiendo a <strong>info@cuadrabot.com</strong>.
+                    </p>
                 </div>
 
                 {session?.user ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <button
-                            onClick={handleSubscribe}
-                            className="btn-gold"
-                            disabled={loading}
-                            style={{ width: "100%" }}
-                        >
-                            {loading ? (
-                                <Loader2 size={18} className="animate-spin" />
-                            ) : (
-                                <>
-                                    Comenzar Prueba Gratis (48h)
-                                    <ExternalLink size={16} />
-                                </>
-                            )}
-                        </button>
-                        <button
-                            onClick={handleManageBilling}
-                            className="btn-secondary"
-                            disabled={loading}
-                            style={{ width: "100%" }}
-                        >
-                            Gestionar Facturación
-                            <ExternalLink size={16} />
-                        </button>
+                        <CheckoutButton label="Activar Código" style={{ width: "100%" }} />
                     </div>
                 ) : (
                     <p style={{ color: "#64748B" }}>Cargando...</p>

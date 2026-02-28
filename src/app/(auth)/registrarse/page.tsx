@@ -6,15 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { User, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
-async function redirectToCheckout() {
-    const res = await fetch("/api/stripe/checkout", { method: "POST" });
-    const data = await res.json();
-    if (data.url) {
-        window.location.href = data.url;
-    } else {
-        // Fallback: if checkout fails, go to dashboard (subscription guard will handle)
-        window.location.href = "/dashboard";
-    }
+async function redirectAfterRegistration() {
+    window.location.href = "/dashboard";
 }
 
 export default function RegistrarsePage() {
@@ -67,8 +60,8 @@ export default function RegistrarsePage() {
             if (result?.error) {
                 setError("Cuenta creada. Por favor inicia sesión.");
             } else {
-                // Redirect to Stripe checkout instead of dashboard
-                await redirectToCheckout();
+                // Redirect to dashboard so they can input the trial code
+                await redirectAfterRegistration();
             }
         } catch {
             setError("Error al crear la cuenta");
