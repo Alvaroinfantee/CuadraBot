@@ -2,7 +2,7 @@ import Stripe from "stripe";
 
 let _stripe: Stripe | null = null;
 
-function getStripe(): Stripe {
+export function getStripeInstance(): Stripe {
     if (!_stripe) {
         if (!process.env.STRIPE_SECRET_KEY) {
             throw new Error("STRIPE_SECRET_KEY environment variable is not set");
@@ -12,17 +12,16 @@ function getStripe(): Stripe {
     return _stripe;
 }
 
-// Lazy proxy: stripe.xxx() calls are forwarded to the real instance at runtime
-export const stripe = new Proxy({} as Stripe, {
-    get(_target, prop, receiver) {
-        const instance = getStripe();
-        const value = Reflect.get(instance, prop, receiver);
-        if (typeof value === "function") {
-            return value.bind(instance);
-        }
-        return value;
-    },
-});
+// Use this in API routes — lazily initialized at runtime
+export const stripe = {
+    get customers() { return getStripeInstance().customers; },
+    get checkout() { return getStripeInstance().checkout; },
+    get subscriptions() { return getStripeInstance().subscriptions; },
+    get webhooks() { return getStripeInstance().webhooks; },
+    get prices() { return getStripeInstance().prices; },
+    get products() { return getStripeInstance().products; },
+    get invoices() { return getStripeInstance().invoices; },
+} as unknown as Stripe;
 
 export const PLAN = {
     key: "pro",
