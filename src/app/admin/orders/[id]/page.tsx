@@ -119,9 +119,12 @@ export default async function AdminOrderDetailPage({
             <form action={uploadAdminFinalFilesAction} className="flex flex-col gap-3 border-t pt-4">
               <input type="hidden" name="order_id" value={order.id} />
               <Field>
-                <FieldLabel htmlFor="admin-files">Upload final renders manually</FieldLabel>
+                <FieldLabel htmlFor="admin-files">Upload final renders for customer delivery</FieldLabel>
                 <Input id="admin-files" name="files" type="file" multiple />
               </Field>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Uploaded final renders appear on the customer status page. The order moves to needs_review until you approve delivery.
+              </p>
               <Button type="submit" className="w-fit">
                 <UploadIcon data-icon="inline-start" />
                 Upload final files
@@ -179,7 +182,7 @@ export default async function AdminOrderDetailPage({
             <input type="hidden" name="order_id" value={order.id} />
             <Button type="submit" variant="outline" className="w-full">
               <SendIcon data-icon="inline-start" />
-              Send completion email
+              Mark completed and email client
             </Button>
           </form>
           <div className="border-t pt-4">

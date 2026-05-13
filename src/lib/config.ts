@@ -5,6 +5,10 @@ export const blenderOutputBucket =
   process.env.BLENDER_OUTPUT_BUCKET ?? "render-outputs"
 export const maxUploadMb = Number(process.env.MAX_UPLOAD_MB ?? "100")
 export const maxUploadBytes = maxUploadMb * 1024 * 1024
+export const ownerRequestEmail =
+  process.env.OWNER_REQUEST_EMAIL ?? process.env.ADMIN_EMAIL ?? "info@cuadrabot.com"
+export const jobReminderEmail =
+  process.env.JOB_REMINDER_EMAIL ?? "alvaroinfantee@gmail.com"
 
 export function getSiteUrl() {
   return (

@@ -3,7 +3,10 @@ import type Stripe from "stripe"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import { getStripe } from "@/lib/stripe"
 import { getRequiredEnv } from "@/lib/config"
-import { sendAndRecordOrderConfirmation } from "@/lib/orders"
+import {
+  sendAndRecordOrderConfirmation,
+  sendAndRecordOwnerJobNotifications,
+} from "@/lib/orders"
 import type { Order, PackagePlan } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
@@ -125,6 +128,13 @@ async function handleCheckoutCompleted(event: Stripe.Event) {
 
   if (!order.paid_at && packagePlan) {
     await sendAndRecordOrderConfirmation({
+      order: updatedOrder as Order,
+      packagePlan: packagePlan as PackagePlan,
+    })
+  }
+
+  if (packagePlan) {
+    await sendAndRecordOwnerJobNotifications({
       order: updatedOrder as Order,
       packagePlan: packagePlan as PackagePlan,
     })

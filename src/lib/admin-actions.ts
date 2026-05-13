@@ -137,7 +137,14 @@ export async function uploadAdminFinalFilesAction(formData: FormData) {
     }
   }
 
+  await supabase
+    .from("orders")
+    .update({ status: "needs_review" })
+    .eq("id", orderId)
+    .neq("status", "completed")
+
   revalidatePath(`/admin/orders/${orderId}`)
+  revalidatePath("/admin/orders")
 }
 
 export async function sendCompletionEmailAction(formData: FormData) {
@@ -152,6 +159,32 @@ export async function sendCompletionEmailAction(formData: FormData) {
 
   if (error) {
     throw new Error(error.message)
+  }
+
+  const { count, error: finalFilesError } = await supabase
+    .from("order_files")
+    .select("id", { count: "exact", head: true })
+    .eq("order_id", order.id)
+    .eq("file_role", "final_render")
+
+  if (finalFilesError) {
+    throw new Error(finalFilesError.message)
+  }
+
+  if (!count) {
+    throw new Error("Upload at least one final render before emailing the customer.")
+  }
+
+  const { error: updateError } = await supabase
+    .from("orders")
+    .update({
+      status: "completed",
+      completed_at: order.completed_at ?? new Date().toISOString(),
+    })
+    .eq("id", order.id)
+
+  if (updateError) {
+    throw new Error(updateError.message)
   }
 
   const email = orderCompletedEmail({
@@ -172,6 +205,7 @@ export async function sendCompletionEmailAction(formData: FormData) {
   })
 
   revalidatePath(`/admin/orders/${orderId}`)
+  revalidatePath("/admin/orders")
 }
 
 export async function updatePackageAction(formData: FormData) {
