@@ -6,7 +6,7 @@ export const blenderOutputBucket =
 export const maxUploadMb = Number(process.env.MAX_UPLOAD_MB ?? "100")
 export const maxUploadBytes = maxUploadMb * 1024 * 1024
 export const ownerRequestEmail =
-  process.env.OWNER_REQUEST_EMAIL ?? process.env.ADMIN_EMAIL ?? "info@cuadrabot.com"
+  process.env.OWNER_REQUEST_EMAIL ?? process.env.ADMIN_EMAIL ?? "ainfante@cuadrabot.com"
 export const jobReminderEmail =
   process.env.JOB_REMINDER_EMAIL ?? "alvaroinfantee@gmail.com"
 

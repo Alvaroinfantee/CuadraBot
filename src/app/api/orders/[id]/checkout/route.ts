@@ -60,6 +60,7 @@ export async function POST(request: Request, context: Context) {
   const locale: Locale = isLocale(requestLocale) ? requestLocale : "en"
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    allow_promotion_codes: true,
     line_items: [
       {
         price: stripePriceId,
