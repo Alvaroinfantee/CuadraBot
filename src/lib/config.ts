@@ -9,6 +9,7 @@ export const ownerRequestEmail =
   process.env.OWNER_REQUEST_EMAIL ?? process.env.ADMIN_EMAIL ?? "ainfante@cuadrabot.com"
 export const jobReminderEmail =
   process.env.JOB_REMINDER_EMAIL ?? "alvaroinfantee@gmail.com"
+export const simulationEmailToken = process.env.SIMULATION_EMAIL_TOKEN ?? null
 
 export function getSiteUrl() {
   return (
