@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe"
 import { getSiteUrl } from "@/lib/config"
 import { jsonError } from "@/lib/http"
 import { isLocale, localePath, type Locale } from "@/lib/i18n"
+import { getStripePriceIdForPackage } from "@/lib/packages"
 
 type Context = {
   params: Promise<{ id: string }>
@@ -46,8 +47,10 @@ export async function POST(request: Request, context: Context) {
   }
 
   const packagePlan = Array.isArray(order.packages) ? order.packages[0] : order.packages
+  const stripePriceId =
+    packagePlan?.stripe_price_id ?? getStripePriceIdForPackage(packagePlan?.slug ?? "")
 
-  if (!packagePlan?.stripe_price_id) {
+  if (!packagePlan || !stripePriceId) {
     return jsonError("Stripe price ID is not configured for this package.", 500)
   }
 
@@ -59,7 +62,7 @@ export async function POST(request: Request, context: Context) {
     mode: "payment",
     line_items: [
       {
-        price: packagePlan.stripe_price_id,
+        price: stripePriceId,
         quantity: 1,
       },
     ],
