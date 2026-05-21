@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://cuadrabot.com"),
   title: {
-    default: "Cuadrabot | Architectural renders from your blueprints",
+    default: "Cuadrabot | Architectural renders from your blueprints in 48 hours",
     template: "%s | Cuadrabot",
   },
   description:

@@ -35,7 +35,7 @@ export const commonCopy = {
     dueToday: "Due today",
     businessDays: "business days",
     bestFor: "Best for",
-    ready72: "First renders ready in 72 hours max.",
+    ready72: "First renders ready in 48 hours max.",
     blueprintToRender:
       "Blueprint-to-render visualization services for architects, developers, realtors, and homeowners.",
     serviceDisclaimer:
@@ -63,7 +63,7 @@ export const commonCopy = {
     dueToday: "Total de hoy",
     businessDays: "días hábiles",
     bestFor: "Ideal para",
-    ready72: "Primeros renders listos en 72 horas máximo.",
+    ready72: "Primeros renders listos en 48 horas máximo.",
     blueprintToRender:
       "Servicios de visualización de plano a render para arquitectos, promotores, agentes inmobiliarios y propietarios.",
     serviceDisclaimer:
@@ -89,17 +89,17 @@ type HomeCopy = {
 
 export const homeCopy = {
   en: {
-    headline: "Architectural renders from your blueprints",
+    headline: "Architectural renders from your blueprints in 48 hours",
     subheadline:
       "Upload your floor plans, elevations, or sketches. Cuadrabot turns them into polished architectural renderings.",
-    promise72: "First renders ready in 72 hours max.",
+    promise72: "First renders ready in 48 hours max.",
     scroll: "Scroll to explore",
     fullPricing: "View full pricing",
     exampleGallery: "Example gallery",
     moreExamples: "View more examples",
     beforeAfter: "Before / After",
     finalHeadline: "Ready to bring your project to life?",
-    finalBody: "Upload your plans and get first renders ready in 72 hours max.",
+    finalBody: "Upload your plans and get first renders ready in 48 hours max.",
     steps: [
       ["Upload your blueprint", "Send floor plans, elevations, sketches, PDFs, images, DWG, DXF, or ZIP files."],
       ["Choose your package", "Pick the rendering scope and delivery range that fits your project."],
@@ -116,23 +116,23 @@ export const homeCopy = {
     faqs: [
       ["What files can I upload?", "PDF, PNG, JPG/JPEG, DWG, DXF, and ZIP files are accepted for the MVP."],
       ["Do I need a finished architectural plan?", "No. Finished plans help, but sketches, elevations, and reference files can also be uploaded."],
-      ["How long does it take?", "First renders are ready in 72 hours max. Full delivery depends on package scope and revisions."],
+      ["How long does it take?", "First renders are ready in 48 hours max. Full delivery depends on package scope and revisions."],
       ["Can I request revisions?", "Revision rounds depend on the selected package and are tracked with the order."],
       ["Are my files private?", "Yes. Uploads are stored in private Supabase Storage buckets and accessed through signed URLs."],
     ],
   },
   es: {
-    headline: "Renders arquitectónicos a partir de tus planos",
+    headline: "Renders arquitectónicos a partir de tus planos en 48 horas",
     subheadline:
       "Sube plantas, elevaciones o bocetos. Cuadrabot los convierte en renders arquitectónicos pulidos.",
-    promise72: "Primeros renders listos en 72 horas máximo.",
+    promise72: "Primeros renders listos en 48 horas máximo.",
     scroll: "Desplázate para explorar",
     fullPricing: "Ver todos los precios",
     exampleGallery: "Galería de ejemplos",
     moreExamples: "Ver más ejemplos",
     beforeAfter: "Antes / Después",
     finalHeadline: "¿Listo para dar vida a tu proyecto?",
-    finalBody: "Sube tus planos y recibe primeros renders listos en 72 horas máximo.",
+    finalBody: "Sube tus planos y recibe primeros renders listos en 48 horas máximo.",
     steps: [
       ["Sube tu plano", "Envía plantas, elevaciones, bocetos, PDF, imágenes, DWG, DXF o archivos ZIP."],
       ["Elige tu paquete", "Selecciona el alcance y plazo de entrega que encajan con tu proyecto."],
@@ -149,7 +149,7 @@ export const homeCopy = {
     faqs: [
       ["¿Qué archivos puedo subir?", "El MVP acepta PDF, PNG, JPG/JPEG, DWG, DXF y ZIP."],
       ["¿Necesito un plano arquitectónico terminado?", "No. Los planos terminados ayudan, pero también puedes subir bocetos, elevaciones y referencias."],
-      ["¿Cuánto tarda?", "Los primeros renders están listos en 72 horas máximo. La entrega final depende del paquete y las revisiones."],
+      ["¿Cuánto tarda?", "Los primeros renders están listos en 48 horas máximo. La entrega final depende del paquete y las revisiones."],
       ["¿Puedo pedir revisiones?", "Las rondas de revisión dependen del paquete elegido y se registran con el pedido."],
       ["¿Mis archivos son privados?", "Sí. Las subidas se guardan en buckets privados de Supabase Storage y se accede con URLs firmadas."],
     ],
