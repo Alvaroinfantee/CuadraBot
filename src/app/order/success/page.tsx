@@ -5,9 +5,10 @@ import { SiteHeader } from "@/components/site/site-header"
 import { StatusBadge } from "@/components/site/status-badge"
 import { buttonVariants } from "@/components/ui/button"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
-import { formatDeliveryRange } from "@/lib/format"
+import { formatDeliveryRange, formatMoney } from "@/lib/format"
 import { hasSupabaseServerEnv } from "@/lib/config"
-import { getPackageDisplay, localePath, type Locale } from "@/lib/i18n"
+import { localePath, type Locale } from "@/lib/i18n"
+import { isTakeoffOrderNotes } from "@/lib/takeoff-quote"
 import { cn } from "@/lib/utils"
 
 export const metadata = {
@@ -34,35 +35,40 @@ export async function OrderSuccessContent({
   const { session_id } = await searchParams
   const order = session_id && hasSupabaseServerEnv() ? await getOrder(session_id) : null
   const packagePlan = Array.isArray(order?.packages) ? order?.packages[0] : order?.packages
+  const isTakeoff = isTakeoffOrderNotes(order?.customer_notes)
   const copy =
     locale === "es"
       ? {
-          title: "Tu proyecto está en cola",
-          body: "Hemos recibido tus archivos de planos y el pago. Tu proyecto ya está en cola para renderizado.",
+          title: isTakeoff ? "Tu takeoff esta en cola" : "Tu proyecto está en cola",
+          body: isTakeoff
+            ? "Hemos recibido tu PDF y el pago. Tu takeoff ya esta en cola de produccion."
+            : "Hemos recibido tus archivos de planos y el pago. Tu proyecto ya está en cola para renderizado.",
           processing:
             "La confirmación de Stripe se está procesando. Usa el enlace de estado de tu email de confirmación cuando el webhook termine.",
           orderNumber: "Número de pedido",
           status: "Estado",
           customerEmail: "Email del cliente",
-          package: "Paquete",
+          quote: "Cotizacion",
           delivery: "Entrega estimada",
           statusLink: "Ver estado del pedido",
-          packageFallback: "Paquete seleccionado",
-          packageEstimate: "Estimación del paquete",
+          quoteFallback: "Precio cotizado",
+          deliveryFallback: "Estimacion de entrega",
         }
       : {
-          title: "Your project is queued",
-          body: "We received your blueprint files and payment. Your project is now queued for rendering.",
+          title: isTakeoff ? "Your takeoff is queued" : "Your project is queued",
+          body: isTakeoff
+            ? "We received your PDF and payment. Your takeoff is now queued for production."
+            : "We received your blueprint files and payment. Your project is now queued for rendering.",
           processing:
             "Stripe confirmation is being processed. Use the order status link from your confirmation email once the webhook completes.",
           orderNumber: "Order number",
           status: "Status",
           customerEmail: "Customer email",
-          package: "Package",
+          quote: "Quote",
           delivery: "Estimated delivery",
           statusLink: "View order status",
-          packageFallback: "Selected package",
-          packageEstimate: "Package estimate",
+          quoteFallback: "Quoted price",
+          deliveryFallback: "Delivery estimate",
         }
 
   return (
@@ -84,19 +90,27 @@ export async function OrderSuccessContent({
             <Info label={copy.status} value={<StatusBadge status={order.status} locale={locale} />} />
             <Info label={copy.customerEmail} value={order.customer_email} />
             <Info
-              label={copy.package}
-              value={packagePlan ? getPackageDisplay(locale, packagePlan).name : copy.packageFallback}
+              label={copy.quote}
+              value={
+                order.amount_cents && order.currency
+                  ? formatMoney(order.amount_cents, order.currency)
+                  : copy.quoteFallback
+              }
             />
             <Info
               label={copy.delivery}
               value={
-                packagePlan
+                isTakeoff
+                  ? locale === "es"
+                    ? "Maximo 7 dias"
+                    : "7 days max"
+                  : packagePlan
                   ? formatDeliveryRange(
                       packagePlan.estimated_delivery_days_min,
                       packagePlan.estimated_delivery_days_max,
                       locale
                     )
-                  : copy.packageEstimate
+                  : copy.deliveryFallback
               }
             />
           </div>

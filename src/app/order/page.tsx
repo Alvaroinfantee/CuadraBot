@@ -1,8 +1,12 @@
+import { redirect } from "next/navigation"
 import { OrderFlow } from "@/components/order/order-flow"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
 import { getActivePackages } from "@/lib/packages"
-import { commonCopy, type Locale } from "@/lib/i18n"
+import { commonCopy, localePath, type Locale } from "@/lib/i18n"
+import { parseProjectQuoteInput } from "@/lib/project-quote"
+
+type OrderSearchParams = Promise<Record<string, string | string[] | undefined>>
 
 export const metadata = {
   title: "Start your render",
@@ -11,7 +15,7 @@ export const metadata = {
 export default async function OrderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ package?: string; cancelled?: string }>
+  searchParams: OrderSearchParams
 }) {
   return <OrderContent locale="en" searchParams={searchParams} />
 }
@@ -20,23 +24,29 @@ export async function OrderContent({
   searchParams,
   locale,
 }: {
-  searchParams: Promise<{ package?: string; cancelled?: string }>
+  searchParams: OrderSearchParams
   locale: Locale
 }) {
   const params = await searchParams
+  const quoteInput = parseProjectQuoteInput(params)
+
+  if (!quoteInput) {
+    redirect(localePath(locale, "/pricing"))
+  }
+
   const packages = await getActivePackages()
   const common = commonCopy[locale]
   const copy =
     locale === "es"
       ? {
           title: "Inicia tu render",
-          body: "Elige un paquete, describe el proyecto, sube archivos y continúa a Stripe Checkout.",
+          body: "Revisa tu cotizacion, describe el proyecto, sube archivos y continua a Stripe Checkout.",
           cancelled:
             "El checkout fue cancelado. Tus archivos no entran en cola hasta que se confirme el pago.",
         }
       : {
           title: "Start your render",
-          body: "Choose a package, describe the project, upload files, and continue to Stripe Checkout.",
+          body: "Review your quote, describe the project, upload files, and continue to Stripe Checkout.",
           cancelled:
             "Checkout was cancelled. Your files are not queued until payment is confirmed.",
         }
@@ -59,7 +69,7 @@ export async function OrderContent({
             </p>
           ) : null}
         </div>
-        <OrderFlow packages={packages} initialPackageSlug={params.package} locale={locale} />
+        <OrderFlow packages={packages} quoteInput={quoteInput} locale={locale} />
       </main>
       <SiteFooter locale={locale} />
     </div>

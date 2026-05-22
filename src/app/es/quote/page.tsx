@@ -1,9 +1,9 @@
-import { QuoteContent } from "@/app/quote/page"
+import { redirect } from "next/navigation"
 
 export const metadata = {
   title: "Cotizar proyecto",
 }
 
 export default function SpanishQuotePage() {
-  return <QuoteContent locale="es" />
+  redirect("/es/pricing")
 }

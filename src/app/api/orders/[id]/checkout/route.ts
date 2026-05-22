@@ -5,6 +5,7 @@ import { getSiteUrl } from "@/lib/config"
 import { jsonError } from "@/lib/http"
 import { isLocale, localePath, type Locale } from "@/lib/i18n"
 import { getStripePriceIdForPackage } from "@/lib/packages"
+import { isTakeoffOrderNotes } from "@/lib/takeoff-quote"
 
 type Context = {
   params: Promise<{ id: string }>
@@ -47,10 +48,21 @@ export async function POST(request: Request, context: Context) {
   }
 
   const packagePlan = Array.isArray(order.packages) ? order.packages[0] : order.packages
-  const stripePriceId =
-    packagePlan?.stripe_price_id ?? getStripePriceIdForPackage(packagePlan?.slug ?? "")
 
-  if (!packagePlan || !stripePriceId) {
+  if (!packagePlan) {
+    return jsonError("Order package baseline is not configured.", 500)
+  }
+
+  const amountCents = order.amount_cents ?? packagePlan.price_cents
+  const currency = (order.currency ?? packagePlan.currency).toLowerCase()
+  const isTakeoff = isTakeoffOrderNotes(order.customer_notes)
+  const usesCustomQuote =
+    amountCents !== packagePlan.price_cents ||
+    currency !== packagePlan.currency.toLowerCase()
+  const stripePriceId =
+    packagePlan.stripe_price_id ?? getStripePriceIdForPackage(packagePlan.slug)
+
+  if (!usesCustomQuote && !stripePriceId) {
     return jsonError("Stripe price ID is not configured for this package.", 500)
   }
 
@@ -62,18 +74,34 @@ export async function POST(request: Request, context: Context) {
     mode: "payment",
     allow_promotion_codes: true,
     line_items: [
-      {
-        price: stripePriceId,
-        quantity: 1,
-      },
+      usesCustomQuote
+        ? {
+            price_data: {
+              currency,
+              product_data: {
+                name: isTakeoff ? "Cuadrabot takeoff quote" : "Cuadrabot project quote",
+                description: isTakeoff
+                  ? "PDF blueprint takeoff service"
+                  : `${packagePlan.name} internal baseline`,
+              },
+              unit_amount: amountCents,
+            },
+            quantity: 1,
+          }
+        : {
+            price: stripePriceId,
+            quantity: 1,
+          },
     ],
     customer_email: order.customer_email,
     success_url: `${siteUrl}${localePath(locale, "/order/success")}?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${siteUrl}${localePath(locale, `/order?package=${packagePlan.slug}&cancelled=1`)}`,
+    cancel_url: `${siteUrl}${localePath(locale, usesCustomQuote ? "/pricing" : `/order?package=${packagePlan.slug}&cancelled=1`)}`,
     metadata: {
       order_id: order.id,
       public_token: order.public_token,
       package_slug: packagePlan.slug,
+      quote_amount_cents: String(amountCents),
+      quote_currency: currency,
     },
   })
 

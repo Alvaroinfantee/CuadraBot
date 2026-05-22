@@ -20,23 +20,21 @@ import {
 } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
-import { PackageColumns } from "@/components/site/package-columns"
+import { ProjectQuoteCalculator } from "@/components/site/project-quote-calculator"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
 import { galleryExamples } from "@/lib/gallery-examples"
-import { getActivePackages } from "@/lib/packages"
 import { commonCopy, homeCopy, localePath, type Locale } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 const stepIcons = [FileUpIcon, CreditCardIcon, SparklesIcon, DownloadIcon]
 const reasonIcons = [ZapIcon, LockIcon, CreditCardIcon, TargetIcon, LayersIcon]
 
-export default async function Home() {
+export default function Home() {
   return <HomeContent locale="en" />
 }
 
-export async function HomeContent({ locale }: { locale: Locale }) {
-  const packages = await getActivePackages()
+export function HomeContent({ locale }: { locale: Locale }) {
   const copy = homeCopy[locale]
   const common = commonCopy[locale]
   const examples = galleryExamples[locale]
@@ -62,7 +60,7 @@ export async function HomeContent({ locale }: { locale: Locale }) {
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href={localePath(locale, "/order")} className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}>
+                <Link href={localePath(locale, "/pricing")} className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}>
                   {common.startRender}
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
@@ -114,13 +112,13 @@ export async function HomeContent({ locale }: { locale: Locale }) {
         <section className="py-16">
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-6">
-              <SectionHeading title={common.packages} />
+              <SectionHeading title={common.projectQuote} />
               <Link href={localePath(locale, "/pricing")} className="hidden items-center gap-2 text-sm font-medium text-primary sm:flex">
                 {copy.fullPricing}
                 <ArrowRightIcon data-icon="inline-end" />
               </Link>
             </div>
-            <PackageColumns packages={packages} locale={locale} />
+            <ProjectQuoteCalculator locale={locale} />
           </div>
         </section>
 
@@ -204,7 +202,7 @@ export async function HomeContent({ locale }: { locale: Locale }) {
             <p className="text-muted-foreground">
               {copy.finalBody}
             </p>
-            <Link href={localePath(locale, "/order")} className={cn(buttonVariants({ size: "lg" }), "h-12 px-8")}>
+            <Link href={localePath(locale, "/pricing")} className={cn(buttonVariants({ size: "lg" }), "h-12 px-8")}>
               {common.startRender}
               <ArrowRightIcon data-icon="inline-end" />
             </Link>

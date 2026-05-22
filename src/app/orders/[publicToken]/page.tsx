@@ -7,8 +7,9 @@ import { StatusBadge } from "@/components/site/status-badge"
 import { buttonVariants } from "@/components/ui/button"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import { hasSupabaseServerEnv } from "@/lib/config"
-import { formatDeliveryRange } from "@/lib/format"
-import { getPackageDisplay, type Locale } from "@/lib/i18n"
+import { formatDeliveryRange, formatMoney } from "@/lib/format"
+import { type Locale } from "@/lib/i18n"
+import { isTakeoffOrderNotes } from "@/lib/takeoff-quote"
 import type { OrderFile } from "@/lib/types"
 
 export const metadata = {
@@ -50,6 +51,7 @@ export async function OrderStatusContent({
   }
 
   const packagePlan = Array.isArray(order.packages) ? order.packages[0] : order.packages
+  const isTakeoff = isTakeoffOrderNotes(order.customer_notes)
   const files = (order.order_files ?? []) as OrderFile[]
   const customerFiles = files.filter((file) => file.file_role === "customer_upload")
   const finalFiles = files.filter((file) => file.file_role === "final_render")
@@ -65,30 +67,36 @@ export async function OrderStatusContent({
   const copy =
     locale === "es"
       ? {
-          body: "Consulta el estado del render y descarga los archivos finales cuando estén listos.",
-          package: "Paquete",
+          body: isTakeoff
+            ? "Consulta el estado del takeoff y descarga los archivos finales cuando esten listos."
+            : "Consulta el estado del render y descarga los archivos finales cuando estén listos.",
+          quote: "Cotizacion",
           customerEmail: "Email del cliente",
-          renderType: "Tipo de render",
+          renderType: isTakeoff ? "Servicio" : "Tipo de render",
           delivery: "Entrega estimada",
           uploadedFiles: "Archivos subidos",
-          finalRenders: "Renders finales",
-          noFinals:
-            "Las descargas de renders finales aparecerán aquí después del procesamiento y la revisión.",
+          finalRenders: isTakeoff ? "Takeoff final" : "Renders finales",
+          noFinals: isTakeoff
+            ? "La descarga del takeoff final aparecera aqui despues del procesamiento y revision."
+            : "Las descargas de renders finales aparecerán aquí después del procesamiento y la revisión.",
           noUploads: "No hay archivos subidos adjuntos.",
-          fallbackPackage: "Paquete",
+          fallbackQuote: "Precio cotizado",
         }
       : {
-          body: "Track rendering status and download final render files when complete.",
-          package: "Package",
+          body: isTakeoff
+            ? "Track takeoff status and download final files when complete."
+            : "Track rendering status and download final render files when complete.",
+          quote: "Quote",
           customerEmail: "Customer email",
-          renderType: "Render type",
+          renderType: isTakeoff ? "Service" : "Render type",
           delivery: "Delivery estimate",
           uploadedFiles: "Uploaded files",
-          finalRenders: "Final renders",
-          noFinals:
-            "Final render downloads will appear here after processing and review.",
+          finalRenders: isTakeoff ? "Final takeoff" : "Final renders",
+          noFinals: isTakeoff
+            ? "Final takeoff downloads will appear here after processing and review."
+            : "Final render downloads will appear here after processing and review.",
           noUploads: "No uploaded files are attached.",
-          fallbackPackage: "Package",
+          fallbackQuote: "Quoted price",
         }
 
   return (
@@ -104,15 +112,23 @@ export async function OrderStatusContent({
         </div>
         <section className="grid gap-4 border p-6 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Info
-            label={copy.package}
-            value={packagePlan ? getPackageDisplay(locale, packagePlan).name : copy.fallbackPackage}
+            label={copy.quote}
+            value={
+              order.amount_cents && order.currency
+                ? formatMoney(order.amount_cents, order.currency)
+                : copy.fallbackQuote
+            }
           />
           <Info label={copy.customerEmail} value={order.customer_email} />
-          <Info label={copy.renderType} value={order.render_type ?? "-"} />
+          <Info label={copy.renderType} value={isTakeoff ? "Takeoff" : order.render_type ?? "-"} />
           <Info
             label={copy.delivery}
             value={
-              packagePlan
+              isTakeoff
+                ? locale === "es"
+                  ? "Maximo 7 dias"
+                  : "7 days max"
+                : packagePlan
                 ? formatDeliveryRange(
                     packagePlan.estimated_delivery_days_min,
                     packagePlan.estimated_delivery_days_max,

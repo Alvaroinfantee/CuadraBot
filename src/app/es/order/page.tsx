@@ -7,7 +7,7 @@ export const metadata = {
 export default function SpanishOrderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ package?: string; cancelled?: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   return <OrderContent locale="es" searchParams={searchParams} />
 }

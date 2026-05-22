@@ -34,6 +34,12 @@ import {
 import { formatDeliveryRange, formatMoney } from "@/lib/format"
 import { maxUploadMb } from "@/lib/config"
 import {
+  calculateProjectQuote,
+  formatQuoteMoney,
+  projectTypeToOrderProjectType,
+  type ProjectQuoteInput,
+} from "@/lib/project-quote"
+import {
   commonCopy,
   getPackageDisplay,
   type Locale,
@@ -54,31 +60,42 @@ export function OrderFlow({
   initialPackageSlug,
   focusUpload = false,
   locale = "en",
+  quoteInput = null,
 }: {
   packages: PackagePlan[]
   initialPackageSlug?: string
   focusUpload?: boolean
   locale?: Locale
+  quoteInput?: ProjectQuoteInput | null
 }) {
   const [files, setFiles] = useState<File[]>([])
   const [progress, setProgress] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const quote = useMemo(
+    () => (quoteInput ? calculateProjectQuote(quoteInput) : null),
+    [quoteInput]
+  )
   const packageSlug =
-    packages.find((plan) => plan.slug === initialPackageSlug)?.slug ?? packages[0]?.slug
+    quote?.recommendedPackageSlug ??
+    packages.find((plan) => plan.slug === initialPackageSlug)?.slug ??
+    packages[0]?.slug
 
   const form = useForm<OrderFormInput, unknown, OrderFormValues>({
     resolver: zodResolver(orderDetailsSchema),
     defaultValues: {
       package_slug: packageSlug,
       render_type: "Exterior",
-      project_type: "House",
+      project_type: quoteInput
+        ? (projectTypeToOrderProjectType(quoteInput.projectType) as OrderFormInput["project_type"])
+        : "House",
       style_preference: "Modern",
-      number_of_floors: undefined,
-      estimated_square_meters: undefined,
+      number_of_floors: quoteInput?.floors,
+      estimated_square_meters: quoteInput?.squareMeters,
       deadline_preference: "",
       customer_notes: "",
       customer_name: "",
       customer_email: "",
+      quote: quoteInput ?? undefined,
     },
   })
 
@@ -122,7 +139,7 @@ export function OrderFlow({
       const draftResponse = await fetch("/api/orders/draft", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, quote: quoteInput ?? undefined }),
       })
 
       const draft = await draftResponse.json()
@@ -201,17 +218,37 @@ export function OrderFlow({
       <div className="flex flex-col gap-8">
         <section className="flex flex-col gap-5 border-b pb-8">
           <h2 className="text-2xl font-semibold tracking-normal">{copy.projectDetails}</h2>
+          {quote ? (
+            <div className="grid gap-3 border bg-muted/30 p-4 text-sm md:grid-cols-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">{copy.quoteSummary.currency}</span>
+                <span className="font-medium">{quote.input.currency.toUpperCase()}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">{copy.quoteSummary.scope}</span>
+                <span className="font-medium">
+                  {quote.input.squareMeters} m2 / {quote.input.views} {copy.quoteSummary.views}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">{copy.quoteSummary.quotedTotal}</span>
+                <span className="font-medium">{formatQuoteMoney(quote.totalCents, quote.config)}</span>
+              </div>
+            </div>
+          ) : null}
           <FieldGroup className="grid gap-5 md:grid-cols-2">
-            <SelectField
-              label={copy.package}
-              value={selectedPackageSlug}
-              onValueChange={(value) => form.setValue("package_slug", value, { shouldValidate: true })}
-              options={packages.map((plan) => ({
-                label: `${getPackageDisplay(locale, plan).name} - ${formatMoney(plan.price_cents, plan.currency)}`,
-                value: plan.slug,
-              }))}
-              error={form.formState.errors.package_slug?.message}
-            />
+            {quote ? null : (
+              <SelectField
+                label={copy.package}
+                value={selectedPackageSlug}
+                onValueChange={(value) => form.setValue("package_slug", value, { shouldValidate: true })}
+                options={packages.map((plan) => ({
+                  label: `${getPackageDisplay(locale, plan).name} - ${formatMoney(plan.price_cents, plan.currency)}`,
+                  value: plan.slug,
+                }))}
+                error={form.formState.errors.package_slug?.message}
+              />
+            )}
             <SelectField
               label={copy.renderType}
               value={selectedRenderType}
@@ -350,15 +387,44 @@ export function OrderFlow({
       <aside className="h-fit border bg-background p-6 lg:sticky lg:top-24">
         <div className="flex flex-col gap-6">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">{common.selectedPackage}</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              {quote ? copy.quoteSummary.selectedQuote : common.selectedPackage}
+            </p>
             <h2 className="mt-2 text-2xl font-semibold">
-              {selectedPackage ? getPackageDisplay(locale, selectedPackage).name : null}
+              {quote
+                ? copy.quoteSummary.title
+                : selectedPackage
+                  ? getPackageDisplay(locale, selectedPackage).name
+                  : null}
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {selectedPackage ? getPackageDisplay(locale, selectedPackage).description : null}
+              {quote
+                ? copy.quoteSummary.description
+                : selectedPackage
+                  ? getPackageDisplay(locale, selectedPackage).description
+                  : null}
             </p>
           </div>
-          {selectedPackage ? (
+          {quote ? (
+            <div className="flex flex-col gap-2 border-y py-5 text-sm">
+              <div className="flex justify-between gap-4">
+                <span>{copy.quoteSummary.currency}</span>
+                <span className="font-medium">{quote.input.currency.toUpperCase()}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span>{common.views}</span>
+                <span className="font-medium">{quote.input.views}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span>{common.revisions}</span>
+                <span className="font-medium">{quote.input.revisions}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span>{copy.quoteSummary.delivery}</span>
+                <span className="font-medium">{copy.quoteSummary.deliverySpeeds[quote.input.deliverySpeed]}</span>
+              </div>
+            </div>
+          ) : selectedPackage ? (
             <div className="flex flex-col gap-2 border-y py-5 text-sm">
               <div className="flex justify-between gap-4">
                 <span>{common.views}</span>
@@ -383,7 +449,9 @@ export function OrderFlow({
           <div className="flex items-end justify-between gap-4">
             <span className="text-sm text-muted-foreground">{common.dueToday}</span>
             <span className="text-3xl font-semibold">
-              {selectedPackage
+              {quote
+                ? formatQuoteMoney(quote.totalCents, quote.config)
+                : selectedPackage
                 ? formatMoney(selectedPackage.price_cents, selectedPackage.currency)
                 : "-"}
             </span>
@@ -440,6 +508,22 @@ function getOrderCopy(locale: Locale) {
       continueCheckout: "Continuar al pago seguro",
       paymentNote:
         "El pago se confirma del lado del servidor mediante webhook de Stripe antes de que el trabajo entre en la cola de renderizado.",
+      quoteSummary: {
+        selectedQuote: "Cotizacion seleccionada",
+        title: "Pedido con precio por proyecto",
+        description:
+          "Este pedido usa el precio calculado por metraje, vistas, complejidad y urgencia.",
+        currency: "Moneda",
+        scope: "Alcance",
+        views: "vistas",
+        quotedTotal: "Total cotizado",
+        delivery: "Entrega",
+        deliverySpeeds: {
+          standard: "3-5 dias",
+          rush48: "Rush 48h",
+          rush24: "Rush 24h",
+        },
+      },
       errors: {
         noFiles: "Sube al menos un plano o archivo de referencia.",
         createOrder: "No se pudo crear el pedido.",
@@ -497,6 +581,22 @@ function getOrderCopy(locale: Locale) {
     continueCheckout: "Continue to secure checkout",
     paymentNote:
       "Payment is confirmed server-side by Stripe webhook before any job enters the rendering queue.",
+    quoteSummary: {
+      selectedQuote: "Selected quote",
+      title: "Project-priced order",
+      description:
+        "This order uses the price calculated from area, views, complexity, and urgency.",
+      currency: "Currency",
+      scope: "Scope",
+      views: "views",
+      quotedTotal: "Quoted total",
+      delivery: "Delivery",
+      deliverySpeeds: {
+        standard: "3-5 days",
+        rush48: "Rush 48h",
+        rush24: "Rush 24h",
+      },
+    },
     errors: {
       noFiles: "Upload at least one blueprint or reference file.",
       createOrder: "Could not create order.",

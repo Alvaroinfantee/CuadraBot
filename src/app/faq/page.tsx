@@ -23,8 +23,8 @@ export function FaqContent({ locale }: { locale: Locale }) {
       ? [
           ["¿Qué archivos puedo subir?", "Se aceptan PDF, PNG, JPG/JPEG, DWG, DXF y ZIP. DWG y DXF se almacenan para procesamiento, aunque pueden no previsualizarse en el navegador."],
           ["¿Necesito un plano arquitectónico terminado?", "No. Un plano terminado ayuda, pero bocetos, plantas, elevaciones y referencias son suficientes para iniciar el brief."],
-          ["¿Cuánto tarda?", "Las estimaciones dependen del paquete. Los paquetes iniciales van de 2 a 5 días hábiles."],
-          ["¿Puedo pedir revisiones?", "Sí. Las rondas de revisión dependen del paquete seleccionado en checkout."],
+          ["¿Cuánto tarda?", "La estimación depende del metraje, las vistas, la complejidad y la urgencia indicadas en el cotizador."],
+          ["¿Puedo pedir revisiones?", "Sí. Las rondas de revisión se eligen dentro del cotizador antes de subir los archivos."],
           ["¿Mis archivos son privados?", "Sí. Los archivos se guardan en buckets privados de Supabase Storage. El acceso usa URLs firmadas para admin, worker y estado del pedido."],
           ["¿Trabajan con propietarios?", "Sí. Cuadrabot está pensado para arquitectos, promotores, agentes inmobiliarios, propietarios y equipos de reforma."],
           ["¿Entregan documentos de construcción?", "No. Cuadrabot ofrece visualización/renderizado y no sustituye servicios de arquitectura, ingeniería, permisos ni documentación de construcción."],
@@ -33,8 +33,8 @@ export function FaqContent({ locale }: { locale: Locale }) {
       : [
           ["What files can I upload?", "PDF, PNG, JPG/JPEG, DWG, DXF, and ZIP files are accepted. DWG and DXF are stored for processing but may not preview in the browser."],
           ["Do I need a finished architectural plan?", "No. A finished plan helps, but sketches, floor plans, elevations, and reference files are enough to start a visualization brief."],
-          ["How long does it take?", "Delivery estimates depend on the package. Initial packages range from 2 to 5 business days."],
-          ["Can I request revisions?", "Yes. Revision rounds depend on the package selected at checkout."],
+          ["How long does it take?", "Delivery estimates depend on the area, views, complexity, and urgency selected in the quote calculator."],
+          ["Can I request revisions?", "Yes. Revision rounds are selected in the quote calculator before you upload files."],
           ["Are my files private?", "Yes. Files are stored in private Supabase Storage buckets. Access uses signed URLs for authorized admin, worker, and order-status flows."],
           ["Do you work with homeowners?", "Yes. Cuadrabot is designed for architects, developers, realtors, homeowners, and renovation teams."],
           ["Do you provide construction documents?", "No. Cuadrabot provides visualization/rendering services and does not replace licensed architectural, engineering, permitting, or construction documentation."],

@@ -6,6 +6,12 @@ import {
   orderStatuses,
 } from "@/lib/types"
 import { maxUploadBytes, maxUploadMb } from "@/lib/config"
+import {
+  quoteComplexities,
+  quoteCurrencies,
+  quoteDeliverySpeeds,
+  quoteProjectTypes,
+} from "@/lib/project-quote"
 
 const optionalPositiveNumber = z.preprocess((value) => {
   if (value === "" || value === null || value === undefined) return undefined
@@ -28,6 +34,32 @@ export const orderDetailsSchema = z.object({
   customer_notes: z.string().max(2500).optional().nullable(),
   customer_name: z.string().min(2, "Enter your name.").max(120),
   customer_email: z.email("Enter a valid email address.").max(255),
+  quote: z.object({
+    currency: z.enum(quoteCurrencies),
+    squareMeters: z.number().positive().max(5000),
+    views: z.number().int().positive().max(12),
+    revisions: z.number().int().min(0).max(8),
+    floors: z.number().int().positive().max(20),
+    complexity: z.enum(quoteComplexities),
+    deliverySpeed: z.enum(quoteDeliverySpeeds),
+    projectType: z.enum(quoteProjectTypes),
+    sparsePlans: z.boolean(),
+    advancedSiteContext: z.boolean(),
+  }).optional(),
+  takeoff_quote: z.object({
+    currency: z.enum(quoteCurrencies),
+    pageCount: z.number().int().positive().max(500),
+    files: z.array(
+      z.object({
+        name: z.string().min(1).max(220),
+        pageCount: z.number().int().positive().max(500),
+        sizeBytes: z.number().int().positive().max(maxUploadBytes),
+      })
+    ).min(1).max(30),
+  }).optional(),
+}).refine((value) => !(value.quote && value.takeoff_quote), {
+  message: "Choose either a render quote or a takeoff quote.",
+  path: ["takeoff_quote"],
 })
 
 export const fileSignSchema = z.object({

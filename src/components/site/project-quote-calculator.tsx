@@ -41,12 +41,14 @@ import {
 } from "@/components/ui/select"
 import {
   calculateProjectQuote,
+  defaultProjectQuoteInput,
   formatQuoteMoney,
+  projectQuoteInputToSearchParams,
   type ProjectQuoteInput,
   type QuoteBreakdownLine,
   type QuoteComplexity,
+  type QuoteCurrency,
   type QuoteDeliverySpeed,
-  type QuoteMarket,
   type QuoteProjectType,
 } from "@/lib/project-quote"
 import { localePath, type Locale } from "@/lib/i18n"
@@ -54,28 +56,16 @@ import { cn } from "@/lib/utils"
 
 type QuoteCopy = ReturnType<typeof getQuoteCopy>
 
-const defaultInput: ProjectQuoteInput = {
-  market: "usa",
-  squareMeters: 150,
-  views: 2,
-  revisions: 2,
-  floors: 1,
-  complexity: "standard",
-  deliverySpeed: "standard",
-  projectType: "house",
-  sparsePlans: false,
-  advancedSiteContext: false,
-}
-
 export function ProjectQuoteCalculator({ locale = "en" }: { locale?: Locale }) {
   const copy = getQuoteCopy(locale)
   const [input, setInput] = useState<ProjectQuoteInput>({
-    ...defaultInput,
-    market: locale === "es" ? "spain" : "usa",
+    ...defaultProjectQuoteInput,
+    currency: locale === "es" ? "eur" : "usd",
   })
   const [copied, setCopied] = useState(false)
   const quote = useMemo(() => calculateProjectQuote(input), [input])
   const summary = useMemo(() => createQuoteSummary(copy, quote), [copy, quote])
+  const orderHref = `${localePath(locale, "/order")}?${projectQuoteInputToSearchParams(input).toString()}`
 
   useEffect(() => {
     if (!copied) return
@@ -119,10 +109,10 @@ export function ProjectQuoteCalculator({ locale = "en" }: { locale?: Locale }) {
         <CardContent>
           <FieldGroup className="grid gap-5 md:grid-cols-2">
             <SelectField
-              label={copy.market}
-              value={input.market}
-              options={copy.marketOptions}
-              onValueChange={(value) => updateInput("market", value as QuoteMarket)}
+              label={copy.currency}
+              value={input.currency}
+              options={copy.currencyOptions}
+              onValueChange={(value) => updateInput("currency", value as QuoteCurrency)}
             />
             <SelectField
               label={copy.projectType}
@@ -238,10 +228,6 @@ export function ProjectQuoteCalculator({ locale = "en" }: { locale?: Locale }) {
               label={copy.multiplier}
               value={`${quote.multiplier.toFixed(2)}x`}
             />
-            <SummaryRow
-              label={copy.recommendedPackage}
-              value={copy.packageLabels[quote.recommendedPackageSlug]}
-            />
           </div>
 
           <div className="flex flex-col gap-3">
@@ -278,10 +264,7 @@ export function ProjectQuoteCalculator({ locale = "en" }: { locale?: Locale }) {
             {copied ? <CheckIcon data-icon="inline-start" /> : <ClipboardIcon data-icon="inline-start" />}
             {copied ? copy.copied : copy.copyQuote}
           </Button>
-          <Link
-            href={localePath(locale, `/order?package=${quote.recommendedPackageSlug}`)}
-            className={cn(buttonVariants(), "flex-1")}
-          >
+          <Link href={orderHref} className={cn(buttonVariants(), "flex-1")}>
             {copy.startOrder}
             <ArrowRightIcon data-icon="inline-end" />
           </Link>
@@ -374,7 +357,7 @@ function SummaryRow({
 function createQuoteSummary(copy: QuoteCopy, quote: ReturnType<typeof calculateProjectQuote>) {
   const lines = [
     `Cuadrabot ${copy.quoteSummary}`,
-    `${copy.market}: ${copy.marketOptions.find((option) => option.value === quote.input.market)?.label}`,
+    `${copy.currency}: ${copy.currencyOptions.find((option) => option.value === quote.input.currency)?.label}`,
     `${copy.projectType}: ${copy.projectTypeOptions.find((option) => option.value === quote.input.projectType)?.label}`,
     `${copy.squareMeters}: ${quote.input.squareMeters} m2`,
     `${copy.views}: ${quote.input.views}`,
@@ -390,16 +373,10 @@ function createQuoteSummary(copy: QuoteCopy, quote: ReturnType<typeof calculateP
 
 function getQuoteCopy(locale: Locale) {
   const commonOptions = {
-    marketOptions: [
-      { label: "USA", value: "usa" },
-      { label: "Espana", value: "spain" },
-      { label: "Rep. Dom.", value: "dominican" },
+    currencyOptions: [
+      { label: "USD", value: "usd" },
+      { label: "EUR", value: "eur" },
     ],
-    packageLabels: {
-      "basic-render": "Basic Render",
-      "pro-render": "Pro Render",
-      "premium-render-pack": "Premium Render Pack",
-    },
   }
 
   if (locale === "es") {
@@ -407,8 +384,8 @@ function getQuoteCopy(locale: Locale) {
       ...commonOptions,
       formTitle: "Cotizador por proyecto",
       formDescription:
-        "Calcula un precio por metraje, vistas, complejidad y urgencia sin eliminar los paquetes base.",
-      market: "Mercado",
+        "Calcula un precio global por metraje, vistas, complejidad y urgencia.",
+      currency: "Moneda",
       projectType: "Tipo de proyecto",
       squareMeters: "Metraje estimado",
       squareMetersDescription: "Usa m2 aproximados del area a modelar o visualizar.",
@@ -425,7 +402,7 @@ function getQuoteCopy(locale: Locale) {
       advancedSiteContext: "Contexto exterior complejo",
       advancedSiteContextDescription: "Paisajismo, entorno urbano, piscinas o sitio amplio.",
       positioning:
-        "La formula apunta a estar entre los baratos del mercado sin salir de un rango normal.",
+        "La formula usa un solo precio global y apunta a seguir siendo barata sin salir de un rango profesional normal.",
       lowNormal: "Barato normal",
       estimateTitle: "Estimado instantaneo",
       estimateDescription: "Precio recomendado antes de revisar archivos.",
@@ -435,12 +412,11 @@ function getQuoteCopy(locale: Locale) {
       normalRange: "Rango normal:",
       averagePerView: "Promedio por vista",
       multiplier: "Multiplicador de alcance",
-      recommendedPackage: "Checkout sugerido",
       breakdown: "Desglose",
       reviewTitle: "Requiere revision manual",
       copyQuote: "Copiar cotizacion",
       copied: "Copiado",
-      startOrder: "Iniciar pedido",
+      startOrder: "Continuar con este precio",
       quoteSummary: "cotizacion",
       projectTypeOptions: [
         { label: "Casa", value: "house" },
@@ -467,7 +443,7 @@ function getQuoteCopy(locale: Locale) {
         views: "Vistas adicionales",
         revisions: "Revisiones adicionales",
         scopeMultiplier: "Complejidad y urgencia",
-        minimumAdjustment: "Minimo del mercado",
+        minimumAdjustment: "Minimo del proyecto",
       } satisfies Record<QuoteBreakdownLine["key"], string>,
       reviewReasons: {
         large_project: "El metraje supera el limite de cotizacion automatica.",
@@ -483,8 +459,8 @@ function getQuoteCopy(locale: Locale) {
     ...commonOptions,
     formTitle: "Project quote calculator",
     formDescription:
-      "Estimate a project price from area, views, complexity, and urgency while keeping package pricing as the baseline.",
-    market: "Market",
+      "Estimate one global project price from area, views, complexity, and urgency.",
+    currency: "Currency",
     projectType: "Project type",
     squareMeters: "Estimated area",
     squareMetersDescription: "Use approximate m2 for the area to model or visualize.",
@@ -501,7 +477,7 @@ function getQuoteCopy(locale: Locale) {
     advancedSiteContext: "Complex exterior context",
     advancedSiteContextDescription: "Landscaping, urban context, pools, or a larger site.",
     positioning:
-      "The formula aims to be among the cheaper options while staying inside a normal market range.",
+      "The formula uses one global price and aims to stay affordable without leaving a normal professional range.",
     lowNormal: "Low normal",
     estimateTitle: "Instant estimate",
     estimateDescription: "Recommended price before reviewing files.",
@@ -511,12 +487,11 @@ function getQuoteCopy(locale: Locale) {
     normalRange: "Normal range:",
     averagePerView: "Average per view",
     multiplier: "Scope multiplier",
-    recommendedPackage: "Suggested checkout",
     breakdown: "Breakdown",
     reviewTitle: "Manual review needed",
     copyQuote: "Copy quote",
     copied: "Copied",
-    startOrder: "Start order",
+    startOrder: "Continue with this quote",
     quoteSummary: "quote",
     projectTypeOptions: [
       { label: "House", value: "house" },
@@ -543,7 +518,7 @@ function getQuoteCopy(locale: Locale) {
       views: "Additional views",
       revisions: "Additional revisions",
       scopeMultiplier: "Complexity and urgency",
-      minimumAdjustment: "Market minimum",
+      minimumAdjustment: "Project minimum",
     } satisfies Record<QuoteBreakdownLine["key"], string>,
     reviewReasons: {
       large_project: "Area exceeds the automatic quoting limit.",

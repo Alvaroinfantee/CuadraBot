@@ -42,7 +42,7 @@ export default function DemoClientOrderPage() {
         </div>
 
         <section className="grid gap-4 border p-6 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <Info label="Package" value="Render Pro" />
+          <Info label="Quote" value="$340" />
           <Info label="Customer email" value="client@example.com" />
           <Info label="Render type" value="Exterior" />
           <Info label="Delivery estimate" value="3-5 business days" />

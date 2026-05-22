@@ -1,7 +1,7 @@
 import { PricingContent } from "@/app/pricing/page"
 
 export const metadata = {
-  title: "Precios",
+  title: "Cotizar proyecto",
 }
 
 export default function SpanishPricingPage() {

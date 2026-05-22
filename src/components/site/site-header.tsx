@@ -9,8 +9,7 @@ export function SiteHeader({ locale = "en" }: { locale?: Locale }) {
   const alternateLocale: Locale = locale === "en" ? "es" : "en"
   const nav = [
     { href: "/#how-it-works", label: copy.howItWorks },
-    { href: "/pricing", label: copy.packages },
-    { href: "/quote", label: copy.projectQuote },
+    { href: "/pricing", label: copy.projectQuote },
     { href: "/gallery", label: copy.examples },
     { href: "/#why-cuadrabot", label: copy.whyCuadrabot },
     { href: "/faq", label: copy.faq },
@@ -39,7 +38,7 @@ export function SiteHeader({ locale = "en" }: { locale?: Locale }) {
           <Link href="/admin/login" className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:block">
             {copy.logIn}
           </Link>
-          <Link href={localePath(locale, "/order")} className={cn(buttonVariants({ size: "lg" }), "h-10 px-4")}>
+          <Link href={localePath(locale, "/pricing")} className={cn(buttonVariants({ size: "lg" }), "h-10 px-4")}>
             {copy.startRender}
             <ArrowRightIcon data-icon="inline-end" />
           </Link>

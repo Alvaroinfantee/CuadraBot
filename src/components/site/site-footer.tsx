@@ -18,9 +18,6 @@ export function SiteFooter({ locale = "en" }: { locale?: Locale }) {
           </div>
           <div className="flex flex-wrap gap-5 text-sm text-muted-foreground">
             <Link href={localePath(locale, "/pricing")} className="hover:text-foreground">
-              {copy.pricing}
-            </Link>
-            <Link href={localePath(locale, "/quote")} className="hover:text-foreground">
               {copy.projectQuote}
             </Link>
             <Link href={localePath(locale, "/gallery")} className="hover:text-foreground">

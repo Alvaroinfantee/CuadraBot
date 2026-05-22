@@ -15,7 +15,7 @@ export function localePath(locale: Locale, path = "/") {
 export const commonCopy = {
   en: {
     startRender: "Start your render",
-    viewPricing: "View pricing",
+    viewPricing: "Get a quote",
     pricing: "Pricing",
     projectQuote: "Project quote",
     packages: "Packages",
@@ -44,7 +44,7 @@ export const commonCopy = {
   },
   es: {
     startRender: "Iniciar render",
-    viewPricing: "Ver precios",
+    viewPricing: "Cotizar proyecto",
     pricing: "Precios",
     projectQuote: "Cotizar",
     packages: "Paquetes",
@@ -96,7 +96,7 @@ export const homeCopy = {
       "Upload your floor plans, elevations, or sketches. Cuadrabot turns them into polished architectural renderings.",
     promise72: "First renders ready in 48 hours max.",
     scroll: "Scroll to explore",
-    fullPricing: "View full pricing",
+    fullPricing: "Open full quote",
     exampleGallery: "Example gallery",
     moreExamples: "View more examples",
     beforeAfter: "Before / After",
@@ -129,7 +129,7 @@ export const homeCopy = {
       "Sube plantas, elevaciones o bocetos. Cuadrabot los convierte en renders arquitectónicos pulidos.",
     promise72: "Primeros renders listos en 48 horas máximo.",
     scroll: "Desplázate para explorar",
-    fullPricing: "Ver todos los precios",
+    fullPricing: "Abrir cotizador completo",
     exampleGallery: "Galería de ejemplos",
     moreExamples: "Ver más ejemplos",
     beforeAfter: "Antes / Después",
