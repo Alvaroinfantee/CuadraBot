@@ -10,6 +10,7 @@ export function SiteHeader({ locale = "en" }: { locale?: Locale }) {
   const nav = [
     { href: "/#how-it-works", label: copy.howItWorks },
     { href: "/pricing", label: copy.packages },
+    { href: "/quote", label: copy.projectQuote },
     { href: "/gallery", label: copy.examples },
     { href: "/#why-cuadrabot", label: copy.whyCuadrabot },
     { href: "/faq", label: copy.faq },

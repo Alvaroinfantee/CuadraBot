@@ -24,10 +24,12 @@ export async function PricingContent({ locale }: { locale: Locale }) {
       ? {
           title: "Paquetes de render claros, listos para arrancar.",
           body: "Elige el alcance que encaja con tu proyecto, sube tus planos y paga de forma segura.",
+          quote: "Cotizar por proyecto",
         }
       : {
           title: "Clear rendering packages, ready to start.",
           body: "Choose the scope that fits your project, upload your plans, and pay securely.",
+          quote: "Quote by project",
         }
 
   return (
@@ -45,10 +47,13 @@ export async function PricingContent({ locale }: { locale: Locale }) {
             <p className="text-sm font-semibold text-primary">
               {copy.ready72}
             </p>
-            <div>
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Link href={localePath(locale, "/order")} className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}>
                 {copy.startRender}
                 <ArrowRightIcon data-icon="inline-end" />
+              </Link>
+              <Link href={localePath(locale, "/quote")} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 px-6")}>
+                {pageCopy.quote}
               </Link>
             </div>
           </div>
