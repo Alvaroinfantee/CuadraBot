@@ -1,7 +1,7 @@
 import { TermsContent } from "@/app/terms/page"
 
 export const metadata = {
-  title: "Términos",
+  title: "Terminos",
 }
 
 export default function SpanishTermsPage() {

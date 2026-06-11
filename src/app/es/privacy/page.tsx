@@ -1,7 +1,7 @@
 import { PrivacyContent } from "@/app/privacy/page"
 
 export const metadata = {
-  title: "Política de Privacidad",
+  title: "Politica de Privacidad",
 }
 
 export default function SpanishPrivacyPage() {

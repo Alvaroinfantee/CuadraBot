@@ -1,13 +1,9 @@
-import { OrderUploadContent } from "@/app/order/upload/page"
+import { redirect } from "next/navigation"
 
 export const metadata = {
-  title: "Sube tus planos",
+  title: "Cotizar takeoff",
 }
 
-export default function SpanishOrderUploadPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
-}) {
-  return <OrderUploadContent locale="es" searchParams={searchParams} />
+export default function SpanishOrderUploadPage() {
+  redirect("/es/pricing")
 }

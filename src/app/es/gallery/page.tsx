@@ -1,9 +1,9 @@
-import { GalleryContent } from "@/app/gallery/page"
+import { redirect } from "next/navigation"
 
 export const metadata = {
-  title: "Galería",
+  title: "Cotizar takeoff",
 }
 
 export default function SpanishGalleryPage() {
-  return <GalleryContent locale="es" />
+  redirect("/es/pricing")
 }

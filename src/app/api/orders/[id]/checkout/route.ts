@@ -56,6 +56,11 @@ export async function POST(request: Request, context: Context) {
   const amountCents = order.amount_cents ?? packagePlan.price_cents
   const currency = (order.currency ?? packagePlan.currency).toLowerCase()
   const isTakeoff = isTakeoffOrderNotes(order.customer_notes)
+
+  if (!isTakeoff) {
+    return jsonError("Rendering checkout is temporarily unavailable. Public checkout is currently limited to takeoff services.", 403)
+  }
+
   const usesCustomQuote =
     amountCents !== packagePlan.price_cents ||
     currency !== packagePlan.currency.toLowerCase()
@@ -95,7 +100,7 @@ export async function POST(request: Request, context: Context) {
     ],
     customer_email: order.customer_email,
     success_url: `${siteUrl}${localePath(locale, "/order/success")}?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${siteUrl}${localePath(locale, usesCustomQuote ? "/pricing" : `/order?package=${packagePlan.slug}&cancelled=1`)}`,
+    cancel_url: `${siteUrl}${localePath(locale, "/pricing")}`,
     metadata: {
       order_id: order.id,
       public_token: order.public_token,

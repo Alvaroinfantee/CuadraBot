@@ -4,10 +4,6 @@ import { createOrderNumber, createPublicToken } from "@/lib/orders"
 import { orderDetailsSchema } from "@/lib/schemas"
 import { jsonError } from "@/lib/http"
 import {
-  calculateProjectQuote,
-  formatProjectQuoteForNotes,
-} from "@/lib/project-quote"
-import {
   calculateTakeoffQuote,
   formatTakeoffQuoteForNotes,
 } from "@/lib/takeoff-quote"
@@ -21,6 +17,10 @@ export async function POST(request: Request) {
       { error: "Invalid order details.", issues: parsed.error.flatten() },
       { status: 422 }
     )
+  }
+
+  if (!parsed.data.takeoff_quote) {
+    return jsonError("Rendering orders are temporarily unavailable. Public checkout is currently limited to takeoff services.", 403)
   }
 
   const supabase = createSupabaseAdminClient()
@@ -39,14 +39,10 @@ export async function POST(request: Request) {
     return jsonError("Selected package is not available.", 400)
   }
 
-  const quote = parsed.data.quote ? calculateProjectQuote(parsed.data.quote) : null
-  const takeoffQuote = parsed.data.takeoff_quote
-    ? calculateTakeoffQuote(parsed.data.takeoff_quote)
-    : null
+  const takeoffQuote = calculateTakeoffQuote(parsed.data.takeoff_quote)
   const customerNotes = [
     parsed.data.customer_notes,
-    quote ? formatProjectQuoteForNotes(quote) : null,
-    takeoffQuote ? formatTakeoffQuoteForNotes(takeoffQuote) : null,
+    formatTakeoffQuoteForNotes(takeoffQuote),
   ]
     .filter(Boolean)
     .join("\n\n")
@@ -60,21 +56,15 @@ export async function POST(request: Request) {
       customer_email: parsed.data.customer_email.toLowerCase(),
       package_id: packagePlan.id,
       status: "draft",
-      render_type: takeoffQuote ? "Takeoff" : parsed.data.render_type,
-      project_type: takeoffQuote ? "Other" : parsed.data.project_type,
-      style_preference: takeoffQuote ? "Other" : parsed.data.style_preference,
-      number_of_floors: takeoffQuote
-        ? null
-        : quote?.input.floors ?? parsed.data.number_of_floors ?? null,
-      estimated_square_meters:
-        takeoffQuote ? null : quote?.input.squareMeters ?? parsed.data.estimated_square_meters ?? null,
+      render_type: "Takeoff",
+      project_type: "Other",
+      style_preference: "Other",
+      number_of_floors: null,
+      estimated_square_meters: null,
       customer_notes: customerNotes || null,
-      deadline_preference:
-        takeoffQuote
-          ? `Takeoff delivery within ${takeoffQuote.deliveryDaysMax} days`
-          : parsed.data.deadline_preference ?? null,
-      amount_cents: takeoffQuote?.totalCents ?? quote?.totalCents ?? packagePlan.price_cents,
-      currency: takeoffQuote?.currency ?? quote?.config.currency ?? packagePlan.currency,
+      deadline_preference: `Takeoff delivery within ${takeoffQuote.deliveryDaysMax} days`,
+      amount_cents: takeoffQuote.totalCents,
+      currency: takeoffQuote.currency,
     })
     .select("id,public_token,order_number")
     .single()

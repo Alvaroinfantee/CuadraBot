@@ -1,15 +1,13 @@
 import { ArrowRightIcon } from "lucide-react"
-import { ProjectQuoteCalculator } from "@/components/site/project-quote-calculator"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
 import { TakeoffQuoteOrder } from "@/components/site/takeoff-quote-order"
 import { buttonVariants } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { commonCopy, type Locale } from "@/lib/i18n"
+import { type Locale } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export const metadata = {
-  title: "Project quote",
+  title: "Takeoff quote",
 }
 
 export default function PricingPage() {
@@ -17,32 +15,27 @@ export default function PricingPage() {
 }
 
 export function PricingContent({ locale }: { locale: Locale }) {
-  const common = commonCopy[locale]
   const copy =
     locale === "es"
       ? {
-          title: "Cotiza tu render por proyecto.",
-          body: "Calcula un precio global por metraje, vistas, complejidad y urgencia, y elige USD o EUR.",
+          title: "Cotiza tu takeoff desde planos PDF.",
+          body: "Sube planos PDF con escala, calcula el precio por pagina detectada y elige USD o EUR.",
           helper:
-            "Ajusta el alcance y continua al pedido con el precio calculado.",
-          action: "Calcular precio",
-          serviceTitle: "Elige servicio",
+            "Por ahora Cuadrabot solo acepta pedidos publicos de takeoff.",
+          action: "Cotizar takeoff",
+          serviceTitle: "Takeoff PDF",
           serviceBody:
-            "Cotiza renders o takeoffs desde el mismo flujo de subida y pago.",
-          renderTab: "Renders",
-          takeoffTab: "Takeoff",
+            "Sube uno o mas PDFs, revisa la cotizacion instantanea y continua al pago seguro.",
         }
       : {
-          title: "Quote your render by project.",
-          body: "Calculate one global price from area, views, complexity, and urgency, then choose USD or EUR.",
+          title: "Quote your takeoff from PDF plans.",
+          body: "Upload scaled PDF plans, calculate pricing by detected page count, and choose USD or EUR.",
           helper:
-            "Adjust the scope and continue to checkout with the calculated price.",
-          action: "Calculate price",
-          serviceTitle: "Choose service",
+            "Cuadrabot is only accepting public takeoff orders right now.",
+          action: "Quote takeoff",
+          serviceTitle: "PDF takeoff",
           serviceBody:
-            "Quote renders or takeoffs from the same upload-and-payment flow.",
-          renderTab: "Renders",
-          takeoffTab: "Takeoff",
+            "Upload one or more PDFs, review the instant quote, and continue to secure payment.",
         }
 
   return (
@@ -82,25 +75,7 @@ export function PricingContent({ locale }: { locale: Locale }) {
                 {copy.serviceBody}
               </p>
             </div>
-            <Tabs defaultValue="render" className="gap-6">
-              <TabsList className="h-10 w-fit">
-                <TabsTrigger value="render" className="px-4">
-                  {copy.renderTab}
-                </TabsTrigger>
-                <TabsTrigger value="takeoff" className="px-4">
-                  {copy.takeoffTab}
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="render">
-                <div className="mb-4 text-sm font-semibold text-primary">
-                  {common.ready72}
-                </div>
-                <ProjectQuoteCalculator locale={locale} />
-              </TabsContent>
-              <TabsContent value="takeoff">
-                <TakeoffQuoteOrder locale={locale} />
-              </TabsContent>
-            </Tabs>
+            <TakeoffQuoteOrder locale={locale} />
           </div>
         </section>
       </main>

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 
 export const metadata = {
-  title: "Project quote",
+  title: "Takeoff quote",
 }
 
 export default function QuotePage() {

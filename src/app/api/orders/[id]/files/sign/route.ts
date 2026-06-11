@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import { createCustomerUploadSignedUrl } from "@/lib/orders"
 import { fileSignSchema, validateUploadFile } from "@/lib/schemas"
 import { jsonError, sanitizeFilename } from "@/lib/http"
+import { isTakeoffOrderNotes } from "@/lib/takeoff-quote"
 
 type Context = {
   params: Promise<{ id: string }>
@@ -24,7 +25,7 @@ export async function POST(request: Request, context: Context) {
   const orderToken = request.headers.get("x-order-token")
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id,public_token,order_number,status")
+    .select("id,public_token,order_number,status,customer_notes")
     .eq("id", id)
     .maybeSingle()
 
@@ -34,6 +35,16 @@ export async function POST(request: Request, context: Context) {
 
   if (!order || order.public_token !== orderToken || order.status !== "draft") {
     return jsonError("Order is not available for uploads.", 403)
+  }
+
+  if (isTakeoffOrderNotes(order.customer_notes)) {
+    const isPdf =
+      parsed.data.mimeType === "application/pdf" ||
+      parsed.data.filename.toLowerCase().endsWith(".pdf")
+
+    if (!isPdf) {
+      return jsonError("Takeoff orders only accept PDF blueprint files.", 400)
+    }
   }
 
   const validationError = validateUploadFile(

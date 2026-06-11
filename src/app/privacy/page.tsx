@@ -14,19 +14,19 @@ export function PrivacyContent({ locale }: { locale: Locale }) {
   const content =
     locale === "es"
       ? {
-          title: "Política de Privacidad",
+          title: "Politica de Privacidad",
           paragraphs: [
-            "Cuadrabot recopila la información necesaria para prestar servicios de renderizado arquitectónico: datos de contacto, instrucciones del proyecto, archivos subidos, metadatos de pago y emails transaccionales.",
-            "Los archivos de clientes se guardan en buckets privados. El acceso se limita a flujos de admin autorizados y al worker local autenticado que procesa trabajos pagados.",
-            "Los pagos se procesan mediante Stripe. Cuadrabot no almacena números completos de tarjeta. Los emails transaccionales pueden enviarse mediante Resend o un proveedor similar.",
-            "Los clientes deben tener derecho a subir los planos, dibujos y materiales de referencia que envían.",
+            "Cuadrabot recopila la informacion necesaria para prestar servicios de takeoff: datos de contacto, instrucciones del proyecto, archivos PDF subidos, metadatos de pago y emails transaccionales.",
+            "Los archivos de clientes se guardan en buckets privados. El acceso se limita a flujos de admin autorizados y a enlaces firmados para el estado del pedido.",
+            "Los pagos se procesan mediante Stripe. Cuadrabot no almacena numeros completos de tarjeta. Los emails transaccionales pueden enviarse mediante Resend o un proveedor similar.",
+            "Los clientes deben tener derecho a subir los planos, dibujos y materiales de referencia que envian.",
           ],
         }
       : {
           title: "Privacy Policy",
           paragraphs: [
-            "Cuadrabot collects the information needed to provide architectural rendering services: customer contact details, project instructions, uploaded files, payment metadata, and service emails.",
-            "Customer files are stored in private buckets. Access is limited to authorized admin workflows and the authenticated local rendering worker that processes paid jobs.",
+            "Cuadrabot collects the information needed to provide takeoff services: customer contact details, project instructions, uploaded PDF files, payment metadata, and service emails.",
+            "Customer files are stored in private buckets. Access is limited to authorized admin workflows and signed links for order-status delivery.",
             "Payments are processed by Stripe. Cuadrabot does not store full card numbers. Transactional emails may be sent through Resend or a similar provider.",
             "Customers must have the right to upload the plans, drawings, and reference materials they submit.",
           ],

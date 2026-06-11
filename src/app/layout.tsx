@@ -16,11 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://cuadrabot.com"),
   title: {
-    default: "Cuadrabot | Architectural renders from your blueprints in 48 hours",
+    default: "Cuadrabot | Construction takeoffs from blueprint PDFs",
     template: "%s | Cuadrabot",
   },
   description:
-    "Upload blueprints, choose a rendering package, pay securely, and get architectural renderings delivered later.",
+    "Upload blueprint PDFs, get an instant takeoff quote, pay securely, and receive reviewed takeoff files.",
 };
 
 export default function RootLayout({

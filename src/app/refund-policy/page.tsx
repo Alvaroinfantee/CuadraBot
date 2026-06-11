@@ -14,20 +14,20 @@ export function RefundPolicyContent({ locale }: { locale: Locale }) {
   const content =
     locale === "es"
       ? {
-          title: "Política de Reembolso",
+          title: "Politica de Reembolso",
           paragraphs: [
-            "El trabajo de renderizado comienza después de que Stripe confirma el pago y el pedido entra en la cola de procesamiento pagada.",
-            "La elegibilidad de reembolso depende del estado del proyecto y del trabajo ya realizado. Los pedidos no iniciados pueden ser elegibles para revisión de cancelación o reembolso.",
-            "Los servicios de renderizado completados generalmente no son reembolsables, pero Cuadrabot puede ofrecer las revisiones incluidas en el paquete cuando corresponda.",
-            "Las ventanas de entrega son estimaciones, no garantías. Si un proyecto no puede procesarse porque los archivos enviados no son utilizables, Cuadrabot contactará al cliente para definir los siguientes pasos.",
+            "El trabajo de takeoff comienza despues de que Stripe confirma el pago y el pedido entra en la cola de procesamiento pagada.",
+            "La elegibilidad de reembolso depende del estado del proyecto y del trabajo ya realizado. Los pedidos no iniciados pueden ser elegibles para revision de cancelacion o reembolso.",
+            "Los servicios de takeoff completados generalmente no son reembolsables, pero Cuadrabot revisara errores razonables relacionados con el alcance acordado.",
+            "Las ventanas de entrega son estimaciones, no garantias. Si un proyecto no puede procesarse porque los archivos enviados no son utilizables, Cuadrabot contactara al cliente para definir los siguientes pasos.",
           ],
         }
       : {
           title: "Refund Policy",
           paragraphs: [
-            "Rendering work begins after Stripe confirms payment and the order enters the paid processing queue.",
+            "Takeoff work begins after Stripe confirms payment and the order enters the paid processing queue.",
             "Refund eligibility depends on project status and work already performed. Orders not yet started may be eligible for cancellation or refund review.",
-            "Completed rendering services are generally non-refundable, but Cuadrabot may provide package-included revisions when applicable.",
+            "Completed takeoff services are generally non-refundable, but Cuadrabot will review reasonable errors related to the agreed scope.",
             "Delivery windows are estimates, not guarantees. If a project becomes impossible to process because submitted files are unusable, Cuadrabot will contact the customer for next steps.",
           ],
         }

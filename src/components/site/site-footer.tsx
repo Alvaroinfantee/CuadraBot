@@ -20,9 +20,6 @@ export function SiteFooter({ locale = "en" }: { locale?: Locale }) {
             <Link href={localePath(locale, "/pricing")} className="hover:text-foreground">
               {copy.projectQuote}
             </Link>
-            <Link href={localePath(locale, "/gallery")} className="hover:text-foreground">
-              {copy.gallery}
-            </Link>
             <Link href={localePath(locale, "/faq")} className="hover:text-foreground">
               {copy.faq}
             </Link>

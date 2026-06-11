@@ -21,24 +21,24 @@ export function FaqContent({ locale }: { locale: Locale }) {
   const faqs =
     locale === "es"
       ? [
-          ["¿Qué archivos puedo subir?", "Se aceptan PDF, PNG, JPG/JPEG, DWG, DXF y ZIP. DWG y DXF se almacenan para procesamiento, aunque pueden no previsualizarse en el navegador."],
-          ["¿Necesito un plano arquitectónico terminado?", "No. Un plano terminado ayuda, pero bocetos, plantas, elevaciones y referencias son suficientes para iniciar el brief."],
-          ["¿Cuánto tarda?", "La estimación depende del metraje, las vistas, la complejidad y la urgencia indicadas en el cotizador."],
-          ["¿Puedo pedir revisiones?", "Sí. Las rondas de revisión se eligen dentro del cotizador antes de subir los archivos."],
-          ["¿Mis archivos son privados?", "Sí. Los archivos se guardan en buckets privados de Supabase Storage. El acceso usa URLs firmadas para admin, worker y estado del pedido."],
-          ["¿Trabajan con propietarios?", "Sí. Cuadrabot está pensado para arquitectos, promotores, agentes inmobiliarios, propietarios y equipos de reforma."],
-          ["¿Entregan documentos de construcción?", "No. Cuadrabot ofrece visualización/renderizado y no sustituye servicios de arquitectura, ingeniería, permisos ni documentación de construcción."],
-          ["¿Qué ocurre después de pagar?", "Stripe confirma el pago con un webhook, tu pedido pasa a pendiente de procesamiento y el worker local lo toma desde la cola segura."],
+          ["Que archivos puedo subir?", "Por ahora los pedidos publicos de takeoff aceptan planos en PDF."],
+          ["Los planos necesitan escala?", "Si. Para medir correctamente, el PDF debe incluir escala clara o cotas suficientes."],
+          ["Cuanto tarda?", "La entrega del takeoff es de 7 dias maximo despues del pago y de recibir planos utilizables."],
+          ["Que incluye el takeoff?", "Puedes indicar en notas las partidas, cantidades, materiales, areas o prioridades que necesitas medir."],
+          ["Mis archivos son privados?", "Si. Los archivos se guardan en buckets privados de Supabase Storage y el acceso usa URLs firmadas."],
+          ["Trabajan con contratistas y arquitectos?", "Si. Cuadrabot esta pensado para contratistas, promotores, arquitectos y equipos inmobiliarios."],
+          ["Entregan documentos de construccion?", "No. Cuadrabot ofrece apoyo de quantity takeoff y no sustituye servicios profesionales de arquitectura, ingenieria, permisos, estimacion ni documentacion de construccion."],
+          ["Que ocurre despues de pagar?", "Stripe confirma el pago con un webhook, tu pedido pasa a pendiente de procesamiento y el equipo prepara el takeoff final."],
         ]
       : [
-          ["What files can I upload?", "PDF, PNG, JPG/JPEG, DWG, DXF, and ZIP files are accepted. DWG and DXF are stored for processing but may not preview in the browser."],
-          ["Do I need a finished architectural plan?", "No. A finished plan helps, but sketches, floor plans, elevations, and reference files are enough to start a visualization brief."],
-          ["How long does it take?", "Delivery estimates depend on the area, views, complexity, and urgency selected in the quote calculator."],
-          ["Can I request revisions?", "Yes. Revision rounds are selected in the quote calculator before you upload files."],
-          ["Are my files private?", "Yes. Files are stored in private Supabase Storage buckets. Access uses signed URLs for authorized admin, worker, and order-status flows."],
-          ["Do you work with homeowners?", "Yes. Cuadrabot is designed for architects, developers, realtors, homeowners, and renovation teams."],
-          ["Do you provide construction documents?", "No. Cuadrabot provides visualization/rendering services and does not replace licensed architectural, engineering, permitting, or construction documentation."],
-          ["What happens after I pay?", "Stripe confirms payment through a webhook, your order becomes paid pending processing, and the local rendering worker pulls it from the secure queue."],
+          ["What files can I upload?", "Public takeoff orders currently accept blueprint PDFs only."],
+          ["Do the plans need scale?", "Yes. To measure correctly, the PDF must include a clear scale or enough dimensions."],
+          ["How long does it take?", "Takeoff delivery is 7 days max after payment and usable plan files are received."],
+          ["What does the takeoff include?", "Use the notes field to specify the quantities, materials, areas, or priorities you need measured."],
+          ["Are my files private?", "Yes. Files are stored in private Supabase Storage buckets and accessed through signed URLs."],
+          ["Do you work with contractors and architects?", "Yes. Cuadrabot is designed for contractors, developers, architects, and property teams."],
+          ["Do you provide construction documents?", "No. Cuadrabot provides quantity takeoff support and does not replace licensed architectural, engineering, permitting, estimating, or construction documentation services."],
+          ["What happens after I pay?", "Stripe confirms payment through a webhook, your order becomes paid pending processing, and the team prepares the final takeoff."],
         ]
 
   return (
@@ -49,8 +49,8 @@ export function FaqContent({ locale }: { locale: Locale }) {
           <h1 className="text-5xl font-semibold tracking-normal">{common.faq}</h1>
           <p className="text-lg leading-8 text-muted-foreground">
             {locale === "es"
-              ? "Respuestas claras para el flujo de plano a render."
-              : "Clear answers for the blueprint-to-render workflow."}
+              ? "Respuestas claras para el flujo de takeoff desde PDF."
+              : "Clear answers for the PDF takeoff workflow."}
           </p>
         </div>
         <Accordion>

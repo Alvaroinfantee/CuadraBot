@@ -1,13 +1,9 @@
-import { OrderContent } from "@/app/order/page"
+import { redirect } from "next/navigation"
 
 export const metadata = {
-  title: "Inicia tu render",
+  title: "Cotizar takeoff",
 }
 
-export default function SpanishOrderPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
-}) {
-  return <OrderContent locale="es" searchParams={searchParams} />
+export default function SpanishOrderPage() {
+  redirect("/es/pricing")
 }

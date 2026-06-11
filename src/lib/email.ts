@@ -62,15 +62,15 @@ export function orderConfirmationEmail(input: {
   statusUrl: string
   packageName: string
 }) {
-  const subject = `Cuadrabot order ${input.orderNumber} is queued`
-  const text = `We received your blueprint files and payment for ${input.packageName}. Your project is queued for rendering. Track it here: ${input.statusUrl}`
+  const subject = `Cuadrabot takeoff order ${input.orderNumber} is queued`
+  const text = `We received your blueprint PDFs and payment for ${input.packageName}. Your takeoff is queued for production. Track it here: ${input.statusUrl}`
   const html = `
     <div style="font-family:Arial,sans-serif;color:#111;line-height:1.5">
-      <h1 style="font-size:22px">Your Cuadrabot order is queued</h1>
-      <p>We received your blueprint files and payment for <strong>${input.packageName}</strong>.</p>
-      <p>Your project is now queued for rendering. You can track status and download final renders here:</p>
+      <h1 style="font-size:22px">Your Cuadrabot takeoff is queued</h1>
+      <p>We received your blueprint PDFs and payment for <strong>${input.packageName}</strong>.</p>
+      <p>Your takeoff is now queued for production. You can track status and download final files here:</p>
       <p><a href="${input.statusUrl}">${input.statusUrl}</a></p>
-      <p style="color:#555">Cuadrabot provides visualization services and does not replace licensed architectural, engineering, permitting, or construction documentation.</p>
+      <p style="color:#555">Cuadrabot provides quantity takeoff support and does not replace licensed architectural, engineering, permitting, estimating, or construction documentation services.</p>
     </div>`
 
   return { subject, text, html }
@@ -80,13 +80,13 @@ export function orderCompletedEmail(input: {
   orderNumber: string
   statusUrl: string
 }) {
-  const subject = `Cuadrabot order ${input.orderNumber} is ready`
-  const text = `Your Cuadrabot renderings are ready. Download them here: ${input.statusUrl}`
+  const subject = `Cuadrabot takeoff order ${input.orderNumber} is ready`
+  const text = `Your Cuadrabot takeoff files are ready. Download them here: ${input.statusUrl}`
   const html = `
     <div style="font-family:Arial,sans-serif;color:#111;line-height:1.5">
-      <h1 style="font-size:22px">Your renderings are ready</h1>
+      <h1 style="font-size:22px">Your takeoff files are ready</h1>
       <p>Your Cuadrabot order <strong>${input.orderNumber}</strong> is complete.</p>
-      <p><a href="${input.statusUrl}">Download your final renders</a></p>
+      <p><a href="${input.statusUrl}">Download your final takeoff</a></p>
     </div>`
 
   return { subject, text, html }

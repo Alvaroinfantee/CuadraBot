@@ -14,21 +14,21 @@ export function TermsContent({ locale }: { locale: Locale }) {
   const content =
     locale === "es"
       ? {
-          title: "Términos",
+          title: "Terminos",
           paragraphs: [
-            "Cuadrabot presta servicios de visualización y renderizado basados en planos, bocetos, imágenes y notas de proyecto subidos por el cliente.",
-            "Cuadrabot no presta servicios licenciados de arquitectura, ingeniería, permisos, documentación de construcción, cumplimiento normativo ni topografía. Los renders son para visualización y presentación.",
+            "Cuadrabot presta servicios de quantity takeoff basados en planos PDF e instrucciones subidas por el cliente.",
+            "Cuadrabot no presta servicios licenciados de arquitectura, ingenieria, permisos, documentacion de construccion, cumplimiento normativo, topografia ni estimacion profesional certificada.",
             "Los clientes son responsables de asegurarse de que tienen derecho a subir los planos y materiales de referencia enviados.",
-            "Los tiempos de entrega son estimaciones. Archivos complejos, dibujos poco claros, solicitudes de revisión o retrasos del cliente pueden afectar los plazos.",
+            "Los tiempos de entrega son estimaciones. Archivos complejos, dibujos poco claros, falta de escala o retrasos del cliente pueden afectar los plazos.",
           ],
         }
       : {
           title: "Terms",
           paragraphs: [
-            "Cuadrabot provides visualization and rendering services based on customer-uploaded plans, sketches, images, and project notes.",
-            "Cuadrabot does not provide licensed architectural, engineering, permitting, construction documentation, code-compliance, or surveying services. Renderings are for visualization and presentation.",
+            "Cuadrabot provides quantity takeoff services based on customer-uploaded PDF plans and project instructions.",
+            "Cuadrabot does not provide licensed architectural, engineering, permitting, construction documentation, code-compliance, surveying, or certified professional estimating services.",
             "Customers are responsible for ensuring they have the rights to upload submitted plans and reference materials.",
-            "Delivery times are estimates. Complex files, unclear drawings, revision requests, or customer delays can affect timing.",
+            "Delivery times are estimates. Complex files, unclear drawings, missing scale, or customer delays can affect timing.",
           ],
         }
 

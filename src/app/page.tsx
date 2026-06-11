@@ -1,14 +1,14 @@
-import Image from "next/image"
 import Link from "next/link"
 import {
   ArrowDownIcon,
   ArrowRightIcon,
   CreditCardIcon,
   DownloadIcon,
+  FileTextIcon,
   FileUpIcon,
   LayersIcon,
   LockIcon,
-  SparklesIcon,
+  RulerIcon,
   TargetIcon,
   ZapIcon,
 } from "lucide-react"
@@ -18,16 +18,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
-import { ProjectQuoteCalculator } from "@/components/site/project-quote-calculator"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
-import { galleryExamples } from "@/lib/gallery-examples"
+import { TakeoffQuoteOrder } from "@/components/site/takeoff-quote-order"
 import { commonCopy, homeCopy, localePath, type Locale } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
-const stepIcons = [FileUpIcon, CreditCardIcon, SparklesIcon, DownloadIcon]
+const stepIcons = [FileUpIcon, TargetIcon, CreditCardIcon, DownloadIcon]
 const reasonIcons = [ZapIcon, LockIcon, CreditCardIcon, TargetIcon, LayersIcon]
 
 export default function Home() {
@@ -37,7 +35,6 @@ export default function Home() {
 export function HomeContent({ locale }: { locale: Locale }) {
   const copy = homeCopy[locale]
   const common = commonCopy[locale]
-  const examples = galleryExamples[locale]
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,16 +66,7 @@ export function HomeContent({ locale }: { locale: Locale }) {
                 </Link>
               </div>
             </div>
-            <div className="relative min-h-[420px] overflow-hidden rounded-sm">
-              <Image
-                src="/images/gallery-mediterranean-villa.png"
-                alt="Blueprint to architectural render example"
-                fill
-                priority
-                className="object-cover"
-                sizes="(min-width: 1024px) 54vw, 100vw"
-              />
-            </div>
+            <TakeoffHeroVisual locale={locale} />
             <div className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground lg:flex">
               {copy.scroll}
               <ArrowDownIcon className="text-primary" />
@@ -118,43 +106,7 @@ export function HomeContent({ locale }: { locale: Locale }) {
                 <ArrowRightIcon data-icon="inline-end" />
               </Link>
             </div>
-            <ProjectQuoteCalculator locale={locale} />
-          </div>
-        </section>
-
-        <section className="pb-16">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between gap-6">
-              <SectionHeading title={copy.exampleGallery} />
-              <Link href={localePath(locale, "/gallery")} className="hidden items-center gap-2 text-sm font-medium text-primary sm:flex">
-                {copy.moreExamples}
-                <ArrowRightIcon data-icon="inline-end" />
-              </Link>
-            </div>
-            <div className="grid gap-6 lg:grid-cols-3">
-              {examples.map((example) => (
-                <article key={example.title} className="flex flex-col gap-4">
-                  <div className="relative aspect-[4/3] overflow-hidden border bg-muted">
-                    <Image
-                      src={example.image}
-                      alt={example.title}
-                      fill
-                      className="object-cover"
-                      sizes="(min-width: 1024px) 33vw, 100vw"
-                    />
-                    <Badge className="absolute left-3 top-3 rounded-sm bg-foreground text-background">
-                      {example.category}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <h3 className="text-xl font-semibold">{example.title}</h3>
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {example.description}
-                    </p>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <TakeoffQuoteOrder locale={locale} />
           </div>
         </section>
 
@@ -210,6 +162,108 @@ export function HomeContent({ locale }: { locale: Locale }) {
         </section>
       </main>
       <SiteFooter locale={locale} />
+    </div>
+  )
+}
+
+function TakeoffHeroVisual({ locale }: { locale: Locale }) {
+  const rows =
+    locale === "es"
+      ? [
+          ["Muros interiores", "128 ml"],
+          ["Pisos", "412 m2"],
+          ["Puertas", "26 uds"],
+          ["Ventanas", "34 uds"],
+        ]
+      : [
+          ["Interior walls", "128 lm"],
+          ["Flooring", "412 m2"],
+          ["Doors", "26 ea"],
+          ["Windows", "34 ea"],
+        ]
+  const labels =
+    locale === "es"
+      ? {
+          pdf: "Plano PDF",
+          pages: "18 paginas",
+          detected: "Escala detectada",
+          summary: "Resumen de takeoff",
+          status: "Listo para revisar",
+        }
+      : {
+          pdf: "Blueprint PDF",
+          pages: "18 pages",
+          detected: "Scale detected",
+          summary: "Takeoff summary",
+          status: "Ready for review",
+        }
+
+  return (
+    <div className="relative min-h-[420px] overflow-hidden rounded-sm border bg-background p-6 shadow-sm">
+      <div className="absolute inset-0 blueprint-fine-grid opacity-70" />
+      <div className="relative grid h-full min-h-[372px] gap-5 lg:grid-cols-[0.9fr_1fr]">
+        <div className="flex flex-col justify-between border bg-background/85 p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <FileTextIcon className="text-primary" />
+              <div>
+                <p className="text-sm font-semibold">{labels.pdf}</p>
+                <p className="text-xs text-muted-foreground">{labels.pages}</p>
+              </div>
+            </div>
+            <span className="rounded-sm border px-2 py-1 text-xs font-medium text-primary">
+              PDF
+            </span>
+          </div>
+
+          <div className="grid flex-1 place-items-center py-8">
+            <div className="relative aspect-[4/3] w-full max-w-sm border bg-background">
+              <div className="absolute inset-0 blueprint-grid opacity-80" />
+              <div className="absolute left-[18%] top-[18%] h-[55%] w-[58%] border-2 border-foreground/70" />
+              <div className="absolute left-[40%] top-[18%] h-[55%] border border-foreground/50" />
+              <div className="absolute left-[18%] top-[45%] w-[58%] border border-foreground/50" />
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[10px] font-medium text-primary">
+                <span>A-101</span>
+                <span>1:100</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm font-medium text-primary">
+            <RulerIcon />
+            {labels.detected}
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between border bg-background/95 p-5">
+          <div>
+            <p className="text-sm font-semibold">{labels.summary}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{labels.status}</p>
+          </div>
+          <div className="divide-y border-y">
+            {rows.map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between gap-4 py-4 text-sm">
+                <span className="text-muted-foreground">{label}</span>
+                <span className="font-semibold">{value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center text-xs text-muted-foreground">
+            <div className="border p-3">
+              <span className="block text-lg font-semibold text-foreground">PDF</span>
+              Input
+            </div>
+            <div className="border p-3">
+              <span className="block text-lg font-semibold text-foreground">QA</span>
+              Review
+            </div>
+            <div className="border p-3">
+              <span className="block text-lg font-semibold text-foreground">XLS</span>
+              Output
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

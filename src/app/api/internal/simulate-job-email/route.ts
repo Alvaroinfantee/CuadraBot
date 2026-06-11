@@ -25,13 +25,13 @@ export async function POST(request: Request) {
 
   const siteUrl = getSiteUrl()
   const orderNumber = `CB-DEMO-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}`
-  const adminUrl = `${siteUrl}/admin/orders/demo-preview`
-  const customerStatusUrl = `${siteUrl}/demo/client-order`
+  const adminUrl = `${siteUrl}/admin/orders/demo-takeoff-preview`
+  const customerStatusUrl = `${siteUrl}/pricing`
   const shared = {
     orderNumber,
     customerEmail: "client@example.com",
-    packageName: "Render Pro",
-    amount: "$299",
+    packageName: "PDF Takeoff",
+    amount: "$90",
     adminUrl,
   }
 
@@ -39,25 +39,25 @@ export async function POST(request: Request) {
     ...shared,
     customerName: "Demo Client",
     status: "paid_pending_processing",
-    renderType: "Exterior",
-    projectType: "House",
-    stylePreference: "Modern Mediterranean",
-    numberOfFloors: 2,
-    estimatedSquareMeters: 240,
-    deadlinePreference: "As soon as possible",
+    renderType: "Takeoff",
+    projectType: "Other",
+    stylePreference: "Other",
+    numberOfFloors: null,
+    estimatedSquareMeters: null,
+    deadlinePreference: "Takeoff delivery within 7 days",
     customerNotes:
-      "Simulation only. Client wants a clean exterior render from the uploaded elevation and floor plan, with warm evening lighting and neutral materials.",
+      "Simulation only. Client wants a PDF takeoff for flooring, walls, and openings. Plans include scale and dimensions.",
     customerStatusUrl,
     files: [
       {
         role: "customer_upload",
-        name: "demo-floor-plan-and-elevation.png",
-        signedUrl: `${siteUrl}/images/gallery-mediterranean-villa.png`,
+        name: "demo-takeoff-plans.pdf",
+        signedUrl: null,
       },
       {
         role: "customer_upload",
-        name: "demo-site-reference.png",
-        signedUrl: `${siteUrl}/images/gallery-multi-unit-development.png`,
+        name: "demo-scope-notes.pdf",
+        signedUrl: null,
       },
     ],
   })

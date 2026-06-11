@@ -1,9 +1,9 @@
 import { HomeContent } from "@/app/page"
 
 export const metadata = {
-  title: "Cuadrabot | Renders arquitectónicos a partir de tus planos en 48 horas",
+  title: "Cuadrabot | Takeoffs de construccion desde tus planos PDF",
   description:
-    "Sube planos, elige un paquete, paga online y recibe renders arquitectónicos.",
+    "Sube planos PDF, recibe una cotizacion instantanea y paga online.",
 }
 
 export default function SpanishHomePage() {
