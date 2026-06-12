@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { CheckCircle2Icon } from "lucide-react"
+import { GoogleAdsPurchaseConversion } from "@/components/site/google-ads-conversion"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
 import { StatusBadge } from "@/components/site/status-badge"
@@ -128,6 +129,13 @@ export async function OrderSuccessContent({
           </Link>
         ) : null}
       </main>
+      {order ? (
+        <GoogleAdsPurchaseConversion
+          currency={order.currency}
+          transactionId={order.order_number}
+          valueCents={order.amount_cents}
+        />
+      ) : null}
       <SiteFooter locale={locale} />
     </div>
   )
