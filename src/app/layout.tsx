@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { GoogleAdsTag } from "@/components/site/google-ads-tag";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -37,6 +38,7 @@ export default function RootLayout({
         {children}
         <Toaster />
       </body>
+      <GoogleAdsTag />
     </html>
   );
 }
