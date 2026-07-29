@@ -15,6 +15,7 @@ import {
   ShieldCheckIcon,
   WalletCardsIcon,
 } from "lucide-react"
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher"
 import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
@@ -25,15 +26,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  commonCopy,
+  localeTag,
+  localizedPublicPath,
+  type Locale,
+} from "@/lib/i18n"
 import { cn } from "@/lib/utils"
-
-const customerNav = [
-  { href: "/dashboard", label: "Overview", icon: GaugeIcon },
-  { href: "/dashboard/new", label: "New takeoff", icon: FilePlus2Icon },
-  { href: "/dashboard/jobs", label: "Takeoffs", icon: FilesIcon },
-  { href: "/dashboard/billing", label: "Credits & billing", icon: WalletCardsIcon },
-  { href: "/dashboard/settings", label: "Company settings", icon: SettingsIcon },
-] as const
 
 export function DashboardShell({
   children,
@@ -42,6 +41,7 @@ export function DashboardShell({
   credits,
   isAdmin = false,
   demo = false,
+  locale = "en",
 }: {
   children: React.ReactNode
   name: string
@@ -49,15 +49,41 @@ export function DashboardShell({
   credits: number
   isAdmin?: boolean
   demo?: boolean
+  locale?: Locale
 }) {
   const pathname = usePathname()
+  const copy = commonCopy[locale]
+  const customerNav = [
+    { href: "/dashboard", label: copy.dashboard.overview, icon: GaugeIcon },
+    {
+      href: "/dashboard/new",
+      label: copy.dashboard.newTakeoff,
+      icon: FilePlus2Icon,
+    },
+    { href: "/dashboard/jobs", label: copy.dashboard.takeoffs, icon: FilesIcon },
+    {
+      href: "/dashboard/billing",
+      label: copy.dashboard.billing,
+      icon: WalletCardsIcon,
+    },
+    {
+      href: "/dashboard/settings",
+      label: copy.dashboard.settings,
+      icon: SettingsIcon,
+    },
+  ]
+  const signoutPath =
+    locale === "es" ? "/auth/signout?next=/es" : "/auth/signout?next=/"
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa]">
+    <div lang={locale} className="min-h-screen bg-[#f5f7fa]">
       <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[260px_1fr]">
         <aside className="hidden border-r bg-[#0b1f3a] text-slate-100 lg:flex lg:flex-col">
           <div className="border-b border-white/10 px-6 py-6">
-            <Link href="/" className="flex items-center gap-3 text-xl font-semibold">
+            <Link
+              href={localizedPublicPath("/", locale)}
+              className="flex items-center gap-3 text-xl font-semibold"
+            >
               <span className="grid size-8 place-items-center border border-blue-300/50 font-mono text-sm text-blue-300">
                 C
               </span>
@@ -99,7 +125,7 @@ export function DashboardShell({
                 className="mt-5 flex items-center gap-3 border-t border-white/10 px-3 pt-5 text-sm text-blue-300 hover:text-white"
               >
                 <BarChart3Icon className="size-4" />
-                Admin control panel
+                {copy.dashboard.admin}
               </Link>
             ) : null}
           </nav>
@@ -107,10 +133,11 @@ export function DashboardShell({
             <div className="rounded-md bg-white/10 p-4">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-slate-400">
                 <CoinsIcon className="size-4" />
-                Available
+                {copy.dashboard.available}
               </div>
               <div className="mt-2 text-2xl font-semibold">
-                {credits.toLocaleString()} credits
+                {credits.toLocaleString(localeTag(locale))}{" "}
+                {copy.dashboard.credits}
               </div>
             </div>
             <div className="flex items-center justify-between gap-3 text-sm">
@@ -118,11 +145,11 @@ export function DashboardShell({
                 <p className="truncate font-medium">{name}</p>
                 <p className="truncate text-xs text-slate-400">{company}</p>
               </div>
-              <form action="/auth/signout" method="post">
+              <form action={signoutPath} method="post">
                 <button
                   type="submit"
                   className="rounded p-2 text-slate-400 hover:bg-white/10 hover:text-white"
-                  aria-label="Log out"
+                  aria-label={copy.dashboard.logout}
                 >
                   <LogOutIcon className="size-4" />
                 </button>
@@ -139,19 +166,20 @@ export function DashboardShell({
             <div className="ml-auto flex items-center gap-3">
               <Badge variant="outline" className="hidden gap-1.5 sm:flex">
                 <ShieldCheckIcon className="size-3.5 text-emerald-600" />
-                Private workspace
+                {copy.dashboard.privateWorkspace}
               </Badge>
+              <LocaleSwitcher locale={locale} compact />
               <Link
                 href="mailto:support@cuadrabot.com"
                 className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex"
               >
                 <LifeBuoyIcon className="size-4" />
-                Help
+                {copy.dashboard.help}
               </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   className="grid size-9 place-items-center rounded-md border lg:hidden"
-                  aria-label="Open workspace navigation"
+                  aria-label={copy.dashboard.openNavigation}
                 >
                   <MenuIcon className="size-4" />
                 </DropdownMenuTrigger>
@@ -169,7 +197,8 @@ export function DashboardShell({
                       </span>
                       <span className="mt-2 flex items-center gap-1.5 text-xs text-primary">
                         <CoinsIcon className="size-3.5" />
-                        {credits.toLocaleString()} credits available
+                        {credits.toLocaleString(localeTag(locale))}{" "}
+                        {copy.dashboard.creditsAvailable}
                       </span>
                     </DropdownMenuLabel>
                   </DropdownMenuGroup>
@@ -204,7 +233,7 @@ export function DashboardShell({
                         className="gap-2 px-2 py-2"
                       >
                         <BarChart3Icon className="size-4 text-primary" />
-                        Admin control panel
+                        {copy.dashboard.admin}
                       </DropdownMenuItem>
                     </>
                   ) : null}
@@ -214,7 +243,7 @@ export function DashboardShell({
                     className="gap-2 px-2 py-2"
                   >
                     <LifeBuoyIcon className="size-4 text-muted-foreground" />
-                    Help
+                    {copy.dashboard.help}
                   </DropdownMenuItem>
                   {!demo ? (
                     <DropdownMenuItem
@@ -227,7 +256,7 @@ export function DashboardShell({
                       className="gap-2 px-2 py-2"
                     >
                       <LogOutIcon className="size-4 text-muted-foreground" />
-                      Log out
+                      {copy.dashboard.logout}
                     </DropdownMenuItem>
                   ) : null}
                 </DropdownMenuContent>
@@ -235,7 +264,7 @@ export function DashboardShell({
               {!demo ? (
                 <form
                   id="mobile-dashboard-signout"
-                  action="/auth/signout"
+                  action={signoutPath}
                   method="post"
                   className="hidden"
                 />

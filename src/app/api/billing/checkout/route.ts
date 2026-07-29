@@ -14,6 +14,7 @@ import {
   stripeAutomaticTaxEnabled,
 } from "@/lib/config"
 import { getActiveUser, type CurrentUser } from "@/lib/auth"
+import { isLocale, type Locale } from "@/lib/i18n"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import {
   getStripe,
@@ -112,6 +113,13 @@ export async function POST(request: Request) {
     isBillingSku(body.sku)
       ? body.sku
       : null
+  const locale: Locale =
+    body &&
+    typeof body === "object" &&
+    "locale" in body &&
+    isLocale(body.locale)
+      ? body.locale
+      : "en"
 
   if (!sku) {
     return NextResponse.json(
@@ -146,7 +154,8 @@ export async function POST(request: Request) {
     const stripeCustomerId = await getOrCreateStripeCustomer(
       stripe,
       profile,
-      user
+      user,
+      locale
     )
     const billingOrderId = crypto.randomUUID()
     const { error: orderError } = await supabase.from("billing_orders").insert({
@@ -163,6 +172,7 @@ export async function POST(request: Request) {
       currency: catalogItem.currency,
       metadata: {
         price_env_name: catalogItem.priceEnvName,
+        locale,
       },
     })
 
@@ -201,6 +211,7 @@ export async function POST(request: Request) {
       billing_sku: catalogItem.sku,
       billing_kind: catalogItem.kind,
       catalog_version: String(BILLING_CATALOG_VERSION),
+      locale,
     }
     const successUrl = `${getSiteUrl()}/dashboard/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${getSiteUrl()}/dashboard/billing?checkout=cancelled`
@@ -209,6 +220,7 @@ export async function POST(request: Request) {
       const session = await stripe.checkout.sessions.create(
         {
           mode: catalogItem.checkoutMode,
+          locale,
           customer: stripeCustomerId,
           client_reference_id: billingOrderId,
           line_items: [{ price: catalogItem.priceId, quantity: 1 }],
@@ -449,7 +461,8 @@ async function assertNoCurrentSubscription(userId: string) {
 async function getOrCreateStripeCustomer(
   stripe: Stripe,
   profile: ProfileRow,
-  user: CurrentUser
+  user: CurrentUser,
+  locale: Locale
 ) {
   if (profile.stripe_customer_id) {
     return profile.stripe_customer_id
@@ -459,6 +472,7 @@ async function getOrCreateStripeCustomer(
     {
       email: user.email ?? profile.email ?? undefined,
       name: profile.full_name ?? undefined,
+      preferred_locales: [locale],
       metadata: {
         cuadrabot_user_id: user.id,
       },

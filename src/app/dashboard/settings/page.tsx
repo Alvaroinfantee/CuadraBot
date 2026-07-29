@@ -6,8 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getCurrentProfile, requireUser } from "@/lib/auth"
+import { dashboardCopy } from "@/lib/dashboard-i18n"
+import { getRequestLocale } from "@/lib/i18n-server"
 
-export const metadata = { title: "Company settings" }
+export async function generateMetadata() {
+  const locale = await getRequestLocale()
+  return { title: dashboardCopy[locale].metadata.settings }
+}
 
 export default async function CompanySettingsPage({
   searchParams,
@@ -15,33 +20,35 @@ export default async function CompanySettingsPage({
   searchParams: Promise<{ saved?: string }>
 }) {
   await requireUser("/dashboard/settings")
-  const [profile, params] = await Promise.all([
+  const [profile, params, locale] = await Promise.all([
     getCurrentProfile(),
     searchParams,
+    getRequestLocale(),
   ])
+  const copy = dashboardCopy[locale].settings
 
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Workspace profile"
-        title="Company settings"
-        description="Keep contact and coarse location information accurate for support, tax operations, and regional reporting."
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
       />
       {params.saved ? (
         <Alert>
-          <AlertDescription>Company settings saved.</AlertDescription>
+          <AlertDescription>{copy.saved}</AlertDescription>
         </Alert>
       ) : null}
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Profile</CardTitle>
+            <CardTitle>{copy.profile}</CardTitle>
           </CardHeader>
           <CardContent>
             <form action={updateCompanyProfile} className="space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Your name</Label>
+                  <Label htmlFor="fullName">{copy.yourName}</Label>
                   <Input
                     id="fullName"
                     name="fullName"
@@ -50,7 +57,7 @@ export default async function CompanySettingsPage({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="companyName">Company</Label>
+                  <Label htmlFor="companyName">{copy.company}</Label>
                   <Input
                     id="companyName"
                     name="companyName"
@@ -61,7 +68,7 @@ export default async function CompanySettingsPage({
               </div>
               <div className="grid gap-5 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="countryCode">Country code</Label>
+                  <Label htmlFor="countryCode">{copy.countryCode}</Label>
                   <Input
                     id="countryCode"
                     name="countryCode"
@@ -71,7 +78,7 @@ export default async function CompanySettingsPage({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="region">Region / state</Label>
+                  <Label htmlFor="region">{copy.region}</Label>
                   <Input
                     id="region"
                     name="region"
@@ -79,7 +86,7 @@ export default async function CompanySettingsPage({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city">{copy.city}</Label>
                   <Input
                     id="city"
                     name="city"
@@ -88,7 +95,7 @@ export default async function CompanySettingsPage({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
+                <Label htmlFor="timezone">{copy.timezone}</Label>
                 <Input
                   id="timezone"
                   name="timezone"
@@ -96,26 +103,24 @@ export default async function CompanySettingsPage({
                   defaultValue={profile?.timezone ?? ""}
                 />
               </div>
-              <Button type="submit">Save profile</Button>
+              <Button type="submit">{copy.save}</Button>
             </form>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Privacy and account requests</CardTitle>
+            <CardTitle>{copy.privacyTitle}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-6 text-muted-foreground">
-            <p>
-              Request a copy, correction, deletion, or account closure by
-              emailing from the account address. We verify identity and retain
-              billing records where law requires.
-            </p>
+            <p>{copy.privacyBody}</p>
             <a
-              href="mailto:privacy@cuadrabot.com?subject=Cuadrabot data request"
+              href={`mailto:privacy@cuadrabot.com?subject=${encodeURIComponent(
+                copy.privacySubject
+              )}`}
               className="inline-flex font-medium text-primary"
             >
-              Email privacy@cuadrabot.com
+              {copy.privacyEmail}
             </a>
           </CardContent>
         </Card>

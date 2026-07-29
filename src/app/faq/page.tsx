@@ -7,8 +7,15 @@ import {
 import { CtaBand, PageHero } from "@/components/site/page-hero"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 
-export const metadata = { title: "Frequently asked questions" }
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/faq",
+  title: "Frequently asked questions",
+  description:
+    "Answers about Cuadrabot scope, pricing, credits, accuracy, privacy, and support.",
+})
 
 const sections = [
   {

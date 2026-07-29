@@ -10,13 +10,16 @@ import { PageHero } from "@/components/site/page-hero"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
 import { buttonVariants } from "@/components/ui/button"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
-export const metadata = {
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/sample",
   title: "Sample takeoff",
   description:
     "Preview the marked PDF, workbook structure, evidence, and validation context delivered by Cuadrabot.",
-}
+})
 
 const rows = [
   ["FL-03", "Porcelain tile, 600x600", "A-201", "Retail / sales", "42.60", "m²", "High"],

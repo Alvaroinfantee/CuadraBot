@@ -23,8 +23,25 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 import { servicePriceCards } from "@/lib/takeoff-pricing"
 import { cn } from "@/lib/utils"
+
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/",
+  title: "Self-serve construction takeoffs",
+  description:
+    "Upload scaled PDF plans and receive marked drawings plus Excel quantities in hours.",
+  keywords: [
+    "construction takeoff",
+    "quantity takeoff",
+    "flooring takeoff",
+    "drywall takeoff",
+    "door takeoff",
+    "estimating",
+  ],
+})
 
 const steps = [
   {
@@ -119,7 +136,7 @@ export default function HomePage() {
                 </span>
                 <span className="flex items-center gap-2">
                   <Layers3Icon className="size-4 text-primary" />
-                  Plans optional
+                  Subscription optional
                 </span>
               </div>
             </div>

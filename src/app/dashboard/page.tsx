@@ -16,13 +16,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { requireUser } from "@/lib/auth"
 import { getCustomerWorkspace } from "@/lib/customer-dashboard"
+import {
+  dashboardCopy,
+  formatDashboardDate,
+  formatDashboardNumber,
+  formatPlanPages,
+  formatTrades,
+} from "@/lib/dashboard-i18n"
+import { getRequestLocale } from "@/lib/i18n-server"
+import type { Locale } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
-export const metadata = { title: "Workspace" }
+export async function generateMetadata() {
+  const locale = await getRequestLocale()
+  return { title: dashboardCopy[locale].metadata.workspace }
+}
 
 export default async function DashboardPage() {
   const user = await requireUser("/dashboard")
-  const { credits, jobs, subscription } = await getCustomerWorkspace(user.id)
+  const [{ credits, jobs, subscription }, locale] = await Promise.all([
+    getCustomerWorkspace(user.id),
+    getRequestLocale(),
+  ])
+  const copy = dashboardCopy[locale].overview
   const activeJobs = jobs.filter((job) =>
     ["queued", "processing", "needs_review"].includes(job.status)
   )
@@ -32,46 +48,49 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Customer workspace"
-        title="Your takeoff desk"
-        description="Submit scaled plan sets, follow automated measurement, and download source-linked quantities when processing finishes."
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
         action={
           <Link
             href="/dashboard/new"
             className={cn(buttonVariants({ size: "lg" }), "gap-2")}
           >
             <FilePlus2Icon />
-            New takeoff
+            {copy.newTakeoff}
           </Link>
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
-          label="Available credits"
-          value={credits.balance.toLocaleString()}
-          note={`${credits.lifetime_consumed.toLocaleString()} used all time`}
+          label={copy.availableCredits}
+          value={formatDashboardNumber(credits.balance, locale)}
+          note={`${formatDashboardNumber(
+            credits.lifetime_consumed,
+            locale
+          )} ${copy.usedAllTime}`}
           icon={CoinsIcon}
         />
         <Metric
-          label="In progress"
-          value={String(activeJobs.length)}
-          note="Self-serve processing queue"
+          label={copy.inProgress}
+          value={formatDashboardNumber(activeJobs.length, locale)}
+          note={copy.processingQueue}
           icon={Clock3Icon}
         />
         <Metric
-          label="Delivered"
-          value={String(completedJobs.length)}
-          note="Marked PDF and workbook"
+          label={copy.delivered}
+          value={formatDashboardNumber(completedJobs.length, locale)}
+          note={copy.deliveredNote}
           icon={CheckCircle2Icon}
         />
         <Metric
-          label="Billing plan"
-          value={subscription ? "Active" : "Pay as you go"}
+          label={copy.billingPlan}
+          value={subscription ? copy.active : copy.payAsYouGo}
           note={
             subscription?.cancel_at_period_end
-              ? "Cancels at period end"
-              : "No seat license required"
+              ? copy.cancelsAtPeriodEnd
+              : copy.noSeatLicense
           }
           icon={ShieldCheckIcon}
         />
@@ -80,12 +99,12 @@ export default async function DashboardPage() {
       <div className="grid gap-6 xl:grid-cols-[1.45fr_0.55fr]">
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Recent takeoffs</CardTitle>
+            <CardTitle>{copy.recentTakeoffs}</CardTitle>
             <Link
               href="/dashboard/jobs"
               className="text-sm font-medium text-primary"
             >
-              View all
+              {copy.viewAll}
             </Link>
           </CardHeader>
           <CardContent>
@@ -102,13 +121,14 @@ export default async function DashboardPage() {
                         <p className="truncate font-medium">
                           {job.project_name}
                         </p>
-                        <JobStatus status={job.status} />
+                        <JobStatus status={job.status} locale={locale} />
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {job.input_page_count ?? "—"} pages ·{" "}
-                        {job.trades?.length ?? 0} trade
-                        {(job.trades?.length ?? 0) === 1 ? "" : "s"} ·{" "}
-                        {formatDate(job.created_at)}
+                        {job.input_page_count === null
+                          ? "—"
+                          : formatPlanPages(job.input_page_count, locale)}{" "}
+                        · {formatTrades(job.trades?.length ?? 0, locale)} ·{" "}
+                        {formatDashboardDate(job.created_at, locale)}
                       </p>
                       {job.status === "processing" ? (
                         <Progress
@@ -122,7 +142,7 @@ export default async function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <EmptyTakeoffs />
+              <EmptyTakeoffs locale={locale} />
             )}
           </CardContent>
         </Card>
@@ -130,15 +150,15 @@ export default async function DashboardPage() {
         <Card className="bg-[#0b1f3a] text-white">
           <CardHeader>
             <Badge className="w-fit bg-blue-400/15 text-blue-200">
-              Included once per company
+              {copy.sampleBadge}
             </Badge>
-            <CardTitle className="pt-4 text-2xl">Try one sheet free</CardTitle>
+            <CardTitle className="pt-4 text-2xl">
+              {copy.sampleTitle}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <p className="text-sm leading-6 text-slate-300">
-              Pick one launch trade and one plan sheet. We will return a marked
-              PDF and quantity workbook through the same automated workflow as
-              paid work.
+              {copy.sampleBody}
             </p>
             <Link
               href="/dashboard/new?mode=sample"
@@ -147,7 +167,7 @@ export default async function DashboardPage() {
                 "w-full justify-between"
               )}
             >
-              Start free sample
+              {copy.sampleCta}
               <ArrowRightIcon />
             </Link>
           </CardContent>
@@ -182,30 +202,23 @@ function Metric({
   )
 }
 
-function EmptyTakeoffs() {
+function EmptyTakeoffs({ locale }: { locale: Locale }) {
+  const copy = dashboardCopy[locale].overview
   return (
     <div className="grid min-h-64 place-items-center border border-dashed p-8 text-center">
       <div>
         <FilesIcon className="mx-auto size-8 text-primary" />
-        <p className="mt-4 font-medium">No takeoffs yet</p>
+        <p className="mt-4 font-medium">{copy.emptyTitle}</p>
         <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-          Upload your first scaled PDF plan set to receive a fixed credit quote.
+          {copy.emptyBody}
         </p>
         <Link
           href="/dashboard/new"
           className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary"
         >
-          Create a takeoff <ArrowRightIcon className="size-4" />
+          {copy.emptyCta} <ArrowRightIcon className="size-4" />
         </Link>
       </div>
     </div>
   )
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value))
 }

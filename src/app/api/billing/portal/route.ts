@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getActiveUser } from "@/lib/auth"
 import { getSiteUrl } from "@/lib/config"
+import { isLocale, type Locale } from "@/lib/i18n"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import {
   getStripe,
@@ -10,8 +11,16 @@ import {
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
-export async function POST() {
+export async function POST(request: Request) {
   let user: Awaited<ReturnType<typeof getActiveUser>>
+  const body = await request.json().catch(() => null)
+  const locale: Locale =
+    body &&
+    typeof body === "object" &&
+    "locale" in body &&
+    isLocale(body.locale)
+      ? body.locale
+      : "en"
 
   try {
     user = await getActiveUser()
@@ -71,6 +80,7 @@ export async function POST() {
 
     const session = await getStripe().billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
+      locale,
       return_url: new URL("/dashboard/billing", getSiteUrl()).toString(),
     })
 

@@ -1,16 +1,23 @@
 import Link from "next/link"
 import { ArrowRightIcon } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
+import {
+  commonCopy,
+  localizedAuthPath,
+  localizedPublicPath,
+  type Locale,
+} from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export function PageHero({
   eyebrow,
   title,
   body,
-  primary = "Check my plans free",
+  primary,
   primaryHref = "/signup",
   secondary,
   secondaryHref = "/sample",
+  locale = "en",
 }: {
   eyebrow: string
   title: string
@@ -19,7 +26,17 @@ export function PageHero({
   primaryHref?: string
   secondary?: string
   secondaryHref?: string
+  locale?: Locale
 }) {
+  const primaryTarget =
+    primaryHref === "/signup" || primaryHref === "/login"
+      ? localizedAuthPath(primaryHref, locale)
+      : primaryHref
+  const secondaryTarget =
+    secondaryHref === "/sample"
+      ? localizedPublicPath("/sample", locale)
+      : secondaryHref
+  const primaryLabel = primary ?? commonCopy[locale].nav.freeCta
   return (
     <section className="border-b blueprint-fine-grid">
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -34,15 +51,15 @@ export function PageHero({
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href={primaryHref}
+            href={primaryTarget}
             className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
           >
-            {primary}
+            {primaryLabel}
             <ArrowRightIcon />
           </Link>
           {secondary ? (
             <Link
-              href={secondaryHref}
+              href={secondaryTarget}
               className={cn(
                 buttonVariants({ size: "lg", variant: "outline" }),
                 "h-12 bg-white px-6"
@@ -57,22 +74,33 @@ export function PageHero({
   )
 }
 
-export function CtaBand() {
+export function CtaBand({ locale = "en" }: { locale?: Locale }) {
+  const copy =
+    locale === "es"
+      ? {
+          title: "Prueba una hoja real sin coste.",
+          body:
+            "Sube un PDF a escala, elige una especialidad disponible y recibe el mismo plano marcado que entregamos en los trabajos de pago.",
+        }
+      : {
+          title: "See one real sheet measured free.",
+          body:
+            "Upload a scaled PDF, pick one launch trade, and receive the same marked evidence used for paid work.",
+        }
   return (
     <section className="blueprint-grid py-16">
       <div className="mx-auto flex max-w-4xl flex-col items-center px-4 text-center sm:px-6">
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          See one real sheet measured free.
+          {copy.title}
         </h2>
         <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-          Upload a scaled PDF, pick one launch trade, and receive the same
-          marked evidence used for paid work.
+          {copy.body}
         </p>
         <Link
-          href="/signup"
+          href={localizedAuthPath("/signup", locale)}
           className={cn(buttonVariants({ size: "lg" }), "mt-7 h-12 px-7")}
         >
-          Check my plans free
+          {commonCopy[locale].nav.freeCta}
           <ArrowRightIcon />
         </Link>
       </div>

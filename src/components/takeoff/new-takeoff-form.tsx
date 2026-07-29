@@ -29,17 +29,24 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
 import { maxUploadMb } from "@/lib/config"
+import {
+  dashboardCopy,
+  localizeCustomerError,
+} from "@/lib/dashboard-i18n"
+import {
+  localeTag,
+  localizedTradeLabels,
+  localizeTakeoffPrice,
+  type Locale,
+} from "@/lib/i18n"
 import { buttonVariants } from "@/components/ui/button"
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
-import {
-  takeoffTrades,
-  tradeLabels,
-  type TakeoffTrade,
-} from "@/lib/takeoff-types"
+import type { TakeoffPricingTier } from "@/lib/takeoff-pricing"
+import { takeoffTrades, type TakeoffTrade } from "@/lib/takeoff-types"
 import { cn } from "@/lib/utils"
 
 type Quote = {
-  tier: string
+  tier: TakeoffPricingTier
   name: string
   credits: number
   priceCents: number
@@ -52,12 +59,15 @@ export function NewTakeoffForm({
   availableCredits,
   sampleAvailable,
   initialMode = "standard",
+  locale = "en",
 }: {
   availableCredits: number
   sampleAvailable: boolean
   initialMode?: "sample" | "standard"
+  locale?: Locale
 }) {
   const router = useRouter()
+  const copy = dashboardCopy[locale].form
   const [mode, setMode] = useState<"sample" | "standard">(
     initialMode === "sample" && sampleAvailable ? "sample" : "standard"
   )
@@ -75,16 +85,34 @@ export function NewTakeoffForm({
   const insufficient = Boolean(
     quote && quote.selfServe && quote.credits > availableCredits
   )
+  const localizedQuote = useMemo(
+    () =>
+      quote
+        ? localizeTakeoffPrice(
+            {
+              tier: quote.tier,
+              name: quote.name,
+              credits: quote.credits,
+              priceCents: quote.priceCents,
+              turnaroundHours: null,
+              selfServe: quote.selfServe,
+              description: quote.description,
+            },
+            locale
+          )
+        : null,
+    [locale, quote]
+  )
   const fileSize = useMemo(
     () =>
       file
-        ? new Intl.NumberFormat("en", {
+        ? new Intl.NumberFormat(localeTag(locale), {
             style: "unit",
             unit: "megabyte",
             maximumFractionDigits: 1,
           }).format(file.size / 1024 / 1024)
         : "",
-    [file]
+    [file, locale]
   )
 
   function toggleTrade(trade: TakeoffTrade) {
@@ -104,7 +132,7 @@ export function NewTakeoffForm({
       nextFile.type !== "application/pdf" &&
       !nextFile.name.toLowerCase().endsWith(".pdf")
     ) {
-      toast.error("Upload a PDF plan set.")
+      toast.error(copy.invalidPdf)
       event.target.value = ""
       return
     }
@@ -136,7 +164,9 @@ export function NewTakeoffForm({
       })
       const draft = await draftResponse.json()
       if (!draftResponse.ok) {
-        throw new Error(draft.error ?? "Could not create the takeoff.")
+        throw new Error(
+          localizeCustomerError(draft.error, locale, copy.createError)
+        )
       }
 
       setJobId(draft.job.id)
@@ -149,7 +179,11 @@ export function NewTakeoffForm({
           upsert: false,
         })
 
-      if (uploadError) throw new Error(uploadError.message)
+      if (uploadError) {
+        throw new Error(
+          localizeCustomerError(uploadError.message, locale, copy.verifyError)
+        )
+      }
 
       setProgress(75)
       const quoteResponse = await fetch(
@@ -165,14 +199,16 @@ export function NewTakeoffForm({
       )
       const prepared = await quoteResponse.json()
       if (!quoteResponse.ok) {
-        throw new Error(prepared.error ?? "Could not verify the plan set.")
+        throw new Error(
+          localizeCustomerError(prepared.error, locale, copy.verifyError)
+        )
       }
 
       setQuote(prepared.quote)
       setProgress(100)
-      toast.success("Plan set verified. Review the fixed quote.")
+      toast.success(copy.verifiedToast)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong.")
+      toast.error(error instanceof Error ? error.message : copy.genericError)
       setProgress(0)
     } finally {
       setBusy(false)
@@ -194,17 +230,25 @@ export function NewTakeoffForm({
       const payload = await response.json()
       if (!response.ok) {
         if (response.status === 402) {
+          const requiredCredits =
+            typeof payload.required === "number"
+              ? payload.required
+              : quote.credits
           throw new Error(
-            `You need ${payload.required ?? quote.credits} credits. Add credits before confirming.`
+            `${copy.insufficientStart} ${requiredCredits.toLocaleString(
+              localeTag(locale)
+            )} ${copy.insufficientEnd}`
           )
         }
-        throw new Error(payload.error ?? "Could not queue the takeoff.")
+        throw new Error(
+          localizeCustomerError(payload.error, locale, copy.queueError)
+        )
       }
-      toast.success("Takeoff queued.")
+      toast.success(copy.queuedToast)
       router.push(`/dashboard/jobs/${jobId}`)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong.")
+      toast.error(error instanceof Error ? error.message : copy.genericError)
     } finally {
       setBusy(false)
     }
@@ -215,7 +259,7 @@ export function NewTakeoffForm({
       <form onSubmit={prepareQuote}>
         <Card>
           <CardHeader>
-            <CardTitle>Project and scope</CardTitle>
+            <CardTitle>{copy.projectAndScope}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-7">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -233,9 +277,9 @@ export function NewTakeoffForm({
                     : "hover:border-primary/50"
                 )}
               >
-                <p className="font-medium">Verified takeoff</p>
+                <p className="font-medium">{copy.verifiedTakeoff}</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Fixed credit quote after server verification.
+                  {copy.verifiedTakeoffBody}
                 </p>
               </button>
               <button
@@ -254,19 +298,19 @@ export function NewTakeoffForm({
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium">Free one-sheet sample</p>
+                  <p className="font-medium">{copy.freeSample}</p>
                   <Badge variant="secondary">
-                    {sampleAvailable ? "Available" : "Used"}
+                    {sampleAvailable ? copy.available : copy.used}
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  One launch trade, once per company.
+                  {copy.freeSampleBody}
                 </p>
               </button>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="project-name">Project name</Label>
+              <Label htmlFor="project-name">{copy.projectName}</Label>
               <Input
                 id="project-name"
                 value={projectName}
@@ -275,14 +319,14 @@ export function NewTakeoffForm({
                   setQuote(null)
                   setJobId(null)
                 }}
-                placeholder="Northside retail fit-out"
+                placeholder={copy.projectPlaceholder}
                 required
               />
             </div>
 
             <fieldset className="space-y-3">
               <legend className="text-sm font-medium">
-                What should we measure?
+                {copy.measurePrompt}
               </legend>
               <div className="grid gap-3 sm:grid-cols-3">
                 {takeoffTrades.map((trade) => {
@@ -304,7 +348,7 @@ export function NewTakeoffForm({
                         disabled={mode === "sample" && !selected && trades.length >= 1}
                         onChange={() => toggleTrade(trade)}
                       />
-                      <span>{tradeLabels[trade]}</span>
+                      <span>{localizedTradeLabels[locale][trade]}</span>
                     </label>
                   )
                 })}
@@ -312,7 +356,7 @@ export function NewTakeoffForm({
             </fieldset>
 
             <div className="space-y-2">
-              <Label htmlFor="plan-file">Scaled PDF plan set</Label>
+              <Label htmlFor="plan-file">{copy.planSet}</Label>
               <label
                 htmlFor="plan-file"
                 className="grid min-h-44 cursor-pointer place-items-center border border-dashed bg-muted/20 p-6 text-center hover:border-primary"
@@ -328,11 +372,10 @@ export function NewTakeoffForm({
                 ) : (
                   <div>
                     <FileUpIcon className="mx-auto size-8 text-primary" />
-                    <p className="mt-3 font-medium">
-                      Choose a plan set or drop it here
-                    </p>
+                    <p className="mt-3 font-medium">{copy.chooseFile}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      PDF only · up to {maxUploadMb}MB · 250 pages
+                      {copy.fileLimitStart} {maxUploadMb}
+                      {copy.fileLimitEnd}
                     </p>
                   </div>
                 )}
@@ -348,7 +391,7 @@ export function NewTakeoffForm({
 
             {mode === "sample" ? (
               <div className="space-y-2">
-                <Label htmlFor="sample-page">Sheet/page to measure</Label>
+                <Label htmlFor="sample-page">{copy.samplePage}</Label>
                 <Input
                   id="sample-page"
                   type="number"
@@ -360,19 +403,19 @@ export function NewTakeoffForm({
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  We will extract only this PDF page for the free sample.
+                  {copy.samplePageBody}
                 </p>
               </div>
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Instructions and assumptions</Label>
+              <Label htmlFor="notes">{copy.instructions}</Label>
               <Textarea
                 id="notes"
                 rows={5}
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                placeholder="Areas to include or exclude, finish codes, alternates, naming conventions..."
+                placeholder={copy.instructionsPlaceholder}
               />
             </div>
 
@@ -387,11 +430,11 @@ export function NewTakeoffForm({
               {busy ? (
                 <>
                   <Loader2Icon className="animate-spin" />
-                  Verifying plan set
+                  {copy.verifying}
                 </>
               ) : (
                 <>
-                  Upload and get fixed quote
+                  {copy.uploadQuote}
                   <ArrowRightIcon />
                 </>
               )}
@@ -403,47 +446,61 @@ export function NewTakeoffForm({
       <div className="space-y-6">
         <Card className={cn(quote && "border-primary")}>
           <CardHeader>
-            <CardTitle>Fixed quote</CardTitle>
+            <CardTitle>{copy.fixedQuote}</CardTitle>
           </CardHeader>
           <CardContent>
             {quote ? (
               <div className="space-y-5">
                 <div>
-                  <p className="text-sm text-muted-foreground">{quote.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {localizedQuote?.name}
+                  </p>
                   <div className="mt-2 flex items-end justify-between gap-4">
                     <p className="text-4xl font-semibold">
-                      {quote.credits.toLocaleString()}
+                      {quote.credits.toLocaleString(localeTag(locale))}
                     </p>
                     <p className="pb-1 text-sm text-muted-foreground">
-                      credits
+                      {copy.credits}
                     </p>
                   </div>
                 </div>
                 <div className="space-y-2 border-y py-4 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Verified pages</span>
-                    <span className="font-medium">{quote.pageCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Available</span>
+                    <span className="text-muted-foreground">
+                      {copy.verifiedPages}
+                    </span>
                     <span className="font-medium">
-                      {availableCredits.toLocaleString()} credits
+                      {quote.pageCount.toLocaleString(localeTag(locale))}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Delivery target</span>
-                    <span className="font-medium">In hours</span>
+                    <span className="text-muted-foreground">
+                      {copy.availableCredits}
+                    </span>
+                    <span className="font-medium">
+                      {availableCredits.toLocaleString(localeTag(locale))}{" "}
+                      {copy.credits}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      {copy.deliveryTarget}
+                    </span>
+                    <span className="font-medium">{copy.inHours}</span>
                   </div>
                 </div>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  {quote.description}
+                  {localizedQuote?.description}
                 </p>
                 {insufficient ? (
                   <Alert variant="destructive">
-                    <AlertTitle>More credits required</AlertTitle>
+                    <AlertTitle>{copy.moreCreditsTitle}</AlertTitle>
                     <AlertDescription>
-                      Add {quote.credits - availableCredits} credits to confirm
-                      this takeoff.
+                      {copy.addCreditsStart}{" "}
+                      {(quote.credits - availableCredits).toLocaleString(
+                        localeTag(locale)
+                      )}{" "}
+                      {copy.addCreditsEnd}
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -459,7 +516,7 @@ export function NewTakeoffForm({
                     ) : (
                       <CheckCircle2Icon />
                     )}
-                    Reserve credits and start
+                    {copy.reserveAndStart}
                   </Button>
                 )}
                 {insufficient && (
@@ -470,17 +527,16 @@ export function NewTakeoffForm({
                       "w-full"
                     )}
                   >
-                    Add credits
+                    {copy.addCredits}
                   </Link>
                 )}
               </div>
             ) : (
               <div className="py-10 text-center">
                 <CoinsIcon className="mx-auto size-8 text-primary" />
-                <p className="mt-4 font-medium">No browser-estimated charges</p>
+                <p className="mt-4 font-medium">{copy.noEstimateTitle}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Cuadrabot verifies the uploaded object and actual PDF page
-                  count on the server before showing the price.
+                  {copy.noEstimateBody}
                 </p>
               </div>
             )}
@@ -489,13 +545,13 @@ export function NewTakeoffForm({
 
         <div className="space-y-3 border bg-white p-5 text-sm">
           {[
-            [LockIcon, "Private object storage"],
-            [RulerIcon, "Scale and page verification"],
-            [ShieldCheckIcon, "Automated validation before delivery"],
-          ].map(([Icon, label]) => (
-            <div key={String(label)} className="flex items-center gap-3">
+            { icon: LockIcon, label: copy.privateStorage },
+            { icon: RulerIcon, label: copy.pageVerification },
+            { icon: ShieldCheckIcon, label: copy.automatedValidation },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="flex items-center gap-3">
               <Icon className="size-4 text-primary" />
-              <span>{String(label)}</span>
+              <span>{label}</span>
             </div>
           ))}
         </div>

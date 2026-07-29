@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { signIn } from "@/app/auth/actions"
 import { AuthCard } from "@/components/auth/auth-card"
@@ -5,48 +6,110 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { localizeAuthNotice } from "@/lib/auth-notices"
+import {
+  buildLocalizedAuthMetadata,
+  localizedAuthPath,
+  type Locale,
+} from "@/lib/i18n"
+import { getRequestLocale } from "@/lib/i18n-server"
 
-export const metadata = { title: "Log in" }
+type LoginSearchParams = {
+  error?: string
+  message?: string
+  next?: string
+  lang?: string
+}
+
+const copy = {
+  en: {
+    metadataTitle: "Log in",
+    eyebrow: "Customer workspace",
+    title: "Welcome back",
+    body: "Log in to submit plans, follow processing, download deliverables, and manage credits.",
+    newUser: "New to Cuadrabot?",
+    createAccount: "Create an account",
+    email: "Work email",
+    password: "Password",
+    forgot: "Forgot password?",
+    submit: "Log in",
+  },
+  es: {
+    metadataTitle: "Iniciar sesión",
+    eyebrow: "Espacio de trabajo",
+    title: "Te damos la bienvenida",
+    body: "Inicia sesión para enviar planos, seguir el procesamiento, descargar entregables y gestionar tus créditos.",
+    newUser: "¿Aún no usas Cuadrabot?",
+    createAccount: "Crear una cuenta",
+    email: "Correo de trabajo",
+    password: "Contraseña",
+    forgot: "¿Has olvidado la contraseña?",
+    submit: "Iniciar sesión",
+  },
+} satisfies Record<Locale, Record<string, string>>
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<LoginSearchParams>
+}): Promise<Metadata> {
+  const params = await searchParams
+  const locale = await getRequestLocale(params.lang)
+  return buildLocalizedAuthMetadata({
+    locale,
+    title: copy[locale].metadataTitle,
+    description: copy[locale].body,
+  })
+}
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    error?: string
-    message?: string
-    next?: string
-  }>
+  searchParams: Promise<LoginSearchParams>
 }) {
   const params = await searchParams
+  const locale = await getRequestLocale(params.lang)
+  const text = copy[locale]
+  const errorMessage = localizeAuthNotice(
+    params.error,
+    locale,
+    "request_failed"
+  )
+  const successMessage = localizeAuthNotice(params.message, locale)
 
   return (
     <AuthCard
-      eyebrow="Customer workspace"
-      title="Welcome back"
-      body="Log in to submit plans, follow processing, download deliverables, and manage credits."
+      locale={locale}
+      eyebrow={text.eyebrow}
+      title={text.title}
+      body={text.body}
       footer={
         <>
-          New to Cuadrabot?{" "}
-          <Link href="/signup" className="font-medium text-primary">
-            Create an account
+          {text.newUser}{" "}
+          <Link
+            href={localizedAuthPath("/signup", locale)}
+            className="font-medium text-primary"
+          >
+            {text.createAccount}
           </Link>
         </>
       }
     >
       <form action={signIn} className="space-y-5">
-        {params.error ? (
+        {errorMessage ? (
           <Alert variant="destructive">
-            <AlertDescription>{params.error}</AlertDescription>
+            <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         ) : null}
-        {params.message ? (
+        {successMessage ? (
           <Alert>
-            <AlertDescription>{params.message}</AlertDescription>
+            <AlertDescription>{successMessage}</AlertDescription>
           </Alert>
         ) : null}
+        <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="next" value={params.next ?? "/dashboard"} />
         <div className="space-y-2">
-          <Label htmlFor="email">Work email</Label>
+          <Label htmlFor="email">{text.email}</Label>
           <Input
             id="email"
             name="email"
@@ -57,12 +120,12 @@ export default async function LoginPage({
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-4">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{text.password}</Label>
             <Link
-              href="/forgot-password"
+              href={localizedAuthPath("/forgot-password", locale)}
               className="text-xs font-medium text-primary"
             >
-              Forgot password?
+              {text.forgot}
             </Link>
           </div>
           <Input
@@ -74,7 +137,7 @@ export default async function LoginPage({
           />
         </div>
         <Button type="submit" size="lg" className="w-full">
-          Log in
+          {text.submit}
         </Button>
       </form>
     </AuthCard>

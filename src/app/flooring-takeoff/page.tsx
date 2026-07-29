@@ -1,10 +1,13 @@
 import { TradeLanding } from "@/components/site/trade-landing"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 
-export const metadata = {
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/flooring-takeoff",
   title: "Flooring and finishes takeoff",
   description:
     "Self-serve flooring and finishes quantities from scaled PDF plans.",
-}
+})
 
 export default function FlooringTakeoffPage() {
   return (

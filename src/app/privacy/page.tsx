@@ -1,7 +1,14 @@
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 
-export const metadata = { title: "Privacy policy" }
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/privacy",
+  title: "Privacy policy",
+  description:
+    "How Cuadrabot collects, uses, protects, and retains account, billing, and project data.",
+})
 
 export default function PrivacyPage() {
   return (

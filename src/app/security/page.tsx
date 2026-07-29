@@ -9,12 +9,15 @@ import {
 import { CtaBand, PageHero } from "@/components/site/page-hero"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 
-export const metadata = {
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/security",
   title: "Security and privacy",
   description:
     "How Cuadrabot protects customer plans, processing credentials, billing data, and administrative access.",
-}
+})
 
 const measures = [
   [LockKeyholeIcon, "Private storage", "Original plans and deliverables live in private buckets. Source downloads use ownership-checked links that expire after five minutes."],

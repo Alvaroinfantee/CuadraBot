@@ -15,50 +15,72 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAppFeatures } from "@/lib/app-settings"
 import { requireUser } from "@/lib/auth"
 import { getCustomerWorkspace } from "@/lib/customer-dashboard"
+import {
+  dashboardCopy,
+  formatDashboardNumber,
+  formatUsd,
+  localizeCustomerError,
+  localizedCreditPackName,
+} from "@/lib/dashboard-i18n"
+import { getRequestLocale } from "@/lib/i18n-server"
+import { localizeSubscriptionPlanName } from "@/lib/i18n"
 import { creditPacks, subscriptionPlans } from "@/lib/takeoff-pricing"
 
-export const metadata = { title: "Credits and billing" }
+export async function generateMetadata() {
+  const locale = await getRequestLocale()
+  return { title: dashboardCopy[locale].metadata.billing }
+}
 
 export default async function BillingPage() {
   const user = await requireUser("/dashboard/billing")
-  const [{ credits, subscription }, features] = await Promise.all([
+  const [{ credits, subscription }, features, locale] = await Promise.all([
     getCustomerWorkspace(user.id),
     getAppFeatures(),
+    getRequestLocale(),
   ])
+  const copy = dashboardCopy[locale].billing
 
   return (
     <div className="space-y-10">
       <PageHeader
-        eyebrow="Billing"
-        title="Credits and plans"
-        description="Buy reusable credits or subscribe for a monthly allocation. Plans are optional, there are no seat licenses, and usage is never unlimited."
-        action={subscription ? <BillingPortalButton /> : undefined}
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        action={
+          subscription ? <BillingPortalButton locale={locale} /> : undefined
+        }
       />
 
       {features.maintenance || features.configurationError ? (
         <Alert>
-          <AlertTitle>New purchases are temporarily paused</AlertTitle>
-          <AlertDescription>{features.maintenanceMessage}</AlertDescription>
+          <AlertTitle>{copy.pausedTitle}</AlertTitle>
+          <AlertDescription>
+            {localizeCustomerError(
+              features.maintenanceMessage,
+              locale,
+              copy.pausedBody
+            )}
+          </AlertDescription>
         </Alert>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <BillingMetric
-          label="Available"
-          value={credits.balance.toLocaleString()}
-          note="Ready to reserve"
+          label={copy.available}
+          value={formatDashboardNumber(credits.balance, locale)}
+          note={copy.readyToReserve}
           icon={CoinsIcon}
         />
         <BillingMetric
-          label="Granted all time"
-          value={credits.lifetime_granted.toLocaleString()}
-          note="Packs, plans, and adjustments"
+          label={copy.grantedAllTime}
+          value={formatDashboardNumber(credits.lifetime_granted, locale)}
+          note={copy.grantsNote}
           icon={CreditCardIcon}
         />
         <BillingMetric
-          label="Used all time"
-          value={credits.lifetime_consumed.toLocaleString()}
-          note="Settled takeoffs"
+          label={copy.usedAllTime}
+          value={formatDashboardNumber(credits.lifetime_consumed, locale)}
+          note={copy.settledTakeoffs}
           icon={RefreshCwIcon}
         />
       </div>
@@ -66,10 +88,9 @@ export default async function BillingPage() {
       {features.subscriptions ? (
       <section className="space-y-5">
         <div>
-          <h2 className="text-2xl font-semibold">Monthly plans</h2>
+          <h2 className="text-2xl font-semibold">{copy.monthlyPlans}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Credits grant after each successfully paid invoice. Launch credits
-            do not expire.
+            {copy.monthlyBody}
           </p>
         </div>
         <div className="grid gap-5 lg:grid-cols-3">
@@ -80,36 +101,52 @@ export default async function BillingPage() {
             >
               <CardHeader>
                 <div className="flex items-center justify-between gap-3">
-                  <CardTitle>{plan.name}</CardTitle>
-                  {index === 1 ? <Badge>Most flexible</Badge> : null}
+                  <CardTitle>
+                    {localizeSubscriptionPlanName(
+                      plan.sku,
+                      plan.name,
+                      locale
+                    )}
+                  </CardTitle>
+                  {index === 1 ? <Badge>{copy.mostFlexible}</Badge> : null}
                 </div>
                 <div className="pt-3">
                   <span className="text-3xl font-semibold">
-                    ${(plan.priceCents / 100).toLocaleString()}
+                    {formatUsd(plan.priceCents, locale)}
                   </span>
-                  <span className="text-sm text-muted-foreground"> / month</span>
+                  <span className="text-sm text-muted-foreground">
+                    {" "}
+                    {copy.perMonth}
+                  </span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
                 <ul className="space-y-3 text-sm">
                   <li className="flex gap-2">
                     <CheckIcon className="size-4 text-primary" />
-                    {plan.credits.toLocaleString()} credits each month
+                    {formatDashboardNumber(plan.credits, locale)}{" "}
+                    {copy.creditsEachMonth}
                   </li>
                   <li className="flex gap-2">
                     <CheckIcon className="size-4 text-primary" />
-                    No launch credit expiry
+                    {copy.noExpiry}
                   </li>
                   <li className="flex gap-2">
                     <CheckIcon className="size-4 text-primary" />
-                    Cancel at period end
+                    {copy.cancelAtPeriodEnd}
                   </li>
                 </ul>
                 <CheckoutButton
                   sku={plan.sku}
                   variant={index === 1 ? "default" : "outline"}
+                  locale={locale}
                 >
-                  Choose {plan.name}
+                  {copy.choose}{" "}
+                  {localizeSubscriptionPlanName(
+                    plan.sku,
+                    plan.name,
+                    locale
+                  )}
                 </CheckoutButton>
               </CardContent>
             </Card>
@@ -120,38 +157,46 @@ export default async function BillingPage() {
 
       <section className="space-y-5">
         <div>
-          <h2 className="text-2xl font-semibold">Credit packs</h2>
+          <h2 className="text-2xl font-semibold">{copy.creditPacks}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Best for occasional or seasonal bid volume. Launch credits do not
-            expire.
+            {copy.packsBody}
           </p>
         </div>
         <div className="grid gap-5 lg:grid-cols-3">
           {creditPacks.map((pack) => (
             <Card key={pack.sku}>
               <CardHeader>
-                <CardTitle>{pack.name}</CardTitle>
+                <CardTitle>
+                  {localizedCreditPackName(pack.sku, locale)}
+                </CardTitle>
                 <div className="pt-3">
                   <span className="text-3xl font-semibold">
-                    ${(pack.priceCents / 100).toLocaleString()}
+                    {formatUsd(pack.priceCents, locale)}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     {" "}
-                    one time
+                    {copy.oneTime}
                   </span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="border-y py-4">
                   <p className="text-2xl font-semibold">
-                    {pack.credits.toLocaleString()} credits
+                    {formatDashboardNumber(pack.credits, locale)}{" "}
+                    {dashboardCopy[locale].detail.credits}
                   </p>
                   <p className="mt-1 text-xs text-emerald-700">
-                    Includes {pack.bonus.toLocaleString()} bonus credits
+                    {copy.includes}{" "}
+                    {formatDashboardNumber(pack.bonus, locale)}{" "}
+                    {copy.bonusCredits}
                   </p>
                 </div>
-                <CheckoutButton sku={pack.sku} variant="outline">
-                  Buy {pack.name}
+                <CheckoutButton
+                  sku={pack.sku}
+                  variant="outline"
+                  locale={locale}
+                >
+                  {copy.buy} {localizedCreditPackName(pack.sku, locale)}
                 </CheckoutButton>
               </CardContent>
             </Card>
@@ -160,9 +205,7 @@ export default async function BillingPage() {
       </section>
 
       <div className="border bg-white p-5 text-sm leading-6 text-muted-foreground">
-        Stripe hosts payment collection and the billing portal. Cuadrabot
-        grants internal takeoff credits only after a signed payment webhook;
-        returning from Checkout never grants credits by itself.
+        {copy.stripeNote}
       </div>
     </div>
   )

@@ -1,7 +1,14 @@
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 
-export const metadata = { title: "Refund policy" }
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/refund-policy",
+  title: "Refund policy",
+  description:
+    "Refund terms for Cuadrabot credit packs, subscriptions, and takeoff work.",
+})
 
 export default function RefundPolicyPage() {
   return (

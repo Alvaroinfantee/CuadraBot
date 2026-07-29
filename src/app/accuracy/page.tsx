@@ -9,12 +9,15 @@ import {
 import { CtaBand, PageHero } from "@/components/site/page-hero"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 
-export const metadata = {
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/accuracy",
   title: "Accuracy and validation",
   description:
     "Learn how Cuadrabot preserves plan evidence and validates self-serve outputs before delivery.",
-}
+})
 
 const controls = [
   [RulerIcon, "Input provenance", "SHA-256, actual PDF page count, page selection, and verified source metadata travel with the job."],

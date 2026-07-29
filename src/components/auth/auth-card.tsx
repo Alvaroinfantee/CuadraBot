@@ -1,5 +1,11 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher"
+import {
+  commonCopy,
+  localizedPublicPath,
+  type Locale,
+} from "@/lib/i18n"
 
 export function AuthCard({
   eyebrow,
@@ -7,35 +13,46 @@ export function AuthCard({
   body,
   children,
   footer,
+  locale = "en",
 }: {
   eyebrow: string
   title: string
   body: string
   children: ReactNode
   footer: ReactNode
+  locale?: Locale
 }) {
+  const copy = commonCopy[locale]
   return (
-    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-[#f5f7fa] px-4 py-12">
+    <main
+      lang={locale}
+      className="relative grid min-h-screen place-items-center overflow-hidden bg-[#f5f7fa] px-4 py-12"
+    >
       <div className="absolute inset-0 blueprint-fine-grid opacity-50" />
       <div className="relative grid w-full max-w-5xl overflow-hidden border bg-background shadow-xl lg:grid-cols-[0.82fr_1.18fr]">
         <aside className="hidden border-r bg-[#0b1f3a] p-10 text-white lg:flex lg:flex-col lg:justify-between">
-          <Link href="/" className="text-xl font-semibold">
+          <Link
+            href={localizedPublicPath("/", locale)}
+            className="text-xl font-semibold"
+          >
             Cuadrabot
           </Link>
           <div className="space-y-5">
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-blue-300">
-              Verified bid capacity
+              {copy.auth.eyebrow}
             </p>
             <p className="text-3xl font-semibold leading-tight">
-              From scaled plans to marked quantities in hours.
+              {copy.auth.title}
             </p>
             <p className="text-sm leading-6 text-slate-300">
-              Private plan storage, source-linked counts, automatic validation,
-              and downloadable PDF and Excel evidence.
+              {copy.auth.body}
             </p>
           </div>
         </aside>
         <section className="p-6 sm:p-10 lg:p-14">
+          <div className="mb-6 flex justify-end">
+            <LocaleSwitcher locale={locale} />
+          </div>
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
             {eyebrow}
           </p>

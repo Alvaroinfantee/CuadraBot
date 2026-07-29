@@ -8,15 +8,21 @@ function getPublicKey() {
   )
 }
 
-export async function refreshSupabaseSession(request: NextRequest) {
+export async function refreshSupabaseSession(
+  request: NextRequest,
+  additionalRequestHeaders?: HeadersInit
+) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = getPublicKey()
 
   if (!url || !key) {
-    return NextResponse.next({ request })
+    return responseWithRequestHeaders(request, additionalRequestHeaders)
   }
 
-  let response = NextResponse.next({ request })
+  let response = responseWithRequestHeaders(
+    request,
+    additionalRequestHeaders
+  )
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
@@ -26,7 +32,10 @@ export async function refreshSupabaseSession(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         )
-        response = NextResponse.next({ request })
+        response = responseWithRequestHeaders(
+          request,
+          additionalRequestHeaders
+        )
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options)
         )
@@ -37,4 +46,17 @@ export async function refreshSupabaseSession(request: NextRequest) {
   await supabase.auth.getClaims()
 
   return response
+}
+
+function responseWithRequestHeaders(
+  request: NextRequest,
+  additionalRequestHeaders?: HeadersInit
+) {
+  const headers = new Headers(request.headers)
+  if (additionalRequestHeaders) {
+    new Headers(additionalRequestHeaders).forEach((value, name) => {
+      headers.set(name, value)
+    })
+  }
+  return NextResponse.next({ request: { headers } })
 }

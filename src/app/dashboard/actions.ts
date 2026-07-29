@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireUser } from "@/lib/auth"
+import { dashboardCopy } from "@/lib/dashboard-i18n"
+import { getRequestLocale } from "@/lib/i18n-server"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 
 function field(formData: FormData, name: string) {
@@ -11,7 +13,11 @@ function field(formData: FormData, name: string) {
 }
 
 export async function updateCompanyProfile(formData: FormData) {
-  const user = await requireUser("/dashboard/settings")
+  const [user, locale] = await Promise.all([
+    requireUser("/dashboard/settings"),
+    getRequestLocale(),
+  ])
+  const copy = dashboardCopy[locale].actions
   const fullName = field(formData, "fullName")
   const companyName = field(formData, "companyName")
   const countryCode = field(formData, "countryCode").toUpperCase()
@@ -20,10 +26,10 @@ export async function updateCompanyProfile(formData: FormData) {
   const timezone = field(formData, "timezone")
 
   if (fullName.length < 2 || companyName.length < 2) {
-    throw new Error("Name and company are required.")
+    throw new Error(copy.requiredName)
   }
   if (countryCode && !/^[A-Z]{2}$/.test(countryCode)) {
-    throw new Error("Use a two-letter country code.")
+    throw new Error(copy.countryCode)
   }
 
   const supabase = createSupabaseAdminClient()
@@ -40,7 +46,9 @@ export async function updateCompanyProfile(formData: FormData) {
       last_seen_at: new Date().toISOString(),
     })
     .eq("id", user.id)
-  if (error) throw new Error(error.message)
+  if (error) {
+    throw new Error(locale === "es" ? copy.profileSaveError : error.message)
+  }
 
   await supabase.from("analytics_events").insert({
     user_id: user.id,
@@ -56,9 +64,13 @@ export async function updateCompanyProfile(formData: FormData) {
 export async function requestCorrection(formData: FormData) {
   const jobId = field(formData, "jobId")
   const message = field(formData, "message")
-  const user = await requireUser(`/dashboard/jobs/${jobId}/correction`)
+  const [user, locale] = await Promise.all([
+    requireUser(`/dashboard/jobs/${jobId}/correction`),
+    getRequestLocale(),
+  ])
+  const copy = dashboardCopy[locale].actions
   if (!jobId || message.length < 10 || message.length > 4_000) {
-    throw new Error("Describe the correction in 10 to 4,000 characters.")
+    throw new Error(copy.correctionLength)
   }
 
   const supabase = createSupabaseAdminClient()
@@ -72,13 +84,13 @@ export async function requestCorrection(formData: FormData) {
   )
   if (error || !correctedJob) {
     const errorMessage =
-      error?.message ?? "The correction request could not be saved."
+      error?.message ?? copy.correctionSaveError
     if (errorMessage.includes("active retention operation")) {
-      throw new Error(
-        "Generated files are in an active cleanup operation. Refresh and try again shortly."
-      )
+      throw new Error(copy.cleanupBusy)
     }
-    throw new Error(errorMessage)
+    throw new Error(
+      locale === "es" ? copy.correctionSaveError : errorMessage
+    )
   }
 
   revalidatePath(`/dashboard/jobs/${jobId}`)

@@ -1,13 +1,24 @@
 import type { MetadataRoute } from "next"
 import { getSiteUrl } from "@/lib/config"
 
+const privateRoutePrefixes = [
+  "/admin",
+  "/api",
+  "/auth",
+  "/dashboard",
+  "/demo",
+] as const
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/dashboard/", "/admin/", "/api/", "/demo/"],
+        disallow: privateRoutePrefixes.flatMap((prefix) => [
+          prefix,
+          `/es${prefix}`,
+        ]),
       },
     ],
     sitemap: `${getSiteUrl()}/sitemap.xml`,

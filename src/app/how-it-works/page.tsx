@@ -9,12 +9,15 @@ import {
 import { CtaBand, PageHero } from "@/components/site/page-hero"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 
-export const metadata = {
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/how-it-works",
   title: "How it works",
   description:
     "How Cuadrabot turns scaled PDF plans into self-serve, source-linked takeoff deliverables.",
-}
+})
 
 const stages = [
   ["01", FileUpIcon, "Private upload", "You choose the launch trades, add scope notes, and upload a scaled PDF directly to private object storage."],

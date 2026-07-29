@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
+import { headers } from "next/headers"
 import { Toaster } from "@/components/ui/sonner"
+import { normalizeLocale } from "@/lib/i18n"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -32,10 +34,8 @@ export const metadata: Metadata = {
     "door takeoff",
     "estimating",
   ],
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    url: "/",
     siteName: "Cuadrabot",
     title: "Self-serve construction takeoffs in hours.",
     description:
@@ -62,14 +62,19 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers()
+  const locale = normalizeLocale(
+    requestHeaders.get("x-cuadrabot-locale")
+  )
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

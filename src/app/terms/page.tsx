@@ -1,7 +1,14 @@
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 
-export const metadata = { title: "Terms of service" }
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/terms",
+  title: "Terms of service",
+  description:
+    "Terms governing Cuadrabot accounts, credits, subscriptions, and construction takeoff services.",
+})
 
 export default function TermsPage() {
   return (

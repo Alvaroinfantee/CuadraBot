@@ -4,8 +4,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { getAppFeatures } from "@/lib/app-settings"
 import { getCurrentProfile, requireUser } from "@/lib/auth"
 import { getCustomerWorkspace } from "@/lib/customer-dashboard"
+import {
+  dashboardCopy,
+  localizeCustomerError,
+} from "@/lib/dashboard-i18n"
+import { getRequestLocale } from "@/lib/i18n-server"
 
-export const metadata = { title: "New takeoff" }
+export async function generateMetadata() {
+  const locale = await getRequestLocale()
+  return { title: dashboardCopy[locale].metadata.newTakeoff }
+}
 
 export default async function NewTakeoffPage({
   searchParams,
@@ -13,24 +21,32 @@ export default async function NewTakeoffPage({
   searchParams: Promise<{ mode?: string }>
 }) {
   const user = await requireUser("/dashboard/new")
-  const [workspace, profile, params, features] = await Promise.all([
+  const [workspace, profile, params, features, locale] = await Promise.all([
     getCustomerWorkspace(user.id),
     getCurrentProfile(),
     searchParams,
     getAppFeatures(),
+    getRequestLocale(),
   ])
+  const copy = dashboardCopy[locale].newTakeoff
 
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="New project"
-        title="Upload plans for takeoff"
-        description="Launch scope: flooring and finishes, drywall and ceilings, or doors and openings. Supported sets remain self-serve up to 250 pages."
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
       />
       {features.maintenance || features.configurationError ? (
         <Alert>
-          <AlertTitle>New takeoffs are temporarily paused</AlertTitle>
-          <AlertDescription>{features.maintenanceMessage}</AlertDescription>
+          <AlertTitle>{copy.pausedTitle}</AlertTitle>
+          <AlertDescription>
+            {localizeCustomerError(
+              features.maintenanceMessage,
+              locale,
+              copy.pausedBody
+            )}
+          </AlertDescription>
         </Alert>
       ) : (
         <NewTakeoffForm
@@ -43,6 +59,7 @@ export default async function NewTakeoffPage({
               ? "sample"
               : "standard"
           }
+          locale={locale}
         />
       )}
     </div>

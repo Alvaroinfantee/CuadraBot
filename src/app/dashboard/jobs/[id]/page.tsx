@@ -17,11 +17,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { requireUser } from "@/lib/auth"
 import { getCustomerJob } from "@/lib/customer-dashboard"
+import {
+  dashboardCopy,
+  formatDashboardDate,
+  formatDashboardNumber,
+  formatPlanPages,
+  localizeFailureMessage,
+  localizeJobEvent,
+  localizeJobStage,
+} from "@/lib/dashboard-i18n"
+import { getRequestLocale } from "@/lib/i18n-server"
+import { localizedTradeLabels } from "@/lib/i18n"
 import { isIncludedCorrectionWindowOpen } from "@/lib/project-file-retention"
-import { tradeLabels } from "@/lib/takeoff-types"
 import { cn } from "@/lib/utils"
 
-export const metadata = { title: "Takeoff details" }
+export async function generateMetadata() {
+  const locale = await getRequestLocale()
+  return { title: dashboardCopy[locale].metadata.jobDetails }
+}
 
 export default async function JobDetailPage({
   params,
@@ -30,26 +43,43 @@ export default async function JobDetailPage({
 }) {
   const { id } = await params
   const user = await requireUser(`/dashboard/jobs/${id}`)
-  const { job, files, events, archive } = await getCustomerJob(user.id, id)
+  const [{ job, files, events, archive }, locale] = await Promise.all([
+    getCustomerJob(user.id, id),
+    getRequestLocale(),
+  ])
   if (!job) notFound()
 
+  const copy = dashboardCopy[locale].detail
   const results = files.filter((file) => file.file_role !== "input")
 
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow={job.free_sample ? "Free sample" : "Verified takeoff"}
+        eyebrow={job.free_sample ? copy.freeSample : copy.verifiedTakeoff}
         title={job.project_name}
-        description={`Created ${formatDate(job.created_at)} · ${job.input_page_count ?? "—"} plan pages · ${job.quoted_credits} credits`}
-        action={<JobStatus status={job.status} />}
+        description={`${copy.created} ${formatDashboardDate(
+          job.created_at,
+          locale,
+          true
+        )} · ${
+          job.input_page_count === null
+            ? `— ${copy.planPages}`
+            : formatPlanPages(job.input_page_count, locale)
+        } · ${formatDashboardNumber(job.quoted_credits, locale)} ${
+          copy.credits
+        }`}
+        action={<JobStatus status={job.status} locale={locale} />}
       />
 
       {job.status === "failed" ? (
         <Alert variant="destructive">
-          <AlertTitle>This job needs attention</AlertTitle>
+          <AlertTitle>{copy.attentionTitle}</AlertTitle>
           <AlertDescription>
-            {job.failure_message ??
-              "The processing team has been notified. Reserved credits will be released for system failures."}
+            {localizeFailureMessage({
+              failureCode: job.failure_code,
+              storedMessage: job.failure_message,
+              locale,
+            })}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -58,7 +88,7 @@ export default async function JobDetailPage({
         <div className="space-y-6">
           <Card>
             <CardHeader className="flex-row items-center justify-between gap-4">
-              <CardTitle>Progress</CardTitle>
+              <CardTitle>{copy.progress}</CardTitle>
               <span className="font-mono text-sm text-muted-foreground">
                 {job.progress}%
               </span>
@@ -67,15 +97,15 @@ export default async function JobDetailPage({
               <Progress value={job.progress} />
               <div className="mt-6 grid gap-3 sm:grid-cols-4">
                 {[
-                  ["Plan verified", true],
+                  [copy.planVerified, true],
                   [
-                    "Measured",
+                    copy.measured,
                     ["processing", "needs_review", "completed"].includes(
                       job.status
                     ),
                   ],
-                  ["Output validated", job.status === "completed"],
-                  ["Delivered", job.status === "completed"],
+                  [copy.outputValidated, job.status === "completed"],
+                  [copy.delivered, job.status === "completed"],
                 ].map(([label, done]) => (
                   <div
                     key={String(label)}
@@ -96,7 +126,7 @@ export default async function JobDetailPage({
               </div>
               {job.stage ? (
                 <p className="mt-4 text-sm text-muted-foreground">
-                  Current stage: {job.stage.replaceAll("_", " ")}
+                  {copy.currentStage}: {localizeJobStage(job.stage, locale)}
                 </p>
               ) : null}
             </CardContent>
@@ -104,7 +134,7 @@ export default async function JobDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Deliverables</CardTitle>
+              <CardTitle>{copy.deliverables}</CardTitle>
             </CardHeader>
             <CardContent>
               {results.length ? (
@@ -128,7 +158,7 @@ export default async function JobDetailPage({
                             {file.original_filename}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Verified output
+                            {copy.verifiedOutput}
                           </p>
                         </div>
                         <DownloadIcon className="size-4 text-muted-foreground" />
@@ -139,10 +169,9 @@ export default async function JobDetailPage({
               ) : (
                 <div className="border border-dashed p-8 text-center">
                   <ShieldCheckIcon className="mx-auto size-7 text-primary" />
-                  <p className="mt-3 font-medium">Processing is still in progress</p>
+                  <p className="mt-3 font-medium">{copy.processingTitle}</p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Marked PDF, Excel quantities, source evidence, and
-                    methodology will appear here when processing completes.
+                    {copy.processingBody}
                   </p>
                 </div>
               )}
@@ -153,40 +182,46 @@ export default async function JobDetailPage({
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Scope</CardTitle>
+              <CardTitle>{copy.scope}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Trades
+                  {copy.trades}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(job.trades ?? []).map((trade) => (
                     <Badge key={trade} variant="secondary">
-                      {tradeLabels[trade]}
+                      {localizedTradeLabels[locale][trade]}
                     </Badge>
                   ))}
                 </div>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Instructions
+                  {copy.instructions}
                 </p>
                 <p className="mt-2 leading-6">
-                  {job.customer_notes || "No additional instructions."}
+                  {job.customer_notes || copy.noInstructions}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 border-t pt-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Reserved</p>
+                  <p className="text-xs text-muted-foreground">
+                    {copy.reserved}
+                  </p>
                   <p className="mt-1 font-semibold">
-                    {job.reserved_credits} credits
+                    {formatDashboardNumber(job.reserved_credits, locale)}{" "}
+                    {copy.credits}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Charged</p>
+                  <p className="text-xs text-muted-foreground">
+                    {copy.charged}
+                  </p>
                   <p className="mt-1 font-semibold">
-                    {job.consumed_credits} credits
+                    {formatDashboardNumber(job.consumed_credits, locale)}{" "}
+                    {copy.credits}
                   </p>
                 </div>
               </div>
@@ -196,7 +231,7 @@ export default async function JobDetailPage({
           {archive && archive.status !== "deleted" ? (
             <Card>
               <CardHeader>
-                <CardTitle>Original plan archive</CardTitle>
+                <CardTitle>{copy.originalArchive}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-start gap-3">
@@ -206,25 +241,22 @@ export default async function JobDetailPage({
                       {archive.original_filename}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      {archive.page_count} pages · private source storage ·
-                      checksum registered
+                      {formatPlanPages(archive.page_count, locale)} ·{" "}
+                      {copy.privateArchive} · {copy.checksumRegistered}
                     </p>
                   </div>
                 </div>
                 {archive.status === "deletion_requested" ||
                 archive.status === "deleting" ? (
                   <Alert>
-                    <AlertTitle>Deletion requested</AlertTitle>
-                    <AlertDescription>
-                      Customer download is paused while the approved deletion
-                      workflow is completed.
-                    </AlertDescription>
+                    <AlertTitle>{copy.deletionTitle}</AlertTitle>
+                    <AlertDescription>{copy.deletionBody}</AlertDescription>
                   </Alert>
                 ) : archive.integrity_status === "missing" ? (
                   <Alert variant="destructive">
-                    <AlertTitle>Source temporarily unavailable</AlertTitle>
+                    <AlertTitle>{copy.sourceUnavailableTitle}</AlertTitle>
                     <AlertDescription>
-                      The integrity monitor has alerted support.
+                      {copy.sourceUnavailableBody}
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -236,7 +268,7 @@ export default async function JobDetailPage({
                     )}
                   >
                     <DownloadIcon />
-                    Download original plan
+                    {copy.downloadOriginal}
                   </Link>
                 )}
               </CardContent>
@@ -245,7 +277,7 @@ export default async function JobDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Activity</CardTitle>
+              <CardTitle>{copy.activity}</CardTitle>
             </CardHeader>
             <CardContent>
               <ol className="space-y-4 border-l pl-4">
@@ -253,16 +285,22 @@ export default async function JobDetailPage({
                   <li key={event.id} className="relative text-sm">
                     <span className="absolute -left-[1.31rem] top-1 size-2 rounded-full bg-primary" />
                     <p className="font-medium">
-                      {event.message ?? event.event_type.replaceAll("_", " ")}
+                      {localizeJobEvent({
+                        eventType: event.event_type,
+                        message: event.message,
+                        metadata:
+                          event.metadata as Record<string, unknown> | null,
+                        locale,
+                      })}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDate(event.created_at)}
+                      {formatDashboardDate(event.created_at, locale, true)}
                     </p>
                   </li>
                 ))}
                 {!events.length ? (
                   <li className="text-sm text-muted-foreground">
-                    Activity will appear as the job moves through the queue.
+                    {copy.activityFallback}
                   </li>
                 ) : null}
               </ol>
@@ -280,21 +318,11 @@ export default async function JobDetailPage({
               )}
             >
               <MessageSquareTextIcon />
-              Request included correction
+              {copy.requestCorrection}
             </Link>
           ) : null}
         </div>
       </div>
     </div>
   )
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value))
 }

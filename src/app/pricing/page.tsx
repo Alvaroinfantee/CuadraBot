@@ -14,13 +14,16 @@ import {
   servicePriceCards,
   subscriptionPlans,
 } from "@/lib/takeoff-pricing"
+import { buildLocalizedMetadata } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
-export const metadata = {
+export const metadata = buildLocalizedMetadata({
+  locale: "en",
+  path: "/pricing",
   title: "Pricing",
   description:
     "Fixed construction takeoff service prices, reusable credit packs, and optional monthly plans.",
-}
+})
 
 export default function PricingPage() {
   return (
