@@ -13,7 +13,7 @@ export const projectFileRetentionStatuses = [
 ] as const
 
 export const PROJECT_FILE_RETENTION_DESCRIPTION =
-  "Days to keep tracked customer uploads and generated takeoff files after a job is completed, failed, or canceled."
+  "Days to keep generated deliverables and disposable processing files after a job is completed, failed, or canceled. Verified originals are retained separately."
 
 export type ProjectFileRetentionParseResult =
   | { ok: true; days: number }
@@ -25,7 +25,7 @@ export function parseProjectFileRetentionDays(
   if (typeof value !== "number" || !Number.isInteger(value)) {
     return {
       ok: false,
-      error: "Project-file retention must be a whole number of days.",
+      error: "Generated-file retention must be a whole number of days.",
     }
   }
 
@@ -35,7 +35,7 @@ export function parseProjectFileRetentionDays(
   ) {
     return {
       ok: false,
-      error: `Project-file retention must be between ${MIN_PROJECT_FILE_RETENTION_DAYS} and ${MAX_PROJECT_FILE_RETENTION_DAYS} days.`,
+      error: `Generated-file retention must be between ${MIN_PROJECT_FILE_RETENTION_DAYS} and ${MAX_PROJECT_FILE_RETENTION_DAYS} days.`,
     }
   }
 

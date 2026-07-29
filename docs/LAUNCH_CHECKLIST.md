@@ -25,6 +25,8 @@ operating decisions that cannot be safely guessed or automated.
 - [ ] Schedule `/api/internal/cron/reconcile` every 10 minutes.
 - [ ] Schedule the `GET /api/internal/cron/retention` Vercel Cron once per day;
       confirm Vercel sends `Authorization: Bearer $CRON_SECRET`.
+- [ ] Schedule `GET /api/internal/cron/archive-integrity` once per day and
+      confirm `cuadrabot-archive · source-integrity` remains current.
 - [ ] Confirm the hosting plan supports the configured cron frequencies.
       Vercel Hobby allows only daily schedules, so the 10-minute reconciler
       requires a plan that supports sub-daily cron jobs or an external
@@ -35,6 +37,12 @@ operating decisions that cannot be safely guessed or automated.
       stale or missing.
 - [ ] Run retention once with no eligible files and confirm
       `cuadrabot-retention · project-files` is current and healthy.
+- [ ] Configure an independently encrypted object backup/replica outside the
+      primary Storage failure domain. Database backups do not contain source
+      PDF bytes.
+- [ ] Restore a test source plan from that backup, compare its SHA-256 with
+      `document_archives`, record the restore manifest, and publish backup
+      freshness separately from source-presence health.
 
 ## Stripe Sandbox
 
@@ -68,11 +76,12 @@ operating decisions that cannot be safely guessed or automated.
       confirmed.
 - [ ] Review Terms, Privacy, Refund, data-processing, support, and cancellation
       language with counsel.
-- [ ] Confirm the 24-hour cleanup for abandoned, unqueued uploads and approve
-      the Admin → Settings project-file window (30-day launch default).
-- [ ] Confirm processor working-copy/log cleanup and infrastructure backup
-      expiry match the approved policy; the web retention cron controls only
-      tracked Supabase `takeoff_files` objects and metadata.
+- [ ] Confirm the 24-hour cleanup for abandoned, unverified uploads, approve
+      source-plan retention/erasure handling, and approve the Admin → Settings
+      generated-file window (30-day launch default).
+- [ ] Confirm processor working-copy/log cleanup and database/object-backup
+      expiry match the approved policy. Never describe the source registry as
+      an independent backup.
 - [ ] Review and rehearse
       `docs/DATA_RETENTION_AND_REQUESTS.md`, including identity verification,
       legal holds, export, project-file erasure, account pseudonymization, and
@@ -86,6 +95,21 @@ operating decisions that cannot be safely guessed or automated.
 - [ ] Sign up, confirm email, reset password, sign out, and sign in.
 - [ ] Verify one-company free sample under simultaneous submissions.
 - [ ] Upload a valid PDF; confirm server page count and SHA are stored.
+- [ ] Confirm the original is registered before the job becomes ready, uses an
+      opaque Storage key, appears in Admin → Document archive, and downloads
+      only through a short-lived owner/admin link.
+- [ ] Verify an admin source download is blocked if its audit write fails.
+- [ ] Record a source deletion request, confirm customer access pauses, confirm
+      the requesting admin cannot finalize it, then use a second active admin
+      to remove only the registered path and create the audited tombstone.
+- [ ] Attempt an early deletion while the original signed-upload capability is
+      still live, confirm it is blocked, then confirm deletion succeeds after
+      the two-hour window and that the old token cannot recreate the object.
+- [ ] Run the archive presence task with present, missing, and provider-error
+      fixtures; verify lifecycle holds/requests never change, attempt times
+      advance, health degrades, and missing alerts deduplicate.
+- [ ] Verify a free sample retains the complete original PDF and sends only the
+      chosen one-page `sample.pdf` to the processor.
 - [ ] Reject non-PDF, encrypted, oversized, out-of-range sample page, and
       over-250-page inputs.
 - [ ] Confirm insufficient credits cannot queue work.
@@ -103,8 +127,15 @@ operating decisions that cannot be safely guessed or automated.
 - [ ] Test one correction request and block a second included request.
 - [ ] Verify suspended users cannot submit new work.
 - [ ] Create old test jobs in every terminal state (`completed`, `failed`, and
-      `canceled`), run retention, and verify exact upload/result objects are
-      removed before `takeoff_files` metadata.
+      `canceled`), run retention, and verify exact generated/working objects are
+      removed before `takeoff_files` metadata while archived originals and
+      their registry rows remain.
+- [ ] Confirm `project_files_purged_at` advances after only the archived source
+      remains, so already-clean jobs cannot starve later retention batches.
+- [ ] Crash after free-sample upload but before finalization, expire the job,
+      and verify orphan `sample.pdf` is removed without touching the original.
+- [ ] Simulate an archive-registry query failure and verify retention performs
+      no Storage deletion.
 - [ ] Verify retention does not delete files for `draft`, `awaiting_upload`,
       `ready`, `queued`, `processing`, or `needs_review` jobs, even when those
       jobs are older than the cutoff.
@@ -135,3 +166,5 @@ operating decisions that cannot be safely guessed or automated.
       secret, cron secret, rate-limit secret, and OpenAI key only in managed
       secret storage.
 - [ ] Take a database backup, record the release commit, and document rollback.
+- [ ] Record the separate source-object backup manifest and last successful
+      restore drill; a database-only backup is insufficient.

@@ -115,6 +115,11 @@ export default function DemoDashboardPage() {
                 Marked PDF, Excel workbook, evidence JSON, and methodology are
                 available in the private project page.
               </p>
+              <div className="mt-5 flex items-start gap-2 border border-emerald-300/20 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
+                <ShieldCheckIcon className="mt-0.5 size-4 shrink-0" />
+                Original 25-page plan securely archived with a registered
+                checksum and customer download access.
+              </div>
               <button className="mt-6 w-full border border-white/20 px-4 py-2 text-sm">
                 View deliverables
               </button>

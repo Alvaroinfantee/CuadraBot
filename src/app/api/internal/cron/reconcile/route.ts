@@ -1,5 +1,9 @@
 import { timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
+import {
+  partitionAbandonedUploadObjects,
+  storageObjectKey,
+} from "@/lib/document-archive"
 import { getBearerToken, jsonError } from "@/lib/http"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 
@@ -93,6 +97,7 @@ export async function POST(request: Request) {
     .select("id,user_id")
     .eq("status", "canceled")
     .eq("stage", "upload_expired")
+    .is("upload_cleanup_completed_at", null)
     .order("updated_at", { ascending: true })
     .limit(200)
 
@@ -101,35 +106,54 @@ export async function POST(request: Request) {
   const cleanupJobIds = (cleanupJobs ?? []).map((job) => job.id)
   let deletedUploadObjects = 0
   if (cleanupJobIds.length) {
-    const { data: uploadRows, error: uploadRowsError } = await supabase
-      .from("takeoff_files")
-      .select("id,job_id,user_id,bucket,storage_path")
-      .in("job_id", cleanupJobIds)
-      .eq("file_role", "input")
+    const [uploadResult, archiveResult] = await Promise.all([
+      supabase
+        .from("takeoff_files")
+        .select(
+          "id,job_id,user_id,bucket,storage_path,file_role,verified_at"
+        )
+        .in("job_id", cleanupJobIds)
+        .eq("file_role", "input"),
+      supabase
+        .from("document_archives")
+        .select("job_id,bucket,storage_path")
+        .in("job_id", cleanupJobIds)
+        .neq("status", "deleted"),
+    ])
 
-    if (uploadRowsError) {
+    if (uploadResult.error || archiveResult.error) {
       expirationErrors += 1
     } else {
-      const jobsById = new Map(
-        (cleanupJobs ?? []).map((job) => [job.id, job])
+      const uploadRows = uploadResult.data ?? []
+      const {
+        protectedPaths,
+        deletableObjects: deletableRows,
+      } = partitionAbandonedUploadObjects(
+        uploadRows,
+        (archiveResult.data ?? []).map((archive) => ({
+          ...archive,
+          status: "retained",
+        }))
       )
       const pathsByBucket = new Map<string, Set<string>>()
-      for (const row of uploadRows ?? []) {
+      for (const row of deletableRows) {
         const paths = pathsByBucket.get(row.bucket) ?? new Set<string>()
         paths.add(row.storage_path)
-        paths.add(`${row.user_id}/${row.job_id}/sample.pdf`)
+        const samplePath = `${row.user_id}/${row.job_id}/sample.pdf`
+        if (!protectedPaths.has(storageObjectKey(row.bucket, samplePath))) {
+          paths.add(samplePath)
+        }
         pathsByBucket.set(row.bucket, paths)
       }
       for (const job of cleanupJobs ?? []) {
-        if ((uploadRows ?? []).some((row) => row.job_id === job.id)) continue
-        const paths =
-          pathsByBucket.get(process.env.TAKEOFF_UPLOAD_BUCKET ?? "takeoff-uploads") ??
-          new Set<string>()
-        paths.add(`${job.user_id}/${job.id}/sample.pdf`)
-        pathsByBucket.set(
-          process.env.TAKEOFF_UPLOAD_BUCKET ?? "takeoff-uploads",
-          paths
-        )
+        const bucket =
+          process.env.TAKEOFF_UPLOAD_BUCKET ?? "takeoff-uploads"
+        const samplePath = `${job.user_id}/${job.id}/sample.pdf`
+        if (!protectedPaths.has(storageObjectKey(bucket, samplePath))) {
+          const paths = pathsByBucket.get(bucket) ?? new Set<string>()
+          paths.add(samplePath)
+          pathsByBucket.set(bucket, paths)
+        }
       }
 
       let storageCleanupSucceeded = true
@@ -145,18 +169,30 @@ export async function POST(request: Request) {
         }
       }
 
-      if (storageCleanupSucceeded && uploadRows?.length) {
+      if (storageCleanupSucceeded && deletableRows.length) {
         const { error: metadataDeleteError } = await supabase
           .from("takeoff_files")
           .delete()
           .in(
             "id",
-            uploadRows.map((row) => row.id)
+            deletableRows.map((row) => row.id)
           )
-        if (metadataDeleteError) expirationErrors += 1
+        if (metadataDeleteError) {
+          storageCleanupSucceeded = false
+          expirationErrors += 1
+        }
       }
 
-      void jobsById
+      if (storageCleanupSucceeded) {
+        const { error: markerError } = await supabase
+          .from("takeoff_jobs")
+          .update({ upload_cleanup_completed_at: new Date().toISOString() })
+          .in("id", cleanupJobIds)
+          .eq("status", "canceled")
+          .eq("stage", "upload_expired")
+          .is("upload_cleanup_completed_at", null)
+        if (markerError) expirationErrors += 1
+      }
     }
   }
 

@@ -18,7 +18,15 @@ export function getBearerToken(request: Request) {
 export function sanitizeFilename(filename: string) {
   return filename
     .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^\w.-]+/g, "_")
     .replace(/_+/g, "_")
     .slice(0, 120)
+}
+
+export function sanitizePdfFilename(filename: string) {
+  const sanitized = sanitizeFilename(filename) || "source-plan"
+  return sanitized.toLowerCase().endsWith(".pdf")
+    ? sanitized
+    : `${sanitized}.pdf`
 }

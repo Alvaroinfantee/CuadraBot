@@ -32,9 +32,11 @@ const sections = [
   {
     title: "Accuracy, privacy, and support",
     questions: [
-      ["Is the workflow self-serve?", "Yes. Upload, quote confirmation, measurement, validation, credit settlement, and delivery are automated. Admin review is reserved for correction requests and operational exceptions."],
+      ["Is the workflow self-serve?", "Yes. Upload, quote confirmation, measurement, validation, credit settlement, and delivery are automated. Admin tools are limited to account support, correction requests, and operational exceptions."],
       ["How do I check a quantity?", "Each supported unit carries a stable identifier, page, sheet/area context, method, confidence, and visible coordinates or bounding box. The marked PDF and workbook preserve that trace."],
-      ["Are plans used to train models?", "Not by Cuadrabot without your explicit consent. Plans are processed to provide the ordered service and are stored privately with access controls and retention settings."],
+      ["Are plans used to train models?", "Not by Cuadrabot without your explicit consent. Plans are processed only to provide the service. Verified originals are kept in a private, checksum-backed source archive and generated files follow the published retention controls."],
+      ["How long is my original plan kept?", "A verified original stays in your private source archive while your account is active so you can retrieve it for project history, recovery, support, or a dispute. You can request deletion, subject to identity verification and any legal hold. Unverified uploads are removed after 24 hours."],
+      ["Is source archive storage unlimited?", "No. Without a current qualifying subscription or a fulfilled, non-refunded credit-pack purchase, an account can retain up to 25 verified plans or 512 MiB. Qualifying paid-capacity accounts can retain up to 500 plans or 20 GiB. Existing plans are never silently removed when a limit is reached; contact support to review the account."],
       ["What does the included correction cover?", "One request that stays within the approved trade scope and the originally uploaded plan set. Scope additions, new revisions, or design changes require a new quote."],
     ],
   },

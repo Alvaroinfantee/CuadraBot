@@ -79,7 +79,12 @@ export const requiredServiceChecks = [
   {
     serviceName: "cuadrabot-retention",
     checkName: "project-files",
-    label: "Project-file retention",
+    label: "Generated-file retention",
+  },
+  {
+    serviceName: "cuadrabot-archive",
+    checkName: "source-integrity",
+    label: "Source-plan archive integrity",
   },
 ] as const
 

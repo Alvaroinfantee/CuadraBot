@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { isCurrentCustomerFile } from "@/lib/takeoff-result-visibility"
 import type {
   CreditAccount,
+  DocumentArchive,
   TakeoffFile,
   TakeoffJob,
 } from "@/lib/takeoff-types"
@@ -57,7 +58,7 @@ export const getCustomerWorkspace = cache(async (userId: string) => {
 
 export async function getCustomerJob(userId: string, jobId: string) {
   const supabase = await createSupabaseServerClient()
-  const [jobResult, filesResult, eventsResult] = await Promise.all([
+  const [jobResult, filesResult, eventsResult, archiveResult] = await Promise.all([
     supabase
       .from("takeoff_jobs")
       .select("*")
@@ -75,6 +76,14 @@ export async function getCustomerJob(userId: string, jobId: string) {
       .select("id,event_type,message,metadata,created_at")
       .eq("job_id", jobId)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("document_archives")
+      .select(
+        "id,job_id,user_id,original_filename,mime_type,size_bytes,sha256,page_count,status,integrity_status,archived_at,last_verified_at,last_check_attempt_at,deleted_at"
+      )
+      .eq("job_id", jobId)
+      .eq("user_id", userId)
+      .maybeSingle(),
   ])
 
   const job = jobResult.data as TakeoffJob | null
@@ -86,5 +95,6 @@ export async function getCustomerJob(userId: string, jobId: string) {
     job,
     files,
     events: eventsResult.data ?? [],
+    archive: archiveResult.data as DocumentArchive | null,
   }
 }

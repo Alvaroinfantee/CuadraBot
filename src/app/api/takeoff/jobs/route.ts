@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getAppFeatures } from "@/lib/app-settings"
-import { jsonError, sanitizeFilename } from "@/lib/http"
+import { jsonError } from "@/lib/http"
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth"
 import { takeoffUploadBucket } from "@/lib/config"
 import { consumeTakeoffRateLimit } from "@/lib/request-rate-limit"
@@ -123,8 +123,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const safeName = sanitizeFilename(parsed.data.filename)
-  const storagePath = `${user.id}/${job.id}/${crypto.randomUUID()}-${safeName}`
+  const storagePath = `${user.id}/${job.id}/${crypto.randomUUID()}.pdf`
   const { data: signed, error: signError } = await supabase.storage
     .from(takeoffUploadBucket)
     .createSignedUploadUrl(storagePath, { upsert: false })

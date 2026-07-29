@@ -4,6 +4,8 @@ import {
   AlertTriangleIcon,
   CheckCircle2Icon,
   CircleAlertIcon,
+  FileLock2Icon,
+  ShieldCheckIcon,
 } from "lucide-react"
 import { AdminShell } from "@/components/admin/admin-shell"
 import { AdminHeader, AdminMetric } from "@/components/admin/admin-ui"
@@ -142,6 +144,91 @@ export default function DemoAdminPage() {
           <AdminMetric label="Automation failure rate" value="2.3%" note="Target < 5%" />
           <AdminMetric label="Correction request rate" value="6.8%" note="First-pass acceptance 93.2%" />
         </div>
+
+        <section id="documents" className="scroll-mt-20 space-y-5">
+          <AdminHeader
+            eyebrow="Data protection"
+            title="Secure document archive"
+            body="Every verified original plan is indexed in the database and retained in private object storage, separate from generated-file cleanup."
+          />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <AdminMetric
+              label="Stored source plans"
+              value="1,946"
+              note="Across all customer projects"
+            />
+            <AdminMetric
+              label="Private storage used"
+              value="38.7 GB"
+              note="Original verified PDFs"
+            />
+            <AdminMetric
+              label="Presence confirmed"
+              value="100%"
+              note="Last daily check"
+            />
+            <AdminMetric
+              label="Missing files"
+              value="0"
+              note="No integrity alerts"
+            />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheckIcon className="size-5 text-emerald-600" />
+                Recent archived originals
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                [
+                  "Riverside-retail-plans.pdf",
+                  "Northstar Contractors",
+                  "18 pages · 42.8 MB",
+                  "Retained",
+                ],
+                [
+                  "Pine-Street-A100-A601.pdf",
+                  "Horizon Build Group",
+                  "25 pages · 61.4 MB",
+                  "Retained",
+                ],
+                [
+                  "Calle-Alcala-reforma.pdf",
+                  "Estudio Obra Madrid",
+                  "12 pages · 28.1 MB",
+                  "Legal hold",
+                ],
+              ].map(([filename, customer, detail, status]) => (
+                <div
+                  key={filename}
+                  className="grid gap-3 border p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] md:items-center"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center bg-blue-50 text-blue-700">
+                      <FileLock2Icon className="size-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{filename}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {detail} · SHA-256 registered
+                      </p>
+                    </div>
+                  </div>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {customer}
+                  </p>
+                  <Badge variant="secondary">{status}</Badge>
+                </div>
+              ))}
+              <p className="pt-2 text-xs text-muted-foreground">
+                Live admin downloads use an audited link that expires after
+                five minutes. Preview mode never exposes a real file.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
 
         <Card id="health" className="scroll-mt-20">
           <CardHeader>

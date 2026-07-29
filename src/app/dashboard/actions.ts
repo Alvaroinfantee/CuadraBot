@@ -75,7 +75,7 @@ export async function requestCorrection(formData: FormData) {
       error?.message ?? "The correction request could not be saved."
     if (errorMessage.includes("active retention operation")) {
       throw new Error(
-        "The project files are being archived. Refresh and try again shortly."
+        "Generated files are in an active cleanup operation. Refresh and try again shortly."
       )
     }
     throw new Error(errorMessage)

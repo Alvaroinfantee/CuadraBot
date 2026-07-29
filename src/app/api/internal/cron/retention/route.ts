@@ -2,6 +2,10 @@ import { randomUUID, timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
 import { getBearerToken, jsonError } from "@/lib/http"
 import {
+  partitionRetentionObjects,
+  storageObjectKey,
+} from "@/lib/document-archive"
+import {
   parseProjectFileRetentionDays,
   PROJECT_FILE_RETENTION_SETTING_KEY,
   projectFileRetentionCutoff,
@@ -32,6 +36,14 @@ type ProjectFile = {
   job_id: string
   bucket: string
   storage_path: string
+  file_role: string
+}
+
+type DocumentArchive = {
+  job_id: string
+  bucket: string
+  storage_path: string
+  status: string
 }
 
 type RetentionOutcome = {
@@ -41,6 +53,7 @@ type RetentionOutcome = {
   jobsEligible: number
   jobsSkippedAfterRecheck: number
   filesInspected: number
+  sourceFilesProtected: number
   objectDeleteRequestsSucceeded: number
   metadataRowsDeleted: number
   jobsMarkedPurged: number
@@ -71,6 +84,7 @@ async function runProjectFileRetention(request: Request) {
     jobsEligible: 0,
     jobsSkippedAfterRecheck: 0,
     filesInspected: 0,
+    sourceFilesProtected: 0,
     objectDeleteRequestsSucceeded: 0,
     metadataRowsDeleted: 0,
     jobsMarkedPurged: 0,
@@ -135,19 +149,38 @@ async function runProjectFileRetention(request: Request) {
   if (!claimed.ids.size) return finishRetentionRun(supabase, outcome)
 
   try {
-    const { data: fileData, error: fileError } = await supabase
-      .from("takeoff_files")
-      .select("id,job_id,bucket,storage_path")
-      .in("job_id", [...claimed.ids])
-      .order("created_at", { ascending: true })
-      .limit(MAX_FILES_PER_RUN)
+    const [fileResult, archiveResult] = await Promise.all([
+      supabase
+        .from("takeoff_files")
+        .select("id,job_id,bucket,storage_path,file_role")
+        .in("job_id", [...claimed.ids])
+        .order("created_at", { ascending: true })
+        .limit(MAX_FILES_PER_RUN),
+      supabase
+        .from("document_archives")
+        .select("job_id,bucket,storage_path,status")
+        .in("job_id", [...claimed.ids])
+        .neq("status", "deleted"),
+    ])
 
-    if (fileError) {
+    if (fileResult.error) {
       outcome.failures.push("project_file_query_failed")
+    } else if (archiveResult.error) {
+      outcome.failures.push("document_archive_query_failed")
     } else {
-      const files = (fileData ?? []) as ProjectFile[]
-      outcome.filesInspected = files.length
-      outcome.fileBatchTruncated = files.length === MAX_FILES_PER_RUN
+      const trackedFiles = (fileResult.data ?? []) as ProjectFile[]
+      const archives = (archiveResult.data ?? []) as DocumentArchive[]
+      const {
+        protectedPaths,
+        protectedObjects,
+        deletableObjects: files,
+      } = partitionRetentionObjects(
+        trackedFiles,
+        archives
+      )
+      outcome.filesInspected = trackedFiles.length
+      outcome.sourceFilesProtected = protectedObjects.length
+      outcome.fileBatchTruncated = trackedFiles.length === MAX_FILES_PER_RUN
 
       const byBucket = Map.groupBy(files, (file) => file.bucket)
       for (const [bucket, bucketFiles] of byBucket) {
@@ -188,6 +221,7 @@ async function runProjectFileRetention(request: Request) {
         supabase,
         claimed.ids,
         claimToken,
+        protectedPaths,
         outcome
       )
     }
@@ -245,6 +279,7 @@ async function markFullyPurgedJobs(
   supabase: SupabaseAdmin,
   eligibleJobIds: Set<string>,
   claimToken: string,
+  protectedPaths: Set<string>,
   outcome: RetentionOutcome
 ) {
   if (!eligibleJobIds.size) return
@@ -254,18 +289,24 @@ async function markFullyPurgedJobs(
   for (const batch of chunks(ids, 10)) {
     const checks = await Promise.all(
       batch.map(async (jobId) => {
-        const { count, error } = await supabase
+        const { data, error } = await supabase
           .from("takeoff_files")
-          .select("id", { count: "exact", head: true })
+          .select("bucket,storage_path")
           .eq("job_id", jobId)
-        return { jobId, count, error }
+        const remaining = (data ?? []).some(
+          (file) =>
+            !protectedPaths.has(
+              storageObjectKey(file.bucket as string, file.storage_path as string)
+            )
+        )
+        return { jobId, remaining, error }
       })
     )
 
     for (const check of checks) {
-      if (check.error || check.count === null) {
+      if (check.error) {
         outcome.failures.push("remaining_file_query_failed")
-      } else if (check.count === 0) {
+      } else if (!check.remaining) {
         apparentlyPurged.push(check.jobId)
       }
     }
@@ -329,8 +370,8 @@ async function finishRetentionRun(
       check_name: "project-files",
       status,
       message: outcome.failures.length
-        ? `Project-file retention finished with ${outcome.failures.length} operational issue(s).`
-        : `${outcome.metadataRowsDeleted} tracked project file(s) removed after the configured window.`,
+        ? `Generated-file retention finished with ${outcome.failures.length} operational issue(s).`
+        : `${outcome.metadataRowsDeleted} generated or working file(s) removed after the configured window; ${outcome.sourceFilesProtected} source file(s) protected.`,
       details: {
         retentionDays: outcome.retentionDays,
         cutoff: outcome.cutoff,
@@ -338,6 +379,7 @@ async function finishRetentionRun(
         jobsEligible: outcome.jobsEligible,
         jobsSkippedAfterRecheck: outcome.jobsSkippedAfterRecheck,
         filesInspected: outcome.filesInspected,
+        sourceFilesProtected: outcome.sourceFilesProtected,
         objectDeleteRequestsSucceeded:
           outcome.objectDeleteRequestsSucceeded,
         metadataRowsDeleted: outcome.metadataRowsDeleted,
@@ -355,7 +397,7 @@ async function finishRetentionRun(
   )
 
   if (healthError) {
-    return jsonError("Could not record project-file retention health.", 500)
+    return jsonError("Could not record generated-file retention health.", 500)
   }
 
   return NextResponse.json(
@@ -402,9 +444,9 @@ async function createOrTouchRetentionAlert(
       .from("admin_alerts")
       .update({
         severity: "critical",
-        title: "Project-file retention needs attention",
+        title: "Generated-file retention needs attention",
         message:
-          "One or more tracked project files could not complete the configured retention workflow. No metadata is removed when its Storage deletion fails.",
+          "One or more generated or working files could not complete the configured cleanup. Archived source plans remain protected, and no metadata is removed when Storage deletion fails.",
         occurrence_count: existing.occurrence_count + 1,
         last_seen_at: now,
         metadata,
@@ -417,9 +459,9 @@ async function createOrTouchRetentionAlert(
   const { error } = await supabase.from("admin_alerts").insert({
     severity: "critical",
     category: "system",
-    title: "Project-file retention needs attention",
+    title: "Generated-file retention needs attention",
     message:
-      "One or more tracked project files could not complete the configured retention workflow. No metadata is removed when its Storage deletion fails.",
+      "One or more generated or working files could not complete the configured cleanup. Archived source plans remain protected, and no metadata is removed when Storage deletion fails.",
     status: "open",
     dedupe_key: dedupeKey,
     entity_type: "app_setting",

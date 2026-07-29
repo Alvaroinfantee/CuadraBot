@@ -27,7 +27,8 @@ export default async function AdminJobDetailPage({
 }) {
   const { id } = await params
   const supabase = createSupabaseAdminClient()
-  const [jobResult, profileResult, filesResult, eventsResult] = await Promise.all([
+  const [jobResult, profileResult, filesResult, eventsResult, archiveResult] =
+    await Promise.all([
     supabase.from("takeoff_jobs").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("takeoff_jobs")
@@ -53,12 +54,20 @@ export default async function AdminJobDetailPage({
       .select("*")
       .eq("job_id", id)
       .order("created_at"),
+    supabase
+      .from("document_archives")
+      .select(
+        "id,original_filename,size_bytes,page_count,sha256,status,integrity_status,archived_at"
+      )
+      .eq("job_id", id)
+      .maybeSingle(),
   ])
   const job = jobResult.data
   if (!job) notFound()
   const profile = profileResult.data
   const files = filesResult.data ?? []
   const events = eventsResult.data ?? []
+  const archive = archiveResult.data
   const metrics =
     job.result_summary &&
     typeof job.result_summary === "object" &&
@@ -83,7 +92,39 @@ export default async function AdminJobDetailPage({
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2">
-                {files.map((file) => {
+                {archive ? (
+                  <Link
+                    href={
+                      archive.status !== "deleted" &&
+                      archive.status !== "deleting" &&
+                      archive.integrity_status !== "missing"
+                        ? `/api/admin/documents/${archive.id}/download`
+                        : `/admin/documents/${archive.id}`
+                    }
+                    className="flex items-center gap-3 border border-emerald-200 bg-emerald-50/40 p-4 hover:border-primary"
+                  >
+                    <FileTextIcon className="size-5 text-emerald-700" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {archive.original_filename}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        archived original · {archive.page_count} pages ·{" "}
+                        {archive.integrity_status === "missing"
+                          ? "missing"
+                          : `${archive.sha256.slice(0, 10)}…`}
+                      </p>
+                    </div>
+                    {archive.status !== "deleted" &&
+                    archive.status !== "deleting" &&
+                    archive.integrity_status !== "missing" ? (
+                      <DownloadIcon className="size-4 text-muted-foreground" />
+                    ) : null}
+                  </Link>
+                ) : null}
+                {files
+                  .filter((file) => file.file_role !== "input")
+                  .map((file) => {
                   const spreadsheet = file.original_filename.endsWith(".xlsx")
                   const Icon = spreadsheet ? FileSpreadsheetIcon : FileTextIcon
                   const attemptToken = resultAttemptToken(file.storage_path)
@@ -114,7 +155,7 @@ export default async function AdminJobDetailPage({
                       <DownloadIcon className="size-4 text-muted-foreground" />
                     </Link>
                   )
-                })}
+                  })}
               </div>
             </CardContent>
           </Card>

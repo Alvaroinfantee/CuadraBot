@@ -9,6 +9,7 @@ import {
   BriefcaseBusinessIcon,
   CreditCardIcon,
   FileCheck2Icon,
+  FilesIcon,
   GaugeIcon,
   Globe2Icon,
   HeartPulseIcon,
@@ -33,6 +34,7 @@ const nav = [
   ["/admin", "Overview", GaugeIcon],
   ["/admin/users", "Users & companies", UsersIcon],
   ["/admin/jobs", "Jobs & exceptions", BriefcaseBusinessIcon],
+  ["/admin/documents", "Document archive", FilesIcon],
   ["/admin/billing", "Billing & credits", CreditCardIcon],
   ["/admin/growth", "Funnel & growth", BarChart3Icon],
   ["/admin/geography", "Geography", Globe2Icon],
@@ -74,7 +76,7 @@ export function AdminShell({
             </p>
             <p className="mt-1 truncate text-sm text-slate-200">{adminName}</p>
           </div>
-          <nav className="flex-1 space-y-1 px-3 py-5">
+          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
             {nav.map(([href, label, Icon]) => {
               const target = demo
                 ? href === "/admin"

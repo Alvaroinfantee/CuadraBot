@@ -36,10 +36,13 @@ export default function TermsPage() {
           </Term>
           <Term title="3. Customer materials and instructions">
             You retain ownership of uploaded plans and grant Cuadrabot and its
-            processors the limited rights needed to host, process, review, and
-            deliver the service. You must have permission to provide the
-            materials and must not upload malicious, unlawful, export-
-            restricted, or third-party-confidential content without authority.
+            processors the limited rights needed to privately host, archive,
+            process, and deliver the service, including keeping verified source
+            plans for project history, recovery, support, and disputes as
+            described in the Privacy Policy. You must have permission to
+            provide the materials and must not upload malicious, unlawful,
+            export-restricted, or third-party-confidential content without
+            authority.
           </Term>
           <Term title="4. Scope and verification">
             A fixed quote covers only the selected trade scope, verified pages,

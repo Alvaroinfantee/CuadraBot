@@ -77,8 +77,11 @@ The takeoff SaaS migration creates:
 - one-company free-sample race protection;
 - database-backed request limits, three-outstanding-upload cap, and automatic
   24-hour cleanup for abandoned unqueued uploads;
-- a 30-day launch default for terminal-job project files, configurable from
-  Admin → Settings with a fail-closed scheduled Storage cleanup;
+- a private, checksum-backed registry that retains every verified original
+  plan, including the full source behind a one-page free sample;
+- a 30-day launch default for generated/working files, configurable from
+  Admin → Settings with fail-closed cleanup that excludes archived originals;
+- a bounded daily source-object presence check with admin health and alerts;
 - analytics events, admin alerts, settings, service health, and audit log;
 - explicit grants and tenant RLS policies.
 
@@ -162,25 +165,38 @@ staging only; it is not the production isolation boundary. See
   `Authorization: Bearer $CRON_SECRET`.
 - `/api/internal/cron/retention` removes exact, tracked Storage objects and then
   their `takeoff_files` metadata for old `completed`, `failed`, and `canceled`
-  jobs. Vercel invokes it with `GET` daily at `03:15 UTC`; authenticated manual
-  runs may use `GET` or `POST`. An atomic job lease prevents correction or
-  requeue transitions from racing external Storage deletion. It never deletes
-  job, billing, credit-ledger, analytics, or audit records.
+  jobs, but excludes every exact path protected by `document_archives`. Vercel
+  invokes it with `GET` daily at `03:15 UTC`; authenticated manual runs may use
+  `GET` or `POST`. An atomic job lease prevents correction or requeue
+  transitions from racing external Storage deletion. It never deletes verified
+  originals, job history, billing, credit-ledger, analytics, or audit records.
+- `/api/internal/cron/archive-integrity` checks up to 100 least-recently
+  attempted source objects in concurrent batches each day at `04:15 UTC`. It
+  reports presence—not a fresh checksum calculation—and alerts on missing
+  private objects.
 - The processor exposes private `/healthz` and `/readyz`.
 - The worker publishes expiring poll-loop and processor-readiness reports to
   the application; the reconciler publishes its own expiring report.
 - The retention job publishes an expiring `project-files` health report and a
   deduplicated critical admin alert when configuration, Storage, or metadata
   cleanup fails.
+- The source archive publishes `source-integrity`; Admin → Document archive
+  shows full-population counts, private bytes stored, lifecycle, presence,
+  checksum, customer/project ownership, and audited five-minute downloads.
 - The admin Health page displays service checks, Stripe processing exceptions,
   worker failures, and launch-readiness gaps. Missing required reporters are
   critical, never implicitly healthy.
 
-The launch project-file window is 30 days and can be changed from
-Admin → Settings within a 7–365 day guardrail. The task fails closed if this
-setting is unavailable or invalid. See
+The launch generated-file window is 30 days and can be changed from
+Admin → Settings within a 7–365 day guardrail. It does not change source-plan
+retention. The task fails closed if the setting is unavailable or invalid. See
 [`docs/DATA_RETENTION_AND_REQUESTS.md`](docs/DATA_RETENTION_AND_REQUESTS.md)
 before changing it or handling a data-subject request.
+
+The source registry is retention protection, not an independent PDF backup:
+Supabase database backups do not contain Storage object bytes. Production must
+configure an encrypted object backup/replica and rehearse a SHA-256-verified
+restore before claiming disaster recovery.
 
 ## Verification
 

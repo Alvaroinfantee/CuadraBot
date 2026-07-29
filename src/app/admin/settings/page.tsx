@@ -38,7 +38,7 @@ export default async function AdminSettingsPage() {
       <AdminHeader
         eyebrow="Configuration"
         title="Product settings"
-        body="Manage launch switches and project-file retention without editing code. Every update requires a reason and is written to the audit log."
+        body="Manage launch switches and generated-file retention without editing code. Every update requires a reason and is written to the audit log."
       />
       <Alert>
         <AlertTitle>Settings are not secret storage</AlertTitle>
@@ -51,26 +51,27 @@ export default async function AdminSettingsPage() {
         <Alert variant="destructive">
           <AlertTitle>Retention setting needs attention</AlertTitle>
           <AlertDescription>
-            Scheduled project-file deletion is paused because the setting is
+            Scheduled generated-file deletion is paused because the setting is
             missing or invalid. Saving the form below restores a valid value.
           </AlertDescription>
         </Alert>
       ) : null}
       <Card>
         <CardHeader>
-          <CardTitle>Project-file retention</CardTitle>
+          <CardTitle>Generated-file retention</CardTitle>
           <p className="text-sm leading-6 text-muted-foreground">
-            Keep tracked uploads and generated takeoff files for this many days
-            after a job is completed, failed, or canceled. Active work,
-            customer/account records, billing records, credit history, job
-            history, and audit records are not deleted by this control.
+            Keep processor inputs and generated takeoff deliverables for this
+            many days after a job is completed, failed, or canceled. Verified
+            original plans in the secure source archive are not deleted by this
+            control. Account, billing, credit, job, and audit records are also
+            unaffected.
           </p>
         </CardHeader>
         <CardContent>
           <form action={updateProjectFileRetention} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="project-file-retention-days">
-                Retention window in days
+                Generated-file window in days
               </Label>
               <Input
                 id="project-file-retention-days"
@@ -86,8 +87,9 @@ export default async function AdminSettingsPage() {
                 Allowed range: {MIN_PROJECT_FILE_RETENTION_DAYS}–
                 {MAX_PROJECT_FILE_RETENTION_DAYS} days. Launch default:{" "}
                 {DEFAULT_PROJECT_FILE_RETENTION_DAYS} days. Changes affect the
-                public data-handling commitment and should be approved by the
-                operator responsible for privacy and support.
+                generated-file commitment and should be approved by the
+                operator responsible for privacy and support. Source-plan
+                deletion is a separate, audited request workflow.
               </p>
             </div>
             <div className="space-y-2">

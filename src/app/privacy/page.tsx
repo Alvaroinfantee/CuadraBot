@@ -60,20 +60,23 @@ export default function PrivacyPage() {
         <p>
           Account and billing records are retained while the account is active
           and as required for tax, accounting, dispute, and legal obligations.
-          For tracked takeoff jobs, uploaded plans and generated project files
-          are removed by a scheduled process after the job is completed, failed,
-          or canceled and the operator-configured project-file window has
-          elapsed. Files for active or in-progress jobs are not removed by that
-          schedule. The current project-file window is available through
-          support.
+          Once an uploaded plan passes verification, its original PDF is kept
+          in a private source archive for customer project history, recovery,
+          support, and dispute handling while the account is active. The
+          archive registry records ownership, file size, page count, and a
+          SHA-256 fingerprint. Customers may download their original plan from
+          the project workspace and may request deletion subject to identity
+          verification and any applicable legal hold.
         </p>
         <p>
-          Processor working copies and infrastructure backups follow their own
-          restricted lifecycle and expiry controls. Job history, credit and
-          billing records, security events, and administrative audit records may
-          be retained or de-identified for support, fraud prevention, tax,
-          accounting, dispute, security, and legal needs after project files are
-          removed. A legal hold or other obligation may require a longer period.
+          Unverified or abandoned uploads are removed after 24 hours.
+          Processor working copies and generated deliverables are removed by a
+          scheduled process after the terminal-job retention window has
+          elapsed; the current window is available through support. Provider
+          recovery copies, when enabled, follow a separate restricted and
+          finite lifecycle. Job history, billing, credit, security, and audit
+          records may be retained or de-identified for the purposes above. A
+          legal hold or other obligation may require longer retention.
         </p>
       </PolicySection>
       <PolicySection title="7. Your choices and rights">
@@ -89,10 +92,11 @@ export default function PrivacyPage() {
       <PolicySection title="8. Security and changes">
         <p>
           We use private storage, tenant-level access rules, short-lived signed
-          links, server-only credentials, audit logs, and restricted
-          administrative access. No system is completely secure. We will update
-          this policy when processing materially changes and will post the new
-          effective date.
+          links, server-only credentials, checksum-backed source records,
+          scheduled object-presence checks, audit logs, and restricted
+          administrative access. No system is completely secure. We will
+          update this policy when processing materially changes and will post
+          the new effective date.
         </p>
       </PolicySection>
     </PolicyPage>

@@ -8,6 +8,10 @@
     {
       "path": "/api/internal/cron/retention",
       "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/internal/cron/archive-integrity",
+      "schedule": "15 4 * * *"
     }
   ]
 }

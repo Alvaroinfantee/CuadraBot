@@ -61,6 +61,7 @@ export type TakeoffJob = {
   project_files_purge_token: string | null
   project_files_purge_started_at: string | null
   project_files_purge_expires_at: string | null
+  upload_cleanup_completed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -77,6 +78,27 @@ export type TakeoffFile = {
   size_bytes: number | null
   sha256: string | null
   created_at: string
+}
+
+export type DocumentArchive = {
+  id: string
+  job_id: string
+  user_id: string
+  original_filename: string
+  mime_type: string
+  size_bytes: number
+  sha256: string
+  page_count: number
+  status:
+    | "retained"
+    | "deletion_requested"
+    | "deleting"
+    | "deleted"
+  integrity_status: "verified" | "missing"
+  archived_at: string
+  last_verified_at: string
+  last_check_attempt_at: string
+  deleted_at: string | null
 }
 
 export type CreditAccount = {

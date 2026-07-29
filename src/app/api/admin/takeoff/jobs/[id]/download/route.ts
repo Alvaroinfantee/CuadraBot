@@ -14,12 +14,14 @@ export async function GET(request: Request, context: Context) {
   const supabase = createSupabaseAdminClient()
   const { data: file, error } = await supabase
     .from("takeoff_files")
-    .select("bucket,storage_path")
+    .select("bucket,storage_path,file_role")
     .eq("id", fileId)
     .eq("job_id", id)
     .maybeSingle()
   if (error) return jsonError(error.message, 500)
-  if (!file) return jsonError("File not found.", 404)
+  if (!file || file.file_role === "input") {
+    return jsonError("Use the audited source archive for original plans.", 404)
+  }
 
   const { data, error: signError } = await supabase.storage
     .from(file.bucket)

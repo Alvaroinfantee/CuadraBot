@@ -17,12 +17,12 @@ export const metadata = {
 }
 
 const measures = [
-  [LockKeyholeIcon, "Private storage", "Plan uploads and deliverables live in private buckets with tenant paths and row-level ownership checks."],
+  [LockKeyholeIcon, "Private storage", "Original plans and deliverables live in private buckets. Source downloads use ownership-checked links that expire after five minutes."],
   [KeyRoundIcon, "Short-lived access", "Workers and customers receive signed URLs for a limited purpose and time; buckets are never public."],
   [EyeOffIcon, "Server-only secrets", "Stripe, Supabase service, worker, and processing credentials never use public browser variables."],
   [DatabaseIcon, "Tenant data controls", "Customer reads are limited by row-level security. Trusted service writes use narrowly scoped server code and audited RPCs."],
   [ShieldCheckIcon, "Verified administration", "Admin access requires an authenticated profile role; sensitive changes are recorded in the audit log."],
-  [ClockIcon, "Retention controls", "Inputs and outputs are designed for policy-based deletion, account closure, and data-request workflows."],
+  [ClockIcon, "Archive and retention", "Verified originals have a checksum-backed database record and protected source archive. Generated files, account closure, and deletion requests follow separate controls."],
 ] as const
 
 export default function SecurityPage() {

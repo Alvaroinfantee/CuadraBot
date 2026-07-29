@@ -30,7 +30,7 @@ export default async function JobDetailPage({
 }) {
   const { id } = await params
   const user = await requireUser(`/dashboard/jobs/${id}`)
-  const { job, files, events } = await getCustomerJob(user.id, id)
+  const { job, files, events, archive } = await getCustomerJob(user.id, id)
   if (!job) notFound()
 
   const results = files.filter((file) => file.file_role !== "input")
@@ -192,6 +192,56 @@ export default async function JobDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {archive && archive.status !== "deleted" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Original plan archive</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <ShieldCheckIcon className="mt-0.5 size-5 text-emerald-600" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {archive.original_filename}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {archive.page_count} pages · private source storage ·
+                      checksum registered
+                    </p>
+                  </div>
+                </div>
+                {archive.status === "deletion_requested" ||
+                archive.status === "deleting" ? (
+                  <Alert>
+                    <AlertTitle>Deletion requested</AlertTitle>
+                    <AlertDescription>
+                      Customer download is paused while the approved deletion
+                      workflow is completed.
+                    </AlertDescription>
+                  </Alert>
+                ) : archive.integrity_status === "missing" ? (
+                  <Alert variant="destructive">
+                    <AlertTitle>Source temporarily unavailable</AlertTitle>
+                    <AlertDescription>
+                      The integrity monitor has alerted support.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Link
+                    href={`/api/takeoff/jobs/${job.id}/source`}
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "w-full gap-2"
+                    )}
+                  >
+                    <DownloadIcon />
+                    Download original plan
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>

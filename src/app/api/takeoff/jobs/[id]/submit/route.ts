@@ -145,6 +145,8 @@ export async function POST(request: Request, context: Context) {
   }
 
   const originalStoragePath = sourceFile.storage_path
+  const originalSizeBytes = bytes.byteLength
+  const originalSha256 = createHash("sha256").update(bytes).digest("hex")
   let verifiedStoragePath = originalStoragePath
   let effectivePageCount = originalPageCount
   if (job.free_sample && samplePage) {
@@ -194,6 +196,45 @@ export async function POST(request: Request, context: Context) {
     )
   }
 
+  const { error: archiveError } = await supabase.rpc(
+    "register_verified_document_archive",
+    {
+      p_job_id: job.id,
+      p_user_id: user.id,
+      p_verification_token: verificationToken,
+      p_file_id: sourceFile.id,
+      p_size_bytes: originalSizeBytes,
+      p_sha256: originalSha256,
+      p_page_count: originalPageCount,
+    }
+  )
+  if (archiveError) {
+    await releaseVerification(supabase, job.id, user.id, verificationToken)
+    if (archiveError.message.toLowerCase().includes("archive capacity")) {
+      await supabase.from("admin_alerts").insert({
+        severity: "warning",
+        category: "data",
+        title: "Customer source archive reached capacity",
+        message:
+          "A verified plan could not enter durable source storage because this account reached its archive byte or document limit.",
+        status: "open",
+        dedupe_key: `document-archive-capacity:${user.id}`,
+        entity_type: "profile",
+        entity_id: user.id,
+        user_id: user.id,
+        job_id: job.id,
+        metadata: {
+          requested_size_bytes: originalSizeBytes,
+          requested_page_count: originalPageCount,
+        },
+      })
+    }
+    return jsonError(
+      archiveError.message || "Could not securely archive the source plan.",
+      409
+    )
+  }
+
   if (job.free_sample) {
     verifiedStoragePath = `${user.id}/${job.id}/sample.pdf`
     const { error: sampleUploadError } = await supabase.storage
@@ -233,6 +274,7 @@ export async function POST(request: Request, context: Context) {
         original_page_count: originalPageCount,
         verified_page_count: effectivePageCount,
         pricing_tier: price.tier,
+        source_archive_sha256: originalSha256,
       },
     }
   )
@@ -243,33 +285,6 @@ export async function POST(request: Request, context: Context) {
       finalizeError?.message ?? "Could not finalize plan verification.",
       409
     )
-  }
-
-  if (verifiedStoragePath !== originalStoragePath) {
-    const { error: sourceCleanupError } = await supabase.storage
-      .from(sourceFile.bucket)
-      .remove([originalStoragePath])
-
-    if (sourceCleanupError) {
-      await supabase.from("admin_alerts").insert({
-        severity: "warning",
-        category: "data",
-        title: "Sample source cleanup failed",
-        message:
-          "A sample was prepared successfully, but its original multi-page upload needs storage cleanup.",
-        status: "open",
-        dedupe_key: `sample-source-cleanup:${job.id}`,
-        entity_type: "takeoff_job",
-        entity_id: job.id,
-        user_id: user.id,
-        job_id: job.id,
-        metadata: {
-          bucket: sourceFile.bucket,
-          storage_path: originalStoragePath,
-          error: sourceCleanupError.message,
-        },
-      })
-    }
   }
 
   return NextResponse.json({
