@@ -51,6 +51,7 @@ export default async function JobDetailPage({
 
   const copy = dashboardCopy[locale].detail
   const results = files.filter((file) => file.file_role !== "input")
+  const legendMetrics = readLegendMetrics(job.result_summary)
 
   return (
     <div className="space-y-8">
@@ -177,6 +178,46 @@ export default async function JobDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {legendMetrics ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{copy.legendSummary}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    [copy.legendEntries, legendMetrics.legendEntries],
+                    [copy.mappedPlacements, legendMetrics.countPlacements],
+                    [copy.measuredRuns, legendMetrics.linearRuns],
+                    [copy.unresolvedSymbols, legendMetrics.unresolvedSymbols],
+                  ].map(([label, value]) => (
+                    <div key={String(label)} className="border p-4">
+                      <p className="text-xs text-muted-foreground">
+                        {String(label)}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold">
+                        {formatDashboardNumber(Number(value), locale)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 border-l-2 border-primary pl-4">
+                  <p className="text-sm font-medium">
+                    {copy.legendCoverage}:{" "}
+                    {formatDashboardNumber(
+                      Math.round(legendMetrics.coveragePercent * 10) / 10,
+                      locale
+                    )}
+                    %
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {copy.legendCoverageBody}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
 
         <div className="space-y-6">
@@ -325,4 +366,47 @@ export default async function JobDetailPage({
       </div>
     </div>
   )
+}
+
+function readLegendMetrics(resultSummary: Record<string, unknown>) {
+  const metrics =
+    resultSummary.metrics &&
+    typeof resultSummary.metrics === "object" &&
+    !Array.isArray(resultSummary.metrics)
+      ? (resultSummary.metrics as Record<string, unknown>)
+      : null
+  if (!metrics) return null
+
+  const legendEntries = finiteNonnegative(metrics.legend_entries)
+  const countPlacements = finiteNonnegative(metrics.count_placements)
+  const linearRuns = finiteNonnegative(metrics.linear_runs)
+  const unresolvedSymbols = finiteNonnegative(metrics.unresolved_symbols)
+  const coveragePercent = finiteNonnegative(
+    metrics.legend_coverage_percent
+  )
+
+  if (
+    legendEntries === null ||
+    countPlacements === null ||
+    linearRuns === null ||
+    unresolvedSymbols === null ||
+    coveragePercent === null ||
+    coveragePercent > 100
+  ) {
+    return null
+  }
+
+  return {
+    legendEntries,
+    countPlacements,
+    linearRuns,
+    unresolvedSymbols,
+    coveragePercent,
+  }
+}
+
+function finiteNonnegative(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : null
 }

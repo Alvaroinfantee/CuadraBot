@@ -19,56 +19,56 @@ import { cn } from "@/lib/utils"
 export const metadata = buildLocalizedMetadata({
   locale: "es",
   path: "/sample",
-  title: "Ejemplo de medición",
+  title: "Ejemplo de medición de elementos por leyenda",
   description:
-    "Consulta el PDF marcado, la estructura del libro, las evidencias y el contexto de validación que entrega Cuadrabot.",
+    "Consulta cómo relaciona Cuadrabot una leyenda legible del PDF con recuentos trazables, un plano anotado y un libro de Excel.",
 })
 
 const rows = [
   [
-    "FL-03",
-    "Baldosa porcelánica, 600x600",
-    "A-201",
+    "L-01",
+    "Luminaria LED empotrada",
+    "E-101",
     "Comercial / ventas",
-    "42,60",
-    "m²",
+    "64",
+    "ud.",
     "Alta",
   ],
   [
-    "FL-05",
-    "Moqueta en losetas",
-    "A-201",
-    "Oficina 104",
-    "28,15",
-    "m²",
+    "L-02",
+    "Luminaria lineal suspendida",
+    "E-101",
+    "Cajas",
+    "12",
+    "ud.",
     "Alta",
   ],
   [
-    "PT-01",
-    "Partición de montantes metálicos de 100 mm",
-    "A-201",
-    "Núcleo / pasillo",
-    "18,40",
-    "ml",
+    "R-01",
+    "Toma doble",
+    "E-102",
+    "Comercial / ventas",
+    "58",
+    "ud.",
+    "Alta",
+  ],
+  [
+    "SW-01",
+    "Interruptor unipolar",
+    "E-101",
+    "Zona de servicio",
+    "46",
+    "ud.",
+    "Alta",
+  ],
+  [
+    "FA-01",
+    "Detector de humo",
+    "E-103",
+    "Nivel 01",
+    "18",
+    "ud.",
     "Media",
-  ],
-  [
-    "D-02",
-    "Puerta de una hoja de 900 mm",
-    "A-201",
-    "Zona este",
-    "3",
-    "ud.",
-    "Alta",
-  ],
-  [
-    "W-04",
-    "Hueco acristalado fijo",
-    "A-202",
-    "Alzado norte",
-    "6",
-    "ud.",
-    "Alta",
   ],
 ] as const
 
@@ -79,8 +79,8 @@ export default function SamplePageEs() {
       <main>
         <PageHero
           eyebrow="Ejemplo de medición"
-          title="Consulta las evidencias que respaldan cada número."
-          body="Este ejemplo ilustrativo muestra la estructura de un paquete entregado. Los planos y resultados reales de cada cliente permanecen privados en su espacio de trabajo."
+          title="Comprueba cómo un código de leyenda se convierte en un recuento trazable."
+          body="Este ejemplo eléctrico ilustrativo muestra la leyenda, las ubicaciones correspondientes, la estructura del libro y el contexto de validación automatizada. Los planos reales permanecen privados."
           primary="Crear una muestra gratis"
           secondary="Ver los controles de precisión"
           secondaryHref="/es/accuracy"
@@ -93,9 +93,9 @@ export default function SamplePageEs() {
               <div className="border bg-white p-5 shadow-lg">
                 <div className="flex items-center justify-between border-b pb-4">
                   <div>
-                    <p className="font-semibold">A-201 · Planta nivel 01</p>
+                    <p className="font-semibold">E-101 · Plano de iluminación</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Vista previa marcada · escala 1:100
+                      Leyenda relacionada desde E-001 · vista previa anotada
                     </p>
                   </div>
                   <span className="border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -108,20 +108,20 @@ export default function SamplePageEs() {
                   <div className="absolute left-[34%] top-[68%] w-[66%] border-t border-slate-500" />
                   <Marker
                     className="left-[8%] top-[12%]"
-                    label="FL-03 · 42,60 m²"
+                    label="L-01 · 12 ud."
                   />
                   <Marker
                     className="left-[42%] top-[12%]"
-                    label="FL-05 · 28,15 m²"
+                    label="L-02 · 4 ud."
                   />
                   <Marker
                     className="left-[40%] top-[48%]"
-                    label="PT-01 · 18,40 ml"
+                    label="R-01 · 8 ud."
                     tone="amber"
                   />
                   <Marker
                     className="bottom-[7%] right-[7%]"
-                    label="D-02 · 3 ud."
+                    label="SW-01 · 5 ud."
                     tone="green"
                   />
                 </div>
@@ -129,7 +129,7 @@ export default function SamplePageEs() {
                   <div className="border p-3">
                     <p className="font-semibold">168</p>
                     <p className="mt-1 text-muted-foreground">
-                      Unidades medidas
+                      Ubicaciones contadas
                     </p>
                   </div>
                   <div className="border p-3">
@@ -155,22 +155,22 @@ export default function SamplePageEs() {
                     [
                       FileTextIcon,
                       "PDF del plano anotado",
-                      "Etiquetas y ubicaciones visibles sobre la hoja original.",
+                      "Cada ubicación compatible queda marcada con su código de leyenda y posición visible.",
                     ],
                     [
                       FileSpreadsheetIcon,
                       "Libro de cantidades",
-                      "Filas y resúmenes que se pueden filtrar para los flujos de estimación.",
+                      "Filas filtrables y resúmenes conciliados por código y ubicación del plano.",
                     ],
                     [
                       FileJsonIcon,
                       "Evidencias estructuradas",
-                      "Identificador estable, página, zona, método, confianza, cantidad y geometría.",
+                      "Identificador estable, código de leyenda, página, zona, método, confianza, cantidad y geometría.",
                     ],
                     [
                       CheckCircle2Icon,
-                      "Metodología y validación",
-                      "Supuestos de alcance, métricas de validación y evento de entrega automatizada.",
+                      "Metodología y limitaciones",
+                      "Exclusiones de la leyenda, elementos ambiguos, métricas de validación y evento de entrega automatizada.",
                     ],
                   ].map(([Icon, title, body]) => (
                     <div
@@ -199,7 +199,7 @@ export default function SamplePageEs() {
                 Vista previa del libro
               </p>
               <h2 className="mt-3 text-3xl font-semibold">
-                Filas estructuradas, no un total sin explicación
+                Filas por código de leyenda, no un total sin explicación
               </h2>
             </div>
             <div className="overflow-x-auto border bg-white">
@@ -246,12 +246,12 @@ export default function SamplePageEs() {
         <section className="py-16">
           <div className="mx-auto flex max-w-4xl flex-col items-center px-4 text-center sm:px-6">
             <h2 className="text-3xl font-semibold">
-              Haz la prueba real con tu propio plano.
+              Haz la prueba real con tu propia leyenda legible.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Tu empresa recibe una hoja y una especialidad gratis, con el mismo
-              almacenamiento privado y el mismo control de validación
-              automatizado.
+              Tu empresa recibe una hoja donde sea visible la leyenda aplicable
+              y un alcance de medición gratis, con el mismo almacenamiento
+              privado y el mismo control de validación automatizado.
             </p>
             <Link
               href={localizedAuthPath("/signup", "es")}

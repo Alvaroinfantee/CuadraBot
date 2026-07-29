@@ -35,9 +35,9 @@ const expectedPublicPaths = [
   "/accuracy",
   "/security",
   "/faq",
-  "/flooring-takeoff",
-  "/drywall-takeoff",
-  "/door-window-takeoff",
+  "/fixture-takeoff",
+  "/electrical-takeoff",
+  "/cable-takeoff",
   "/privacy",
   "/terms",
   "/refund-policy",
@@ -356,8 +356,8 @@ test("Spanish shared copy is complete and customer copy avoids banned promises",
   )
 
   const spanishSocialImage = read("src/app/es/opengraph-image.tsx")
-  assert.match(spanishSocialImage, /Mediciones de obra autoservicio en horas\./)
-  assert.match(spanishSocialImage, /Descarga el PDF marcado/)
+  assert.match(spanishSocialImage, /Mediciones guiadas por leyendas en horas\./)
+  assert.match(spanishSocialImage, /Descarga recuentos/)
   assert.doesNotMatch(spanishSocialImage, /Self-serve construction takeoffs/)
 })
 

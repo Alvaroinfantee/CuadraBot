@@ -16,16 +16,16 @@ export const metadata = buildLocalizedMetadata({
   path: "/accuracy",
   title: "Accuracy and validation",
   description:
-    "Learn how Cuadrabot preserves plan evidence and validates self-serve outputs before delivery.",
+    "Learn how Cuadrabot maps readable PDF legends, preserves source evidence, and automatically validates takeoff outputs before delivery.",
 })
 
 const controls = [
-  [RulerIcon, "Input provenance", "SHA-256, actual PDF page count, page selection, and verified source metadata travel with the job."],
+  [RulerIcon, "Legend and input provenance", "The readable legend or schedule, selected scope, source SHA-256, actual page count, and page selection travel with the job."],
   [MapPinIcon, "Visible source location", "Every supported unit includes a page and visible point or bounding box in the defined PDF coordinate system."],
   [BracesIcon, "Stable identifiers", "Unique unit IDs keep workbook rows, structured evidence, and PDF annotations reconcilable."],
-  [FileSearchIcon, "Output validation", "The service rejects malformed schema, mismatched source hashes, duplicate IDs, invalid pages, and missing geometry."],
+  [FileSearchIcon, "Code reconciliation", "Totals reconcile by legend code and location. Legend samples, schedule rows, key plans, and repeated reference views are excluded from installed placements."],
   [ShieldCheckIcon, "Automated release gate", "A job is released only after source, schema, geometry, identifiers, and required artifacts pass validation."],
-  [CheckCircle2Icon, "Correction path", "One in-scope correction request is included, with the original output and event history retained for audit."],
+  [CheckCircle2Icon, "No silent guessing", "Unreadable, conflicting, or unresolved codes and routes are reported as limitations instead of being assigned without evidence."],
 ] as const
 
 export default function AccuracyPage() {
@@ -35,8 +35,8 @@ export default function AccuracyPage() {
       <main>
         <PageHero
           eyebrow="Accuracy and validation"
-          title="A quantity should be easy to trace, challenge, and correct."
-          body="Cuadrabot does not present automation as certainty. It preserves evidence, confidence, assumptions, and machine-checkable validation, while your team retains final estimating judgment."
+          title="Every quantity should trace back to a legend code and plan location."
+          body="Cuadrabot does not present automation as certainty. It preserves source evidence, confidence, assumptions, and machine-checkable validation, while your team retains final estimating judgment."
           secondary="View sample output"
         />
         <section className="border-b py-20">
@@ -63,8 +63,11 @@ export default function AccuracyPage() {
               <ul className="mt-6 space-y-4 text-sm leading-6">
                 {[
                   "Uploaded object is a readable, non-encrypted PDF.",
+                  "The applicable legend or schedule is readable for the selected scope.",
                   "Source SHA and page count match the processing manifest.",
                   "Each unit identifier is unique and has visible geometry.",
+                  "Legend samples and duplicate reference views are not counted as installed placements.",
+                  "Measured cable or conduit runs have a visible route and a stated usable scale.",
                   "Annotations stay on the declared page and visible bounds.",
                   "Required JSON, workbook, methodology, and marked PDF artifacts exist.",
                 ].map((item) => (
@@ -82,6 +85,7 @@ export default function AccuracyPage() {
               <ul className="mt-6 space-y-4 text-sm leading-6 text-muted-foreground">
                 {[
                   "Contract interpretation, addenda, alternates, and bid scope.",
+                  "Resolving symbols or routes that are absent, unreadable, or contradictory in the source documents.",
                   "Waste factors, labor, productivity, means and methods, and pricing.",
                   "Design intent, code compliance, engineering, and permit decisions.",
                   "Final reconciliation against the complete contract document set.",

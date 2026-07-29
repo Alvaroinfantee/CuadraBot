@@ -16,14 +16,14 @@ export const metadata = buildLocalizedMetadata({
   path: "/accuracy",
   title: "Precisión y validación",
   description:
-    "Descubre cómo conserva Cuadrabot las evidencias del plano y valida los resultados autoservicio antes de entregarlos.",
+    "Descubre cómo relaciona Cuadrabot leyendas legibles de planos PDF, conserva las evidencias de origen y valida automáticamente los resultados.",
 })
 
 const controls = [
   [
     RulerIcon,
-    "Procedencia de la entrada",
-    "El SHA-256, el número real de páginas del PDF, la selección de páginas y los metadatos verificados de origen acompañan al trabajo.",
+    "Procedencia de la leyenda y la entrada",
+    "La leyenda o cuadro legible, el alcance seleccionado, el SHA-256, el número real de páginas y la selección de páginas acompañan al trabajo.",
   ],
   [
     MapPinIcon,
@@ -37,8 +37,8 @@ const controls = [
   ],
   [
     FileSearchIcon,
-    "Validación de resultados",
-    "El servicio rechaza esquemas incorrectos, hashes de origen que no coinciden, identificadores duplicados, páginas no válidas y geometría ausente.",
+    "Conciliación por código",
+    "Los totales se concilian por código de leyenda y ubicación. Los ejemplos de leyenda, las filas de cuadros, las plantas clave y las vistas repetidas se excluyen de las instalaciones.",
   ],
   [
     ShieldCheckIcon,
@@ -47,8 +47,8 @@ const controls = [
   ],
   [
     CheckCircle2Icon,
-    "Vía de corrección",
-    "Se incluye una solicitud de corrección dentro del alcance, conservando el resultado original y el historial de eventos para auditoría.",
+    "Sin adivinanzas silenciosas",
+    "Los códigos y recorridos ilegibles, contradictorios o sin resolver se indican como limitaciones en lugar de asignarlos sin evidencias.",
   ],
 ] as const
 
@@ -59,8 +59,8 @@ export default function AccuracyPageEs() {
       <main>
         <PageHero
           eyebrow="Precisión y validación"
-          title="Cada cantidad debe ser fácil de rastrear, cuestionar y corregir."
-          body="Cuadrabot no presenta la automatización como certeza. Conserva evidencias, nivel de confianza, supuestos y validaciones comprobables por máquina, mientras tu equipo mantiene el criterio final de estimación."
+          title="Cada cantidad debe poder rastrearse hasta un código de leyenda y una ubicación del plano."
+          body="Cuadrabot no presenta la automatización como certeza. Conserva evidencias de origen, nivel de confianza, supuestos y validaciones comprobables por máquina, mientras tu equipo mantiene el criterio final de estimación."
           primary="Probar un plano gratis"
           secondary="Ver un ejemplo de entrega"
           locale="es"
@@ -89,8 +89,11 @@ export default function AccuracyPageEs() {
               <ul className="mt-6 space-y-4 text-sm leading-6">
                 {[
                   "El archivo cargado es un PDF legible y sin cifrar.",
+                  "La leyenda o el cuadro aplicable es legible para el alcance seleccionado.",
                   "El SHA de la fuente y el número de páginas coinciden con el manifiesto de procesamiento.",
                   "Cada identificador de unidad es único y cuenta con geometría visible.",
+                  "Los ejemplos de la leyenda y las vistas de referencia duplicadas no se cuentan como instalaciones.",
+                  "Los recorridos medidos de cables o canalizaciones tienen una ruta visible y una escala utilizable indicada.",
                   "Las anotaciones permanecen en la página declarada y dentro de los límites visibles.",
                   "Existen los archivos JSON, el libro, la metodología y el PDF marcado obligatorios.",
                 ].map((item) => (
@@ -108,6 +111,7 @@ export default function AccuracyPageEs() {
               <ul className="mt-6 space-y-4 text-sm leading-6 text-muted-foreground">
                 {[
                   "La interpretación del contrato, las adendas, las alternativas y el alcance de la oferta.",
+                  "La resolución de símbolos o recorridos ausentes, ilegibles o contradictorios en los documentos de origen.",
                   "Los factores de desperdicio, la mano de obra, la productividad, los medios y métodos y los precios.",
                   "La intención de diseño, el cumplimiento normativo, la ingeniería y las decisiones de permisos.",
                   "La conciliación final con el conjunto completo de documentos contractuales.",

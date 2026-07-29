@@ -81,12 +81,16 @@ The input `job` must include:
 - `id`
 - `source_sha256`
 - `original_filename`
-- `instructions`
+- `workflow_kind` (`legend_fixture_takeoff_v1`)
+- `requested_scopes` (`fixture_counts`, `cable_runs`, or both)
+- `customer_instructions`
 - `page_count`
 - `free_sample` (server-owned; never inferred from customer instructions)
 
-The application, not this process, is authoritative for ownership, job
-transitions, storage rows, credit ledgers, and retries.
+The application derives `workflow_kind` and `requested_scopes` from the
+validated database job. Customer notes are carried separately and cannot
+expand that trusted scope. The application, not this process, is authoritative
+for ownership, job transitions, storage rows, credit ledgers, and retries.
 
 While the takeoff service is active, the worker refreshes job progress at
 least once per `WORKER_HEARTBEAT_INTERVAL_MS`. The application should treat

@@ -16,15 +16,15 @@ export const metadata = buildLocalizedMetadata({
   path: "/how-it-works",
   title: "How it works",
   description:
-    "How Cuadrabot turns scaled PDF plans into self-serve, source-linked takeoff deliverables.",
+    "How Cuadrabot turns readable PDF legends into self-serve, source-linked fixture, device, and supported run quantities.",
 })
 
 const stages = [
-  ["01", FileUpIcon, "Private upload", "You choose the launch trades, add scope notes, and upload a scaled PDF directly to private object storage."],
+  ["01", FileUpIcon, "Private upload", "You choose the legend-based categories, add scope notes, and upload a PDF plan set directly to private object storage."],
   ["02", FileCheck2Icon, "Server verification", "Cuadrabot checks the stored object, PDF signature, password protection, file size, and actual page count."],
   ["03", WalletCardsIcon, "Fixed quote", "The verified scope maps to published credits. Nothing is reserved until you approve it."],
-  ["04", ScanSearchIcon, "Automated measurement", "The processing service produces stable unit IDs, locations, quantities, confidence, methodology, workbook, and marked evidence."],
-  ["05", ShieldCheckIcon, "Automated validation", "The service checks the source hash, schema, page locations, identifiers, and required artifacts before release."],
+  ["04", ScanSearchIcon, "Legend mapping and takeoff", "Cuadrabot uses the readable legend as the item catalog, maps supported codes and symbols across eligible sheets, and records one source-linked unit for every installed placement."],
+  ["05", ShieldCheckIcon, "Automated validation", "The service excludes legend samples and repeated reference views, reconciles totals by code and location, and flags unresolved or ambiguous items rather than guessing."],
   ["06", CheckCircle2Icon, "Automatic delivery", "The marked PDF, Excel workbook, source evidence, and methodology appear in your private workspace as soon as processing completes."],
 ] as const
 
@@ -35,8 +35,8 @@ export default function HowItWorksPage() {
       <main>
         <PageHero
           eyebrow="How it works"
-          title="Upload, confirm, and let Cuadrabot do the rest."
-          body="The self-serve workflow keeps pricing, credit movement, processing, validation, and delivery as separate auditable stages."
+          title="Upload the plans, confirm the scope, and let Cuadrabot map the legend."
+          body="The self-serve workflow keeps pricing, credit movement, legend mapping, counting, validation, and delivery as separate auditable stages, with results delivered in hours."
           secondary="See accuracy controls"
           secondaryHref="/accuracy"
         />

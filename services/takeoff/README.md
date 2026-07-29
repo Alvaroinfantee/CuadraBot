@@ -9,6 +9,8 @@
 This service turns a construction drawing PDF into:
 
 - a source-grounded quantity takeoff with one stable ID per placement;
+- a source-backed legend register that every included fixture or measured run
+  must reference;
 - an Excel workbook with the supplied template fields, filters, areas, codes,
   pricing provenance, precomputed values, confidence, and validation notes;
 - an annotated copy of the original PDF, with a visible colored marker at every
@@ -37,7 +39,8 @@ POST /v1/jobs
     +-- job-scoped codex exec workspace and permission profile
     |      |
     |      +-- complete sheet register and deduplication
-    |      +-- object detection / counting and source geometry
+    |      +-- legend extraction and source-bbox registration
+    |      +-- mapped fixture counting and cable/conduit centerline measurement
     |      +-- template-aligned workbook and DOP price matching
     |
     +-- takeoff.json schema and reconciliation checks
@@ -103,8 +106,17 @@ curl -X POST http://127.0.0.1:8000/v1/jobs \
   -F "template_xlsx=@/path/to/takeoff_template.xlsx" \
   -F "price_database_xlsx=@/path/to/dop_prices.xlsx" \
   -F "model=gpt-5.6-sol" \
-  -F "instructions=Measure flooring by room and keep transitions as separate line items."
+  -F "workflowKind=legend_fixture_takeoff_v1" \
+  -F "requestedScopes=fixture_counts" \
+  -F "requestedScopes=cable_runs" \
+  -F "instructions=Include new-work electrical plans; exclude demolition."
 ```
+
+`workflowKind` and repeated `requestedScopes` values are server-owned fields
+supplied by the trusted CuadraBot worker. The processor validates the supported
+workflow and scope values and passes them to the analysis policy separately.
+`instructions` remains normalized customer scope text inside the explicit
+untrusted JSON boundary; it cannot add a scope or change the output contract.
 
 The trusted CuadraBot worker may also send `freeSample=true`. That boolean is a
 server-to-server field, never inferred from customer scope text. It adds a
@@ -154,21 +166,55 @@ are still validated.
 
 ## Input and output contract
 
-Every `assets[]` row in `takeoff.json` must contain:
+The root `takeoff.json` object requires `source`, `legend_entries`, `assets`,
+`unresolved_symbols`, `by_code`, `by_area`, and `limitations`.
 
-- `unit_id`, `code`, and `description`;
+Every `legend_entries[]` row contains a stable `legend_entry_id`, exact code and
+description, source PDF page and sheet, and a tight source bbox in displayed
+PDF coordinates. Every `assets[]` row must reference one of those entries, and
+its code and description must match the legend entry exactly.
+
+Every `assets[]` row contains:
+
+- `unit_id`, `legend_entry_id`, `measurement_kind`, `code`, and `description`;
 - `page`, `sheet`, `area_code`, `area`, and `level`;
 - `method`, `confidence`, and `coordinate_space`;
-- either `x` and `y`, or `bbox`;
 - optional `visible_label`, `notes`, `quantity`, and `unit`.
+
+For `measurement_kind=count`, the row contains either `x` and `y`, or `bbox`,
+and always represents exactly one placement with `quantity=1` and `unit=EA`.
+Aggregated count rows are rejected.
+For `measurement_kind=linear`, it instead contains a centerline `path` of at
+least two displayed-page points plus per-asset `scale_evidence`. Scale evidence
+must come from the same page and sheet and records its source bbox/text,
+`stated_scale` or `calibrated_dimension` method, canonical `m` or `ft` unit, and
+`real_units_per_pdf_point`. Validation recomputes every run as Euclidean path
+length in displayed PDF points multiplied by that factor and rejects a
+non-reconciling quantity.
+
+Every `by_code` and `by_area` summary row carries `measurement_kind` and `unit`
+alongside its code or area dimension. Reconciliation uses that complete
+composite key, so an `EA` fixture count can never be added to a cable length in
+`ft` or `m`, even when both use the same legend code or area.
+
+Observed symbols without a defensible legend match belong in
+`unresolved_symbols` with their source page, sheet, bbox, visible label, reason,
+and low confidence. They are deliberately excluded from `assets`, summaries,
+workbook quantity rows, annotations, and pricing. Any asset geometry that
+overlaps a registered legend exemplar is also rejected.
 
 `coordinate_space` is always `pdf_display_points_top_left`. This keeps the
 geometry independent of the PDF's internal page rotation.
 
 Every generated workbook also contains a `Takeoff` machine-audit sheet with
-one row per `unit_id` and these exact headers: `unit_id`, `code`,
-`description`, `page`, `sheet`, `area_code`, `area`, `level`, `method`,
-`confidence`, `quantity`, and `unit`. Before delivery, the service rejects
+one row per mapped `unit_id` and these required headers: `unit_id`,
+`legend_entry_id`, `measurement_kind`, `code`, `description`, `page`, `sheet`,
+`area_code`, `area`, `level`, `method`, `confidence`, `quantity`, `unit`,
+`path_length_pdf_points`, `scale_kind`, `scale_source_page`,
+`scale_source_sheet`, `scale_source_text`, and
+`scale_real_units_per_pdf_point`. Linear evidence columns must reconcile to
+the JSON contract; count rows leave those columns blank. Before delivery, the
+service rejects
 corrupt or polyglot XLSX files, macros, OLE/embedded objects, external links,
 every formula cell (including DDE and external-reference formulas), obvious
 cell errors, excessive sheet/cell sizes, duplicate IDs, and workbook rows that
@@ -178,10 +224,12 @@ the workbook is written. Workbook defined names are not part of the output
 contract and are rejected, including ordinary named formulas and built-in
 defined names.
 
-The annotated PDF uses colored square annotations instead of painting over the
-source content. Open the Comments/Annotations panel in Acrobat, Preview, or
-another annotation-aware viewer to search unit IDs and inspect the full audit
-note. A page-summary note lists marker counts by code.
+The annotated PDF uses colored square annotations for fixture placements and
+visible colored polyline annotations for cable/conduit runs instead of painting
+over source content. Open the Comments/Annotations panel in Acrobat, Preview,
+or another annotation-aware viewer to search unit IDs and inspect the full
+legend, scale, quantity, and audit note. A page-summary note lists annotation
+counts by code.
 
 ## Security and production deployment
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable
 
 from pypdf import PdfReader, PdfWriter
-from pypdf.annotations import FreeText, Rectangle, Text
+from pypdf.annotations import FreeText, PolyLine, Rectangle, Text
 from pypdf.generic import (
     ArrayObject,
     DictionaryObject,
@@ -74,16 +74,21 @@ def display_top_left_to_pdf(
 
 
 def _asset_display_box(
-    asset: TakeoffAsset, radius: float
+    asset: TakeoffAsset,
+    radius: float,
+    display_width: float,
+    display_height: float,
 ) -> BoundingBox:
     if asset.bbox is not None:
         return asset.bbox
     center = asset.center()
+    center_x = min(max(center.x, 0), display_width)
+    center_y = min(max(center.y, 0), display_height)
     return BoundingBox(
-        x0=center.x - radius,
-        y0=center.y - radius,
-        x1=center.x + radius,
-        y1=center.y + radius,
+        x0=max(0, center_x - radius),
+        y0=max(0, center_y - radius),
+        x1=min(display_width, center_x + radius),
+        y1=min(display_height, center_y + radius),
     )
 
 
@@ -104,6 +109,8 @@ def _pdf_rect(
 def _annotation_contents(asset: TakeoffAsset) -> str:
     parts = [
         f"ID: {asset.unit_id}",
+        f"Legend entry: {asset.legend_entry_id}",
+        f"Measurement: {asset.measurement_kind}",
         f"Code: {asset.code}",
         f"Item: {asset.description}",
         f"Sheet: {asset.sheet}",
@@ -112,7 +119,23 @@ def _annotation_contents(asset: TakeoffAsset) -> str:
         f"Level: {asset.level}",
         f"Method: {asset.method}",
         f"Confidence: {asset.confidence}",
+        f"Quantity: {asset.quantity:g} {asset.unit}",
     ]
+    if asset.measurement_kind == "linear" and asset.scale_evidence is not None:
+        parts.extend(
+            [
+                (
+                    "Displayed path length: "
+                    f"{asset.display_path_length_points():g} PDF points"
+                ),
+                (
+                    "Scale: "
+                    f"{asset.scale_evidence.derived_real_units_per_pdf_point():g} "
+                    f"{asset.scale_evidence.unit}/PDF point"
+                ),
+                f"Scale source: {asset.scale_evidence.source_text}",
+            ]
+        )
     if asset.visible_label:
         parts.append(f"Visible label: {asset.visible_label}")
     if asset.notes:
@@ -134,6 +157,29 @@ def _style_rectangle(
         {
             NameObject("/Type"): NameObject("/Border"),
             NameObject("/W"): FloatObject(1.6),
+            NameObject("/S"): NameObject("/S"),
+        }
+    )
+    return annotation
+
+
+def _style_polyline(
+    annotation: PolyLine,
+    asset: TakeoffAsset,
+    color: str,
+) -> PolyLine:
+    annotation[NameObject("/Contents")] = TextStringObject(
+        _annotation_contents(asset)
+    )
+    annotation[NameObject("/C")] = _hex_to_pdf_color(color)
+    annotation[NameObject("/IC")] = _hex_to_pdf_color(color)
+    annotation[NameObject("/CA")] = FloatObject(0.9)
+    annotation[NameObject("/NM")] = TextStringObject(asset.unit_id)
+    annotation[NameObject("/F")] = NumberObject(4)
+    annotation[NameObject("/BS")] = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/Border"),
+            NameObject("/W"): FloatObject(2.2),
             NameObject("/S"): NameObject("/S"),
         }
     )
@@ -221,7 +267,50 @@ def annotate_pdf(
             writer.add_annotation(page_number - 1, note)
 
         for asset in page_assets:
-            display_box = _asset_display_box(asset, marker_radius)
+            if asset.measurement_kind == "linear":
+                path = asset.path or []
+                if (
+                    len(path) < 2
+                    or any(
+                        point.x > display_width or point.y > display_height
+                        for point in path
+                    )
+                ):
+                    skipped += 1
+                    continue
+                annotation = PolyLine(
+                    vertices=[
+                        display_top_left_to_pdf(page, point.x, point.y)
+                        for point in path
+                    ]
+                )
+                writer.add_annotation(
+                    page_number - 1,
+                    _style_polyline(
+                        annotation,
+                        asset,
+                        color_for_code(asset.code),
+                    ),
+                )
+                annotated += 1
+                continue
+
+            if (
+                asset.x is not None
+                and asset.y is not None
+                and (
+                    asset.x > display_width
+                    or asset.y > display_height
+                )
+            ):
+                skipped += 1
+                continue
+            display_box = _asset_display_box(
+                asset,
+                marker_radius,
+                display_width,
+                display_height,
+            )
             if (
                 display_box.x1 < 0
                 or display_box.y1 < 0

@@ -1,10 +1,23 @@
-export const takeoffTrades = [
+export const legacyTakeoffTrades = [
   "flooring_finishes",
   "drywall_partitions_ceilings",
   "doors_windows_openings",
+  "electrical_fixtures",
+  "other_legend_devices",
+] as const
+
+export const selectableTakeoffTrades = [
+  "fixture_device_counts",
+  "cable_conduit_runs",
+] as const
+
+export const takeoffTrades = [
+  ...legacyTakeoffTrades,
+  ...selectableTakeoffTrades,
 ] as const
 
 export type TakeoffTrade = (typeof takeoffTrades)[number]
+export type SelectableTakeoffTrade = (typeof selectableTakeoffTrades)[number]
 
 export const takeoffJobStatuses = [
   "draft",
@@ -114,4 +127,8 @@ export const tradeLabels: Record<TakeoffTrade, string> = {
   flooring_finishes: "Flooring & finishes",
   drywall_partitions_ceilings: "Drywall, partitions & ceilings",
   doors_windows_openings: "Doors, windows & openings",
+  electrical_fixtures: "Electrical & lighting fixtures",
+  other_legend_devices: "Other legend-coded devices",
+  fixture_device_counts: "Fixture & legend-device counts",
+  cable_conduit_runs: "Cable & conduit runs",
 }

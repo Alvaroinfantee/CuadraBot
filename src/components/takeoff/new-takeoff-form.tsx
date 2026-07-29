@@ -42,7 +42,10 @@ import {
 import { buttonVariants } from "@/components/ui/button"
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 import type { TakeoffPricingTier } from "@/lib/takeoff-pricing"
-import { takeoffTrades, type TakeoffTrade } from "@/lib/takeoff-types"
+import {
+  selectableTakeoffTrades,
+  type SelectableTakeoffTrade,
+} from "@/lib/takeoff-types"
 import { cn } from "@/lib/utils"
 
 type Quote = {
@@ -72,7 +75,7 @@ export function NewTakeoffForm({
     initialMode === "sample" && sampleAvailable ? "sample" : "standard"
   )
   const [projectName, setProjectName] = useState("")
-  const [trades, setTrades] = useState<TakeoffTrade[]>([])
+  const [trades, setTrades] = useState<SelectableTakeoffTrade[]>([])
   const [notes, setNotes] = useState("")
   const [samplePage, setSamplePage] = useState(1)
   const [file, setFile] = useState<File | null>(null)
@@ -115,7 +118,7 @@ export function NewTakeoffForm({
     [file, locale]
   )
 
-  function toggleTrade(trade: TakeoffTrade) {
+  function toggleTrade(trade: SelectableTakeoffTrade) {
     setQuote(null)
     setJobId(null)
     setTrades((current) =>
@@ -329,7 +332,7 @@ export function NewTakeoffForm({
                 {copy.measurePrompt}
               </legend>
               <div className="grid gap-3 sm:grid-cols-3">
-                {takeoffTrades.map((trade) => {
+                {selectableTakeoffTrades.map((trade) => {
                   const selected = trades.includes(trade)
                   return (
                     <label
@@ -354,6 +357,13 @@ export function NewTakeoffForm({
                 })}
               </div>
             </fieldset>
+
+            <Alert>
+              <AlertTitle>{copy.scopeRequirementsTitle}</AlertTitle>
+              <AlertDescription>
+                {copy.scopeRequirementsBody}
+              </AlertDescription>
+            </Alert>
 
             <div className="space-y-2">
               <Label htmlFor="plan-file">{copy.planSet}</Label>

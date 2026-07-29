@@ -37,7 +37,7 @@ export function TradeLanding({
       ? {
           sample: "Ver un ejemplo de entrega",
           included: "Mediciones incluidas",
-          focused: "Un alcance inicial bien definido",
+          focused: "Un alcance bien definido y basado en la leyenda",
           confirm: "Confirma antes de licitar",
           decisions: "Decisiones habituales de alcance",
           evidence: [
@@ -48,13 +48,13 @@ export function TradeLanding({
           ],
           priceTitle: "Los precios autoservicio publicados parten de 49 $.",
           priceBody:
-            "La cantidad verificada de páginas y de especialidades disponibles determina el nivel fijo.",
+            "El número verificado de páginas y de categorías de medición seleccionadas determina el nivel fijo.",
           priceCta: "Ver todos los precios",
         }
       : {
           sample: "View sample output",
           included: "Included measurements",
-          focused: "A focused launch scope",
+          focused: "A focused legend-based scope",
           confirm: "Confirm before bidding",
           decisions: "Common scope decisions",
           evidence: [
@@ -65,7 +65,7 @@ export function TradeLanding({
           ],
           priceTitle: "Published self-serve prices start at $49.",
           priceBody:
-            "The verified PDF page count and number of launch trades set the fixed tier.",
+            "The verified PDF page count and number of selected takeoff categories set the fixed tier.",
           priceCta: "View complete pricing",
         }
   return (

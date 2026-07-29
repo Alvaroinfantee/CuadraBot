@@ -14,7 +14,7 @@ export const metadata = buildLocalizedMetadata({
   path: "/faq",
   title: "Preguntas frecuentes",
   description:
-    "Respuestas sobre el alcance, los precios, los créditos, la precisión, la privacidad y el soporte de Cuadrabot.",
+    "Respuestas sobre las mediciones de elementos, dispositivos, cables y canalizaciones guiadas por leyendas, los precios, la precisión y la privacidad.",
 })
 
 const sections = [
@@ -23,11 +23,23 @@ const sections = [
     questions: [
       [
         "¿Qué mide Cuadrabot?",
-        "La versión inicial autoservicio cubre suelos y acabados, tabiquería/placas de yeso/techos y puertas/ventanas/huecos. En esta versión no se aceptan archivos de especialidades no incluidas.",
+        "El flujo autoservicio cubre equipos eléctricos y luminarias, recorridos compatibles de cables o canalizaciones y otros dispositivos instalados definidos por una leyenda o cuadro legible.",
       ],
       [
-        "¿Qué archivos de planos aceptáis?",
-        "El flujo autoservicio admite un PDF a escala, sin protección por contraseña, de hasta 100 MB y 250 páginas. Los conjuntos de más de 25 páginas usan el nivel fijo Proyecto grande.",
+        "¿Qué archivos de planos funcionan mejor?",
+        "Utiliza un PDF legible, sin contraseña, de hasta 100 MB y 250 páginas, con la leyenda o cuadro aplicable. Los recuentos de elementos no necesitan escala; los recorridos medidos de cables o canalizaciones requieren una ruta visible y una escala utilizable indicada.",
+      ],
+      [
+        "¿Cuadrabot cuenta los símbolos de la propia leyenda?",
+        "No. La leyenda se utiliza como catálogo. Sus ejemplos, las filas de cuadros, las plantas clave y las vistas de referencia repetidas se excluyen de los totales instalados.",
+      ],
+      [
+        "¿Qué ocurre cuando un código o recorrido es ambiguo?",
+        "Los códigos y recorridos ilegibles, contradictorios, ausentes o sin resolver se indican como limitaciones en lugar de adivinarse. Tu equipo decide cómo resolverlos con el conjunto completo de documentos contractuales.",
+      ],
+      [
+        "¿Puede Cuadrabot medir recorridos de cables o canalizaciones?",
+        "Solo cuando la ruta está dibujada de forma visible, la leyenda aplicable es legible y la hoja indica una escala utilizable. Los enlaces esquemáticos o símbolos sin geometría de ruta defendible no se convierten en longitudes mediante supuestos.",
       ],
       [
         "¿Es una oferta final?",
@@ -35,7 +47,7 @@ const sections = [
       ],
       [
         "¿Qué se incluye en la entrega?",
-        "Un PDF de origen marcado, un libro de cantidades en Excel, evidencias estructuradas vinculadas a la fuente, metodología y supuestos, y una solicitud de corrección dentro del alcance.",
+        "Un PDF de origen marcado, un libro de cantidades en Excel con totales por código de leyenda y ubicación, evidencias estructuradas, metodología y limitaciones, y una solicitud de corrección dentro del alcance.",
       ],
     ],
   },
@@ -69,7 +81,7 @@ const sections = [
       ],
       [
         "¿Cómo compruebo una cantidad?",
-        "Cada unidad admitida incluye un identificador estable, página, contexto de plano o zona, método, nivel de confianza y coordenadas visibles o recuadro delimitador. El PDF marcado y el libro conservan esa trazabilidad.",
+        "Cada unidad admitida incluye su código de leyenda, un identificador estable, página, contexto de plano o zona, método, nivel de confianza y coordenadas visibles o recuadro delimitador. El PDF marcado y el libro conservan esa trazabilidad.",
       ],
       [
         "¿Se usan los planos para entrenar modelos?",
@@ -85,7 +97,7 @@ const sections = [
       ],
       [
         "¿Qué cubre la corrección incluida?",
-        "Una solicitud que permanezca dentro del alcance de especialidades aprobado y del conjunto de planos cargado originalmente. Las ampliaciones de alcance, nuevas revisiones o cambios de diseño requieren un nuevo precio.",
+        "Una solicitud que permanezca dentro del alcance basado en leyenda aprobado y del conjunto de planos cargado originalmente. Las ampliaciones de alcance, nuevas revisiones o cambios de diseño requieren un nuevo precio.",
       ],
     ],
   },
@@ -122,8 +134,9 @@ export default function FaqPageEs() {
                 >
                   support@cuadrabot.com
                 </a>{" "}
-                indicando la especialidad, el número aproximado de páginas y la
-                fecha límite. No adjuntes planos confidenciales al correo.
+                indicando la categoría de medición, el número aproximado de
+                páginas y la fecha límite. No adjuntes planos confidenciales
+                al correo.
               </p>
             </div>
             <div className="space-y-10">

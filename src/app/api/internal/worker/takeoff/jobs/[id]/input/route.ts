@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { getClaimedTakeoff } from "@/lib/internal-worker"
 import { jsonError } from "@/lib/http"
+import {
+  requestedScopesForTrades,
+  takeoffWorkflowKind,
+} from "@/lib/takeoff-workflow"
 
 type Context = { params: Promise<{ id: string }> }
 
@@ -31,12 +35,21 @@ export async function GET(request: Request, context: Context) {
     return jsonError(signError?.message ?? "Could not sign the source plan.", 500)
   }
 
+  let requestedScopes
+  try {
+    requestedScopes = requestedScopesForTrades(job.trades)
+  } catch {
+    return jsonError("The takeoff has an unsupported trusted scope.", 409)
+  }
+
   return NextResponse.json({
     job: {
       id: job.id,
       source_sha256: source.sha256,
       original_filename: source.original_filename,
-      instructions: job.instructions,
+      workflow_kind: takeoffWorkflowKind,
+      requested_scopes: requestedScopes,
+      customer_instructions: job.customer_notes ?? "",
       page_count: job.input_page_count,
       free_sample: job.free_sample,
     },

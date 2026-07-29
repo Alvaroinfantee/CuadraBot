@@ -20,40 +20,40 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cuadrabot.com"
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Cuadrabot | Self-serve construction takeoffs",
+    default: "Cuadrabot | Legend-driven fixture takeoffs",
     template: "%s | Cuadrabot",
   },
   description:
-    "Upload scaled PDF plans and receive marked drawings plus Excel quantities in hours.",
+    "Upload PDF plans with a readable legend and receive source-linked fixture, device, and supported cable or conduit quantities in hours.",
   applicationName: "Cuadrabot",
   keywords: [
-    "construction takeoff",
-    "quantity takeoff",
-    "flooring takeoff",
-    "drywall takeoff",
-    "door takeoff",
-    "estimating",
+    "fixture takeoff",
+    "electrical fixture takeoff",
+    "lighting fixture count",
+    "PDF symbol counting",
+    "legend based takeoff",
+    "cable takeoff from PDF",
   ],
   openGraph: {
     type: "website",
     siteName: "Cuadrabot",
-    title: "Self-serve construction takeoffs in hours.",
+    title: "Legend-driven fixture takeoffs in hours.",
     description:
-      "Upload scaled PDF plans and receive marked drawings plus Excel quantities.",
+      "Upload PDF plans with a readable legend and receive source-linked counts, a marked PDF, and Excel quantities.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Cuadrabot source-linked plan takeoff and verified quantity workbook",
+        alt: "Cuadrabot legend-driven fixture takeoff with source-linked evidence",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Self-serve construction takeoffs in hours.",
+    title: "Legend-driven fixture takeoffs in hours.",
     description:
-      "Upload scaled PDF plans and receive marked drawings plus Excel quantities.",
+      "Upload PDF plans with a readable legend and receive source-linked counts, a marked PDF, and Excel quantities.",
     images: ["/opengraph-image"],
   },
   robots: {

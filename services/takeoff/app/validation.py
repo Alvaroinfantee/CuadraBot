@@ -14,7 +14,7 @@ from openpyxl import load_workbook
 from pypdf import PdfReader
 
 from .annotations import displayed_size
-from .models import TakeoffDocument
+from .models import BoundingBox, Point, TakeoffAsset, TakeoffDocument
 
 
 MAX_JSON_BYTES = 50 * 1024**2
@@ -28,6 +28,8 @@ MAX_WORKBOOK_CELLS = 2_000_000
 MAX_CELL_TEXT = 32_767
 REQUIRED_TAKEOFF_HEADERS = (
     "unit_id",
+    "legend_entry_id",
+    "measurement_kind",
     "code",
     "description",
     "page",
@@ -39,6 +41,12 @@ REQUIRED_TAKEOFF_HEADERS = (
     "confidence",
     "quantity",
     "unit",
+    "path_length_pdf_points",
+    "scale_kind",
+    "scale_source_page",
+    "scale_source_sheet",
+    "scale_source_text",
+    "scale_real_units_per_pdf_point",
 )
 SUMMARY_TOTAL_KEYS = (
     "quantity",
@@ -47,6 +55,8 @@ SUMMARY_TOTAL_KEYS = (
     "total",
     "counted_units",
 )
+LINEAR_QUANTITY_REL_TOLERANCE = 1e-4
+LINEAR_QUANTITY_ABS_TOLERANCE = 1e-3
 
 
 class ArtifactValidationError(ValueError):
@@ -203,12 +213,12 @@ def _validate_summary(
     rows: list[dict[str, Any]],
     *,
     dimension_keys: tuple[str, ...],
-    expected: dict[str, float],
+    expected: dict[tuple[str, ...], float],
     label: str,
 ) -> None:
     if expected and not rows:
         raise ArtifactValidationError(f"{label} summary is required")
-    actual: dict[str, float] = {}
+    actual: dict[tuple[str, ...], float] = {}
     for row in rows:
         if len(row) > 50:
             raise ArtifactValidationError(
@@ -235,17 +245,18 @@ def _validate_summary(
                 raise ArtifactValidationError(
                     f"{label} summary contains a non-finite number"
                 )
-        dimension = next(
-            (
-                str(row[key]).strip()
-                for key in dimension_keys
-                if isinstance(row.get(key), str) and str(row[key]).strip()
-            ),
-            None,
-        )
-        if dimension is None or dimension in actual:
+        dimension_values: list[str] = []
+        for key in dimension_keys:
+            value = row.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise ArtifactValidationError(
+                    f"{label} summary is missing dimension {key}"
+                )
+            dimension_values.append(value.strip())
+        dimension = tuple(dimension_values)
+        if dimension in actual:
             raise ArtifactValidationError(
-                f"{label} summary has a missing or duplicate dimension"
+                f"{label} summary has a duplicate dimension"
             )
         actual[dimension] = _summary_value(row)
     if set(actual) != set(expected):
@@ -259,6 +270,110 @@ def _validate_summary(
             raise ArtifactValidationError(
                 f"{label} total for {dimension} does not match assets"
             )
+
+
+def _displayed_page_size(
+    reader: PdfReader,
+    page_number: int,
+    *,
+    label: str,
+) -> tuple[float, float]:
+    if page_number > len(reader.pages):
+        raise ArtifactValidationError(
+            f"{label} references a page outside the PDF"
+        )
+    width, height = displayed_size(reader.pages[page_number - 1])
+    if (
+        not math.isfinite(width)
+        or not math.isfinite(height)
+        or width <= 0
+        or height <= 0
+        or width > 10_000_000
+        or height > 10_000_000
+    ):
+        raise ArtifactValidationError(
+            "source PDF contains invalid page dimensions"
+        )
+    return width, height
+
+
+def _validate_bbox_bounds(
+    bbox: BoundingBox,
+    *,
+    width: float,
+    height: float,
+    label: str,
+) -> None:
+    if bbox.x1 > width or bbox.y1 > height:
+        raise ArtifactValidationError(
+            f"{label} bbox is outside its displayed PDF page"
+        )
+
+
+def _point_in_bbox(point: Point, bbox: BoundingBox) -> bool:
+    return (
+        bbox.x0 <= point.x <= bbox.x1
+        and bbox.y0 <= point.y <= bbox.y1
+    )
+
+
+def _bboxes_intersect(left: BoundingBox, right: BoundingBox) -> bool:
+    return not (
+        left.x1 < right.x0
+        or right.x1 < left.x0
+        or left.y1 < right.y0
+        or right.y1 < left.y0
+    )
+
+
+def _segment_intersects_bbox(
+    start: Point,
+    end: Point,
+    bbox: BoundingBox,
+) -> bool:
+    if _point_in_bbox(start, bbox) or _point_in_bbox(end, bbox):
+        return True
+
+    delta_x = end.x - start.x
+    delta_y = end.y - start.y
+    lower = 0.0
+    upper = 1.0
+    for direction, offset in (
+        (-delta_x, start.x - bbox.x0),
+        (delta_x, bbox.x1 - start.x),
+        (-delta_y, start.y - bbox.y0),
+        (delta_y, bbox.y1 - start.y),
+    ):
+        if math.isclose(direction, 0.0, abs_tol=1e-12):
+            if offset < 0:
+                return False
+            continue
+        ratio = offset / direction
+        if direction < 0:
+            if ratio > upper:
+                return False
+            lower = max(lower, ratio)
+        else:
+            if ratio < lower:
+                return False
+            upper = min(upper, ratio)
+    return lower <= upper
+
+
+def _asset_intersects_bbox(
+    asset: TakeoffAsset,
+    bbox: BoundingBox,
+) -> bool:
+    if asset.bbox is not None:
+        return _bboxes_intersect(asset.bbox, bbox)
+    if asset.x is not None and asset.y is not None:
+        return _point_in_bbox(Point(x=asset.x, y=asset.y), bbox)
+    if asset.path:
+        return any(
+            _segment_intersects_bbox(left, right, bbox)
+            for left, right in zip(asset.path, asset.path[1:])
+        )
+    return False
 
 
 def validate_takeoff_artifact(
@@ -289,48 +404,150 @@ def validate_takeoff_artifact(
             "takeoff.json page_count does not match the uploaded PDF"
         )
 
+    legend_boxes_by_page: dict[int, list[BoundingBox]] = defaultdict(list)
+    for entry in takeoff.legend_entries:
+        width, height = _displayed_page_size(
+            reader,
+            entry.page,
+            label=f"legend entry {entry.legend_entry_id}",
+        )
+        _validate_bbox_bounds(
+            entry.bbox,
+            width=width,
+            height=height,
+            label=f"legend entry {entry.legend_entry_id}",
+        )
+        legend_boxes_by_page[entry.page].append(entry.bbox)
+
+    for symbol in takeoff.unresolved_symbols:
+        width, height = _displayed_page_size(
+            reader,
+            symbol.page,
+            label=f"unresolved symbol {symbol.unresolved_symbol_id}",
+        )
+        _validate_bbox_bounds(
+            symbol.bbox,
+            width=width,
+            height=height,
+            label=f"unresolved symbol {symbol.unresolved_symbol_id}",
+        )
+
     unit_ids: set[str] = set()
-    by_code: dict[str, float] = defaultdict(float)
-    by_area_code: dict[str, float] = defaultdict(float)
+    by_code: dict[tuple[str, str, str, str, str], float] = defaultdict(
+        float
+    )
+    by_area_code: dict[
+        tuple[str, str, str, str, str, str],
+        float,
+    ] = defaultdict(float)
     for asset in takeoff.assets:
         if asset.unit_id in unit_ids:
             raise ArtifactValidationError(
                 "takeoff.json contains duplicate unit_id values"
             )
         unit_ids.add(asset.unit_id)
-        if asset.page > actual_pages:
-            raise ArtifactValidationError(
-                f"{asset.unit_id} references a page outside the PDF"
-            )
-        width, height = displayed_size(reader.pages[asset.page - 1])
-        if (
-            not math.isfinite(width)
-            or not math.isfinite(height)
-            or width <= 0
-            or height <= 0
-            or width > 10_000_000
-            or height > 10_000_000
-        ):
-            raise ArtifactValidationError(
-                "source PDF contains invalid page dimensions"
-            )
+        width, height = _displayed_page_size(
+            reader,
+            asset.page,
+            label=asset.unit_id,
+        )
         if asset.bbox is not None:
-            if asset.bbox.x1 > width or asset.bbox.y1 > height:
-                raise ArtifactValidationError(
-                    f"{asset.unit_id} bbox is outside its displayed PDF page"
-                )
+            _validate_bbox_bounds(
+                asset.bbox,
+                width=width,
+                height=height,
+                label=asset.unit_id,
+            )
         elif asset.x is not None and asset.y is not None:
             if asset.x > width or asset.y > height:
                 raise ArtifactValidationError(
                     f"{asset.unit_id} point is outside its displayed PDF page"
                 )
-        asset.center()
-        by_code[asset.code] += asset.quantity
-        by_area_code[asset.area_code] += asset.quantity
+        elif asset.path:
+            for index, point in enumerate(asset.path):
+                if point.x > width or point.y > height:
+                    raise ArtifactValidationError(
+                        f"{asset.unit_id} path point {index} is outside its "
+                        "displayed PDF page"
+                    )
+            evidence = asset.scale_evidence
+            if evidence is None:
+                raise ArtifactValidationError(
+                    f"{asset.unit_id} is missing scale evidence"
+                )
+            if evidence.page != asset.page or evidence.sheet != asset.sheet:
+                raise ArtifactValidationError(
+                    f"{asset.unit_id} scale evidence must come from the same "
+                    "source page and sheet"
+                )
+            evidence_width, evidence_height = _displayed_page_size(
+                reader,
+                evidence.page,
+                label=f"{asset.unit_id} scale evidence",
+            )
+            _validate_bbox_bounds(
+                evidence.bbox,
+                width=evidence_width,
+                height=evidence_height,
+                label=f"{asset.unit_id} scale evidence",
+            )
+            expected_quantity = (
+                asset.display_path_length_points()
+                * evidence.derived_real_units_per_pdf_point()
+            )
+            if not math.isclose(
+                asset.quantity,
+                expected_quantity,
+                rel_tol=LINEAR_QUANTITY_REL_TOLERANCE,
+                abs_tol=LINEAR_QUANTITY_ABS_TOLERANCE,
+            ):
+                raise ArtifactValidationError(
+                    f"{asset.unit_id} quantity does not match deterministic "
+                    "path-length times scale"
+                )
+        else:
+            raise ArtifactValidationError(
+                f"{asset.unit_id} has no supported geometry"
+            )
+
+        if any(
+            _asset_intersects_bbox(asset, legend_box)
+            for legend_box in legend_boxes_by_page.get(asset.page, [])
+        ):
+            raise ArtifactValidationError(
+                f"{asset.unit_id} overlaps a legend exemplar and cannot enter "
+                "takeoff totals"
+            )
+
+        by_code[
+            (
+                asset.legend_entry_id,
+                asset.code,
+                asset.description,
+                asset.measurement_kind,
+                asset.unit,
+            )
+        ] += asset.quantity
+        by_area_code[
+            (
+                asset.area_code,
+                asset.legend_entry_id,
+                asset.code,
+                asset.description,
+                asset.measurement_kind,
+                asset.unit,
+            )
+        ] += asset.quantity
 
     _validate_summary(
         takeoff.by_code,
-        dimension_keys=("code",),
+        dimension_keys=(
+            "legend_entry_id",
+            "code",
+            "description",
+            "measurement_kind",
+            "unit",
+        ),
         expected=dict(by_code),
         label="by_code",
     )
@@ -339,17 +556,43 @@ def validate_takeoff_artifact(
     ):
         _validate_summary(
             takeoff.by_area,
-            dimension_keys=("area_code",),
+            dimension_keys=(
+                "area_code",
+                "legend_entry_id",
+                "code",
+                "description",
+                "measurement_kind",
+                "unit",
+            ),
             expected=dict(by_area_code),
             label="by_area",
         )
     else:
-        by_area: dict[str, float] = defaultdict(float)
+        by_area: dict[
+            tuple[str, str, str, str, str, str],
+            float,
+        ] = defaultdict(float)
         for asset in takeoff.assets:
-            by_area[asset.area] += asset.quantity
+            by_area[
+                (
+                    asset.area,
+                    asset.legend_entry_id,
+                    asset.code,
+                    asset.description,
+                    asset.measurement_kind,
+                    asset.unit,
+                )
+            ] += asset.quantity
         _validate_summary(
             takeoff.by_area,
-            dimension_keys=("area",),
+            dimension_keys=(
+                "area",
+                "legend_entry_id",
+                "code",
+                "description",
+                "measurement_kind",
+                "unit",
+            ),
             expected=dict(by_area),
             label="by_area",
         )
@@ -610,6 +853,8 @@ def validate_workbook_artifact(
             )
 
         text_fields = (
+            "legend_entry_id",
+            "measurement_kind",
             "code",
             "description",
             "sheet",
@@ -650,6 +895,79 @@ def validate_workbook_artifact(
                 value = row[headers[field]]
                 if not isinstance(value, str) or value.strip() != str(
                     getattr(asset, field)
+                ):
+                    raise ArtifactValidationError(
+                        f"Takeoff sheet {field} differs for {unit_id}"
+                    )
+            linear_fields = (
+                "path_length_pdf_points",
+                "scale_kind",
+                "scale_source_page",
+                "scale_source_sheet",
+                "scale_source_text",
+                "scale_real_units_per_pdf_point",
+            )
+            if asset.measurement_kind == "count":
+                if any(
+                    row[headers[field]] not in (None, "")
+                    for field in linear_fields
+                ):
+                    raise ArtifactValidationError(
+                        f"Takeoff sheet count row contains linear evidence "
+                        f"for {unit_id}"
+                    )
+                continue
+
+            evidence = asset.scale_evidence
+            if evidence is None:
+                raise ArtifactValidationError(
+                    f"Takeoff sheet linear evidence is unavailable for "
+                    f"{unit_id}"
+                )
+            numeric_fields = {
+                "path_length_pdf_points": (
+                    asset.display_path_length_points()
+                ),
+                "scale_real_units_per_pdf_point": (
+                    evidence.derived_real_units_per_pdf_point()
+                ),
+            }
+            for field, expected_value in numeric_fields.items():
+                value = row[headers[field]]
+                if (
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(float(value))
+                    or not math.isclose(
+                        float(value),
+                        expected_value,
+                        rel_tol=LINEAR_QUANTITY_REL_TOLERANCE,
+                        abs_tol=LINEAR_QUANTITY_ABS_TOLERANCE,
+                    )
+                ):
+                    raise ArtifactValidationError(
+                        f"Takeoff sheet {field} differs for {unit_id}"
+                    )
+            scale_page = row[headers["scale_source_page"]]
+            if (
+                isinstance(scale_page, bool)
+                or not isinstance(scale_page, (int, float))
+                or int(scale_page) != scale_page
+                or int(scale_page) != evidence.page
+            ):
+                raise ArtifactValidationError(
+                    f"Takeoff sheet scale_source_page differs for {unit_id}"
+                )
+            expected_scale_text = {
+                "scale_kind": evidence.kind,
+                "scale_source_sheet": evidence.sheet,
+                "scale_source_text": evidence.source_text,
+            }
+            for field, expected_value in expected_scale_text.items():
+                value = row[headers[field]]
+                if (
+                    not isinstance(value, str)
+                    or value.strip() != str(expected_value)
                 ):
                     raise ArtifactValidationError(
                         f"Takeoff sheet {field} differs for {unit_id}"

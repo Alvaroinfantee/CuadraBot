@@ -17,8 +17,8 @@ export default function DemoNewTakeoffPage() {
         </div>
         <PageHeader
           eyebrow="New project preview"
-          title="Upload plans for takeoff"
-          description="Test the scope, file, quote, and confirmation states without creating data or consuming credits."
+          title="Upload a legend-based plan set"
+          description="Test the category, PDF, fixed-quote, and confirmation states for fixture, device, and supported cable or conduit takeoffs without creating data or consuming credits."
         />
         <div className="mt-8">
           <DemoTakeoffForm />

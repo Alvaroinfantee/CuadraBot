@@ -23,21 +23,21 @@ const jobs = [
     id: "demo-1",
     name: "Riverside retail fit-out",
     status: "queued" as const,
-    detail: "18 pages · 3 trades · queued now",
+    detail: "18 pages · both legend-based outputs · queued now",
     progress: 10,
   },
   {
     id: "demo-2",
     name: "North Loop office",
     status: "processing" as const,
-    detail: "10 pages · flooring · 99 credits",
+    detail: "10 pages · electrical fixtures · 99 credits",
     progress: 62,
   },
   {
     id: "demo-3",
     name: "Pine Street apartments",
     status: "completed" as const,
-    detail: "25 pages · doors and openings · delivered Jul 26",
+    detail: "25 pages · legend-coded devices · delivered Jul 26",
     progress: 100,
   },
 ] as const
@@ -63,7 +63,7 @@ export default function DemoDashboardPage() {
         <PageHeader
           eyebrow="Customer workspace"
           title="Your takeoff desk"
-          description="Submit scaled plans, follow automated processing, then download source-linked quantities."
+          description="Submit PDF plans with readable legends, follow automated code mapping and counting, then download source-linked quantities in hours."
           action={
             <Link
               href="/demo/new"

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/**/*.test.ts",
     "check": "npm run test && npm run lint && npm run typecheck && npm run build",
+    "test:accounts:provision": "tsx scripts/provision-test-accounts.ts",
     "worker": "tsx worker/src/index.ts"
   },
   "dependencies": {

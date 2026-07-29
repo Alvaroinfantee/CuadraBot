@@ -1,8 +1,9 @@
 # Cuadrabot
 
 Self-serve, takeoff-only construction SaaS. Customers create an account,
-upload scaled PDF plans, approve a server-verified fixed credit quote, and
-receive a validated marked PDF plus structured quantities in hours.
+upload PDF plans with a readable legend, approve a server-verified fixed
+credit quote, and receive a validated annotated PDF plus source-linked
+quantities in hours.
 
 The repository contains three deployable processes:
 
@@ -15,11 +16,20 @@ The repository contains three deployable processes:
 
 ## Product boundaries
 
-Launch self-serve scopes are:
+Launch self-serve scopes mirror the processor's two capabilities:
 
-- flooring and finishes;
-- drywall, partitions, and ceilings;
-- doors, windows, and openings.
+- fixture and installed-device counts defined by a readable legend or
+  schedule, including electrical and lighting fixtures;
+- cable and conduit runs where the route is visible and the plan states a
+  usable scale.
+
+The legend is used as the item catalog. Legend samples, schedule rows, key
+plans, and repeated reference views are excluded from installed-placement
+totals. Unresolved or ambiguous codes and routes are reported as limitations
+rather than guessed. Historical jobs retain their legacy scope identifiers for
+display and audit continuity. Obsolete flooring, drywall, and opening jobs fail
+closed instead of being reinterpreted by the fixture processor; new customer
+jobs can select only the two processor-distinct scopes above.
 
 Successful processing validates the required artifacts, settles reserved
 credits, and releases deliverables automatically. `needs_review` is reserved
@@ -94,6 +104,20 @@ where email = 'owner@example.com';
 ```
 
 Do not expose `SUPABASE_SECRET_KEY` to the browser.
+
+For local or dedicated-sandbox acceptance testing, Cuadrabot includes an
+explicit, idempotent test-account bootstrap. It creates a primary admin and a
+Spanish customer, can add a second admin for dual-control archive deletion,
+and tops up the customer through the audited credit RPC:
+
+```bash
+npm run test:accounts:provision
+```
+
+Credentials are read from the ignored `.env.local` file and are never printed
+or committed. The command refuses production and requires an explicit,
+project-ref-matched approval before it can target remote Supabase. See
+[`docs/TEST_ACCOUNTS.md`](docs/TEST_ACCOUNTS.md) for setup and verification.
 
 ## Stripe Sandbox
 

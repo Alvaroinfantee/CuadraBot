@@ -22,7 +22,7 @@ export const metadata = buildLocalizedMetadata({
   path: "/pricing",
   title: "Pricing",
   description:
-    "Fixed construction takeoff service prices, reusable credit packs, and optional monthly plans.",
+    "Fixed prices for self-serve legend-driven fixture, device, and supported cable or conduit takeoffs, plus credits and optional plans.",
 })
 
 export default function PricingPage() {
@@ -36,11 +36,12 @@ export default function PricingPage() {
               Transparent pricing
             </p>
             <h1 className="mt-4 max-w-4xl text-5xl font-semibold tracking-tight sm:text-6xl">
-              Buy verified bid capacity, not another seat license.
+              Buy legend-driven takeoff capacity, not another seat license.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Start with one sheet free. Every paid job receives a fixed credit
-              quote after the uploaded PDF and page count are verified.
+              Start with one sheet that shows a readable legend free. Every
+              paid job receives a fixed credit quote after the uploaded PDF,
+              page count, and selected scopes are verified.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -71,7 +72,7 @@ export default function PricingPage() {
                   Per takeoff
                 </p>
                 <h2 className="mt-3 text-3xl font-semibold">
-                  Fixed self-serve scopes
+                  Fixed self-serve legend scopes
                 </h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-muted-foreground">
@@ -99,7 +100,7 @@ export default function PricingPage() {
                   <ul className="mt-6 space-y-3 border-t pt-5 text-sm">
                     {[
                       "Marked PDF",
-                      "Excel quantities",
+                      "Excel quantities by legend code",
                       "Automated validation",
                       "One correction",
                     ].map((item) => (
@@ -122,7 +123,7 @@ export default function PricingPage() {
                 Optional monthly plans
               </p>
               <h2 className="mt-3 text-3xl font-semibold">
-                Predictable credits for repeat bid volume
+                Predictable credits for repeat takeoff volume
               </h2>
               <p className="mt-3 max-w-2xl text-muted-foreground">
                 Monthly credits grant after each paid invoice and never become

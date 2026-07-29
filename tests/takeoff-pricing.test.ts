@@ -6,14 +6,14 @@ import {
   subscriptionPlans,
 } from "../src/lib/takeoff-pricing"
 
-const flooring = ["flooring_finishes"] as const
+const fixtureCounts = ["fixture_device_counts"] as const
 
 describe("takeoff pricing", () => {
   it("grants a zero-credit one-sheet sample only when available", () => {
     const price = getTakeoffPrice({
       mode: "sample",
       pageCount: 1,
-      trades: [...flooring],
+      trades: [...fixtureCounts],
       freeSampleAvailable: true,
       firstPaidAvailable: true,
     })
@@ -25,7 +25,7 @@ describe("takeoff pricing", () => {
     const price = getTakeoffPrice({
       mode: "sample",
       pageCount: 1,
-      trades: [...flooring],
+      trades: [...fixtureCounts],
       freeSampleAvailable: false,
       firstPaidAvailable: true,
     })
@@ -37,7 +37,7 @@ describe("takeoff pricing", () => {
       getTakeoffPrice({
         mode: "standard",
         pageCount: 5,
-        trades: [...flooring],
+        trades: [...fixtureCounts],
         freeSampleAvailable: false,
         firstPaidAvailable: true,
       }).credits,
@@ -50,7 +50,7 @@ describe("takeoff pricing", () => {
       getTakeoffPrice({
         mode: "standard",
         pageCount: 10,
-        trades: [...flooring],
+        trades: [...fixtureCounts],
         freeSampleAvailable: false,
         firstPaidAvailable: false,
       }).tier,
@@ -60,7 +60,7 @@ describe("takeoff pricing", () => {
       getTakeoffPrice({
         mode: "standard",
         pageCount: 25,
-        trades: [...flooring],
+        trades: [...fixtureCounts],
         freeSampleAvailable: false,
         firstPaidAvailable: false,
       }).tier,
@@ -68,14 +68,13 @@ describe("takeoff pricing", () => {
     )
   })
 
-  it("uses multi-trade pricing through 25 pages", () => {
+  it("uses multi-scope pricing through 25 pages", () => {
     const price = getTakeoffPrice({
       mode: "standard",
       pageCount: 25,
       trades: [
-        "flooring_finishes",
-        "drywall_partitions_ceilings",
-        "doors_windows_openings",
+        "fixture_device_counts",
+        "cable_conduit_runs",
       ],
       freeSampleAvailable: false,
       firstPaidAvailable: false,
@@ -88,7 +87,7 @@ describe("takeoff pricing", () => {
     const price = getTakeoffPrice({
       mode: "standard",
       pageCount: 26,
-      trades: [...flooring],
+      trades: [...fixtureCounts],
       freeSampleAvailable: false,
       firstPaidAvailable: false,
     })

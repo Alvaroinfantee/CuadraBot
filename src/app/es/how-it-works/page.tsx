@@ -16,7 +16,7 @@ export const metadata = buildLocalizedMetadata({
   path: "/how-it-works",
   title: "Cómo funciona",
   description:
-    "Cómo convierte Cuadrabot planos PDF a escala en entregables de medición autoservicio vinculados a la fuente.",
+    "Cómo convierte Cuadrabot leyendas legibles de planos PDF en cantidades autoservicio de elementos, dispositivos y recorridos compatibles vinculadas al origen.",
 })
 
 const stages = [
@@ -24,7 +24,7 @@ const stages = [
     "01",
     FileUpIcon,
     "Carga privada",
-    "Elige las especialidades disponibles, añade notas sobre el alcance y sube un PDF a escala directamente al almacenamiento privado.",
+    "Elige las categorías basadas en leyenda, añade notas sobre el alcance y sube un juego de planos PDF directamente al almacenamiento privado.",
   ],
   [
     "02",
@@ -41,14 +41,14 @@ const stages = [
   [
     "04",
     ScanSearchIcon,
-    "Medición automatizada",
-    "El servicio de procesamiento genera identificadores estables, ubicaciones, cantidades, nivel de confianza, metodología, libro de cálculo y planos marcados.",
+    "Mapeo de leyenda y medición",
+    "Cuadrabot utiliza la leyenda legible como catálogo, relaciona códigos y símbolos compatibles en las hojas válidas y registra una unidad vinculada al plano por cada ubicación instalada.",
   ],
   [
     "05",
     ShieldCheckIcon,
     "Validación automatizada",
-    "Antes de liberar la entrega, el servicio comprueba el hash de la fuente, el esquema, las ubicaciones por página, los identificadores y los archivos obligatorios.",
+    "El servicio excluye ejemplos de leyenda y vistas de referencia repetidas, concilia totales por código y ubicación y señala lo ambiguo o sin resolver en lugar de adivinarlo.",
   ],
   [
     "06",
@@ -65,8 +65,8 @@ export default function HowItWorksPageEs() {
       <main>
         <PageHero
           eyebrow="Cómo funciona"
-          title="Sube, confirma y deja que Cuadrabot haga el resto."
-          body="El flujo autoservicio mantiene como etapas separadas y auditables el precio, los movimientos de créditos, el procesamiento, la validación y la entrega."
+          title="Sube los planos, confirma el alcance y deja que Cuadrabot relacione la leyenda."
+          body="El flujo autoservicio mantiene como etapas separadas y auditables el precio, los movimientos de créditos, el mapeo de leyenda, el recuento, la validación y la entrega en horas."
           primary="Probar un plano gratis"
           secondary="Ver los controles de precisión"
           secondaryHref="/es/accuracy"

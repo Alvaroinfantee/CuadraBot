@@ -3,6 +3,40 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: "/flooring-takeoff",
+        destination: "/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/drywall-takeoff",
+        destination: "/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/door-window-takeoff",
+        destination: "/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/es/flooring-takeoff",
+        destination: "/es/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/es/drywall-takeoff",
+        destination: "/es/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/es/door-window-takeoff",
+        destination: "/es/fixture-takeoff",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

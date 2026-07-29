@@ -36,25 +36,25 @@ import { cn } from "@/lib/utils"
 export const metadata = buildLocalizedMetadata({
   locale: "es",
   path: "/",
-  title: "Mediciones de obra autoservicio",
+  title: "Conteo de elementos en planos PDF",
   description:
-    "Sube planos PDF a escala y recibe en cuestión de horas planos marcados y cantidades en Excel.",
+    "Sube planos PDF con una leyenda legible y recibe en horas cantidades de elementos, dispositivos y recorridos compatibles vinculadas al origen.",
   keywords: [
-    "mediciones de obra",
-    "cómputo de cantidades",
-    "medición de suelos",
-    "medición de tabiquería",
-    "recuento de puertas",
-    "estimación de obra",
+    "conteo de elementos en planos",
+    "medición de instalaciones eléctricas",
+    "conteo de luminarias",
+    "conteo de símbolos PDF",
+    "medición basada en leyenda",
+    "medición de cableado",
   ],
 })
 
 const steps = [
   {
     icon: FileUpIcon,
-    title: "Sube planos a escala",
+    title: "Sube planos con leyenda",
     body:
-      "Elige una o varias especialidades disponibles y sube de forma privada un conjunto de planos en PDF.",
+      "Elige uno o varios alcances basados en leyenda y sube de forma privada un juego de planos en PDF.",
   },
   {
     icon: FileSearchIcon,
@@ -64,9 +64,9 @@ const steps = [
   },
   {
     icon: SparklesIcon,
-    title: "Cuadrabot mide los planos",
+    title: "Cuadrabot relaciona y cuenta",
     body:
-      "El flujo extrae cantidades, ubicaciones, nivel de confianza y supuestos vinculados a la fuente.",
+      "El flujo lee la leyenda, relaciona códigos y símbolos compatibles y registra cada ubicación vinculada al origen.",
   },
   {
     icon: DownloadIcon,
@@ -83,25 +83,25 @@ const tradeCards: Array<{
   body: string
 }> = [
   {
-    href: "/flooring-takeoff",
+    href: "/electrical-takeoff",
     code: "01",
-    title: "Suelos y acabados",
+    title: "Equipos eléctricos y luminarias",
     body:
-      "Superficies, perímetros, códigos de acabado, asignación por estancia y anotaciones vinculadas al plano.",
+      "Luminarias, dispositivos, equipos y ubicaciones vinculadas al origen por código y zona.",
   },
   {
-    href: "/drywall-takeoff",
+    href: "/cable-takeoff",
     code: "02",
-    title: "Tabiquería, placas de yeso y techos",
+    title: "Recorridos de cables y canalizaciones",
     body:
-      "Recorridos de particiones, tipos de muro, superficies de techo y referencias trazables en los planos.",
+      "Recorridos visibles compatibles medidos solo cuando la leyenda es legible y el plano indica una escala utilizable.",
   },
   {
-    href: "/door-window-takeoff",
+    href: "/fixture-takeoff",
     code: "03",
-    title: "Puertas, ventanas y huecos",
+    title: "Otros dispositivos codificados",
     body:
-      "Recuentos por tipo, etiquetas visibles, ubicaciones por página y cuadros de huecos.",
+      "Recuentos repetibles de símbolos instalados compatibles; los códigos ambiguos o sin resolver se señalan, no se adivinan.",
   },
 ]
 
@@ -115,15 +115,16 @@ export default function HomePageEs() {
           <div className="relative mx-auto grid min-h-[680px] w-full max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
             <div>
               <Badge variant="outline" className="mb-6 bg-white">
-                Cantidades de obra verificadas
+                Mediciones guiadas por la leyenda
               </Badge>
               <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl">
-                Mediciones de obra autoservicio en cuestión de horas.
+                Cuenta elementos de tus planos PDF en cuestión de horas.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-                Sube planos PDF a escala. Prueba gratis la medición de una hoja
-                real, aprueba un precio fijo y recibe planos marcados y
-                cantidades en Excel, sin comprar software de mediciones.
+                Sube un juego de planos con una leyenda legible. Cuadrabot
+                relaciona cada código compatible con el plano, cuenta cada
+                ubicación y entrega un PDF anotado y un Excel mediante un flujo
+                totalmente autoservicio.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -165,10 +166,10 @@ export default function HomePageEs() {
         <section className="border-b bg-[#0b1f3a] text-white">
           <div className="mx-auto grid max-w-7xl divide-y divide-white/10 px-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6 lg:px-8">
             {[
-              ["En horas", "Plazo automatizado para los alcances disponibles"],
+              ["En horas", "Entrega autoservicio automatizada"],
               [
-                "3 especialidades",
-                "Cobertura autoservicio bien definida en el lanzamiento",
+                "Vinculado a la leyenda",
+                "Códigos, símbolos y ubicaciones visibles en el plano",
               ],
               ["PDF + XLSX", "Evidencias y cantidades que puedes conservar"],
             ].map(([value, label]) => (
@@ -184,8 +185,8 @@ export default function HomePageEs() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionIntro
               eyebrow="Cómo funciona"
-              title="Una cadena clara desde el plano hasta la cantidad."
-              body="El flujo autoservicio verifica, mide, valida y entrega automáticamente. Cada elemento contado permanece vinculado a evidencias visibles del plano."
+              title="Una cadena clara desde la leyenda hasta cada ubicación."
+              body="El flujo autoservicio verifica, relaciona, cuenta, valida y entrega automáticamente. Los ejemplos de la leyenda y las vistas de referencia repetidas se excluyen de los totales instalados."
             />
             <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
               {steps.map((step, index) => {
@@ -215,9 +216,9 @@ export default function HomePageEs() {
         <section className="border-b bg-[#f5f7fa] py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionIntro
-              eyebrow="Alcance de lanzamiento"
-              title="Creado para las especialidades que necesitan recuentos repetibles."
-              body="Un alcance bien definido facilita entender los precios, las evidencias, la validación y el plazo. Los conjuntos mayores siguen siendo autoservicio mediante un nivel fijo para proyectos grandes."
+              eyebrow="Alcance basado en leyenda"
+              title="Creado para elementos, dispositivos y recorridos que se puedan justificar."
+              body="Una leyenda legible define el catálogo. Para recorridos de cable o canalización se necesita una ruta visible y una escala indicada. Todo lo ambiguo se informa como limitación en lugar de adivinarse."
             />
             <div className="mt-12 grid gap-5 lg:grid-cols-3">
               {tradeCards.map((trade) => (
@@ -234,7 +235,7 @@ export default function HomePageEs() {
                     {trade.body}
                   </p>
                   <span className="mt-8 flex items-center gap-2 text-sm font-medium text-primary">
-                    Explorar este alcance
+                    Explorar esta categoría
                     <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1" />
                   </span>
                 </Link>
@@ -247,30 +248,30 @@ export default function HomePageEs() {
           <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
             <SectionIntro
               eyebrow="Qué recibes"
-              title="Cantidades acompañadas de las evidencias necesarias para comprobarlas."
-              body="El producto útil no es una hoja de cálculo misteriosa, sino un paquete revisable que permite rastrear qué se ha contado y dónde."
+              title="Cantidades por código de leyenda con evidencias comprobables."
+              body="El producto útil no es un total misterioso, sino un paquete revisable que permite rastrear cada ubicación contada hasta su código y posición en el plano."
             />
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 [
                   RulerIcon,
                   "PDF del plano marcado",
-                  "Cada unidad admitida está vinculada a su página y ubicación visible.",
+                  "Cada ubicación admitida está vinculada a su página, código de leyenda y posición visible.",
                 ],
                 [
                   FileSpreadsheetIcon,
                   "Libro de cantidades en Excel",
-                  "Cantidades estructuradas listas para revisar, filtrar e incorporar a los costes.",
+                  "Filas filtrables y resúmenes conciliados por código, zona, página y planta.",
                 ],
                 [
                   FileSearchIcon,
                   "Evidencias vinculadas a la fuente",
-                  "Plano, zona, método, nivel de confianza e identificadores únicos de unidad.",
+                  "Identificador estable, plano, zona, método, nivel de confianza y geometría visible.",
                 ],
                 [
                   ShieldCheckIcon,
-                  "Metodología y supuestos",
-                  "Límites de alcance, exclusiones y controles aplicados antes de la entrega.",
+                  "Metodología y limitaciones",
+                  "Límites de alcance, exclusiones, códigos ambiguos y controles automatizados.",
                 ],
               ].map(([Icon, title, body]) => (
                 <div key={String(title)} className="border p-6">
@@ -338,23 +339,23 @@ export default function HomePageEs() {
               {[
                 [
                   "¿La muestra gratis es realmente gratuita?",
-                  "Sí. Una empresa puede enviar una hoja y una especialidad disponible sin comprar créditos. Se aplica el mismo enfoque de validación y evidencias.",
+                  "Sí. Una empresa puede enviar una hoja que muestre la leyenda aplicable y un alcance basado en leyenda sin comprar créditos. Se aplica el mismo enfoque de validación automatizada y evidencias.",
                 ],
                 [
                   "¿Cuadrabot sustituye a un profesional de la estimación?",
                   "No. Cuadrabot ofrece apoyo para mediciones y evidencias revisables. Tu equipo sigue siendo responsable de interpretar el alcance, fijar precios, tomar decisiones de oferta y realizar la verificación final.",
                 ],
                 [
-                  "¿Qué ocurre si mi conjunto de planos es grande?",
-                  "Los conjuntos de más de 25 páginas pasan al nivel Proyecto grande publicado y continúan por el mismo flujo autoservicio. La versión inicial sigue limitada a las tres especialidades admitidas.",
+                  "¿Cuadrabot cuenta los símbolos de la propia leyenda?",
+                  "No. La leyenda se utiliza como catálogo. Sus ejemplos, las filas de cuadros, las plantas clave y las vistas de referencia repetidas se excluyen de los totales instalados.",
+                ],
+                [
+                  "¿Puede Cuadrabot medir recorridos de cables o canalizaciones?",
+                  "Solo cuando la ruta está dibujada de forma visible, la leyenda aplicable es legible y la hoja indica una escala utilizable. Las rutas o códigos ambiguos se señalan, no se adivinan.",
                 ],
                 [
                   "¿Mis planos son privados?",
                   "Sí. Las cargas y los resultados usan almacenamiento privado y accesos firmados de corta duración. Los secretos del servicio y las credenciales de procesamiento nunca llegan al navegador.",
-                ],
-                [
-                  "¿Puedo solicitar una corrección?",
-                  "Se incluye una solicitud de corrección en los trabajos autoservicio entregados cuando permanece dentro del alcance aprobado y del conjunto de planos de origen.",
                 ],
               ].map(([question, answer]) => (
                 <AccordionItem key={question} value={question}>
@@ -372,8 +373,8 @@ export default function HomePageEs() {
           <div className="mx-auto flex max-w-4xl flex-col items-center px-4 text-center sm:px-6">
             <Clock3Icon className="size-8 text-primary" />
             <h2 className="mt-6 text-4xl font-semibold tracking-tight">
-              Convierte tu próximo conjunto de planos en evidencias listas para
-              licitar.
+              Convierte tu próxima leyenda legible en cantidades vinculadas al
+              plano.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
               Empieza con una hoja gratis y usa créditos solo cuando el alcance
@@ -444,40 +445,40 @@ function TakeoffPreview() {
       <div className="grid min-h-[470px] gap-4 md:grid-cols-[1.1fr_0.9fr]">
         <div className="relative overflow-hidden border blueprint-fine-grid p-5">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold">A-201 · PLANTA</span>
+            <span className="font-semibold">E-101 · PLANO DE ILUMINACIÓN</span>
             <span className="font-mono text-primary">1:100</span>
           </div>
           <div className="relative mt-8 h-72 border-2 border-slate-600">
             <div className="absolute left-[38%] top-0 h-full border-l border-slate-500" />
             <div className="absolute left-0 top-[42%] w-full border-t border-slate-500" />
             <div className="absolute bottom-5 left-5 rounded-sm bg-primary px-2 py-1 text-[10px] text-white">
-              FL-03 · 42,6 m²
+              L-01 · 12 ud.
             </div>
             <div className="absolute right-5 top-5 rounded-sm bg-amber-500 px-2 py-1 text-[10px] text-white">
-              D-02 · 3 ud.
+              R-01 · 8 ud.
             </div>
             <div className="absolute left-[44%] top-[48%] rounded-sm bg-emerald-600 px-2 py-1 text-[10px] text-white">
-              PT-01 · 18,4 ml
+              SW-01 · 5 ud.
             </div>
           </div>
           <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
             <RulerIcon className="size-4 text-primary" />
-            Se conservan las coordenadas de origen de cada cantidad admitida
+            Se conservan las coordenadas de origen de cada ubicación admitida
           </p>
         </div>
         <div className="flex flex-col border">
           <div className="border-b p-4">
-            <p className="text-sm font-semibold">Resumen de cantidades</p>
+            <p className="text-sm font-semibold">Resumen por código de leyenda</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              168 unidades vinculadas a la fuente
+              168 ubicaciones vinculadas a la fuente
             </p>
           </div>
           <div className="flex-1 divide-y">
             {[
-              ["Acabado de suelo FL-03", "42,6 m²"],
-              ["Partición PT-01", "18,4 ml"],
-              ["Tipo de puerta D-02", "3 ud."],
-              ["Techo CL-01", "39,8 m²"],
+              ["Luminaria L-01", "64 ud."],
+              ["Toma R-01", "58 ud."],
+              ["Interruptor SW-01", "46 ud."],
+              ["Detector de humo FA-01", "18 ud."],
             ].map(([label, value]) => (
               <div
                 key={label}

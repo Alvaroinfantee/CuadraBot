@@ -22,7 +22,13 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 from .codex_runner import normalize_customer_instructions
 from .config import SETTINGS, Settings
-from .models import JobRecord, JobSubmission, JobStatus
+from .models import (
+    JobRecord,
+    JobSubmission,
+    JobStatus,
+    RequestedScope,
+    WorkflowKind,
+)
 from .pipeline import PipelineManager, sha256_file
 from .store import JobStore
 from .validation import (
@@ -169,6 +175,14 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
         takeoff_json: Annotated[UploadFile | None, File()] = None,
         workbook_result: Annotated[UploadFile | None, File()] = None,
         instructions: Annotated[str, Form()] = "",
+        workflow_kind: Annotated[
+            WorkflowKind,
+            Form(alias="workflowKind"),
+        ] = WorkflowKind.legend_fixture_takeoff_v1,
+        requested_scopes: Annotated[
+            list[RequestedScope] | None,
+            Form(alias="requestedScopes"),
+        ] = None,
         free_sample: Annotated[bool, Form(alias="freeSample")] = False,
         model: Annotated[str | None, Form()] = None,
         x_codex_api_key: Annotated[
@@ -187,6 +201,12 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        selected_scopes = requested_scopes or [RequestedScope.fixture_counts]
+        if len(selected_scopes) != len(set(selected_scopes)):
+            raise HTTPException(
+                status_code=400,
+                detail="requestedScopes values must be unique",
+            )
         if takeoff_json is None and not x_codex_api_key:
             raise HTTPException(
                 status_code=400,
@@ -206,7 +226,9 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
             id=job_id,
             status=JobStatus.queued,
             model=selected_model,
-            instructions=normalized_instructions,
+            workflow_kind=workflow_kind,
+            requested_scopes=selected_scopes,
+            customer_instructions=normalized_instructions,
             free_sample=free_sample,
         )
         job_dir = store.create(record)

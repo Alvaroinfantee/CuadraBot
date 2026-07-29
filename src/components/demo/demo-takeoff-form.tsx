@@ -49,21 +49,25 @@ export function DemoTakeoffForm() {
             <Label>Project name</Label>
             <Input defaultValue="Westfield medical suite" />
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {["Flooring & finishes", "Drywall & ceilings", "Doors & openings"].map(
-              (trade, index) => (
+          <div>
+            <p className="mb-3 text-sm font-medium">
+              What should Cuadrabot extract?
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                "Fixture & legend-device counts",
+                "Cable & conduit runs",
+              ].map((scope) => (
                 <label
-                  key={trade}
-                  className={cn(
-                    "flex gap-2 border p-4 text-sm",
-                    index < 2 && "border-primary bg-blue-50"
-                  )}
+                  key={scope}
+                  className="flex gap-2 border border-primary bg-blue-50 p-4 text-sm"
                 >
-                  <input type="checkbox" defaultChecked={index < 2} />
-                  {trade}
+                  <input type="checkbox" defaultChecked />
+                  {scope}
                 </label>
               )
-            )}
+              )}
+            </div>
           </div>
           <label className="grid min-h-44 cursor-pointer place-items-center border border-dashed bg-muted/20 p-6 text-center">
             {file ? (
@@ -77,7 +81,9 @@ export function DemoTakeoffForm() {
             ) : (
               <div>
                 <UploadCloudIcon className="mx-auto size-8 text-primary" />
-                <p className="mt-3 font-medium">Choose any PDF to preview</p>
+                <p className="mt-3 font-medium">
+                  Choose a PDF with a readable legend
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Demo mode never uploads it
                 </p>
@@ -94,7 +100,7 @@ export function DemoTakeoffForm() {
             <Label>Instructions</Label>
             <Textarea
               rows={5}
-              defaultValue="Measure tenant areas only. Exclude the existing core and shell."
+              defaultValue="Use legend sheet E-001. Count L-01 through L-06 and R-01 through R-04. Exclude demolition and existing-to-remain items. Measure cable runs only where the route is visible and a scale is stated."
             />
           </div>
           {stage === "checking" ? <Progress value={progress} /> : null}
@@ -123,14 +129,14 @@ export function DemoTakeoffForm() {
         <CardContent>
           {stage === "quoted" || stage === "queued" ? (
             <div className="space-y-5">
-              <Badge>Multi-Trade</Badge>
+              <Badge>Multi-Scope</Badge>
               <div>
                 <p className="text-4xl font-semibold">299</p>
                 <p className="mt-1 text-sm text-muted-foreground">credits</p>
               </div>
               <div className="space-y-2 border-y py-4 text-sm">
                 <p className="flex justify-between"><span>Verified pages</span><strong>18</strong></p>
-                <p className="flex justify-between"><span>Launch trades</span><strong>2</strong></p>
+                <p className="flex justify-between"><span>Legend-based scopes</span><strong>2</strong></p>
                 <p className="flex justify-between"><span>Target</span><strong>In hours</strong></p>
               </div>
               {stage === "queued" ? (

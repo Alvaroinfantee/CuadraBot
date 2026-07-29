@@ -24,7 +24,9 @@ export type WorkerJob = {
 export type WorkerInputJob = WorkerJob & {
   source_sha256: string
   original_filename: string
-  instructions: string | null
+  workflow_kind: "legend_fixture_takeoff_v1"
+  requested_scopes: Array<"fixture_counts" | "cable_runs">
+  customer_instructions: string
   page_count: number | null
   free_sample: boolean
 }

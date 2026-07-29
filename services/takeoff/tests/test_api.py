@@ -13,7 +13,13 @@ os.environ.setdefault("TAKEOFF_ENV", "test")
 
 from app.config import Settings
 from app.main import create_app
-from app.models import ArtifactInfo, JobRecord, JobStatus
+from app.models import (
+    ArtifactInfo,
+    JobRecord,
+    JobStatus,
+    RequestedScope,
+    WorkflowKind,
+)
 
 
 def pdf_bytes() -> bytes:
@@ -59,12 +65,30 @@ def test_service_auth_and_replay_submission(tmp_path: Path) -> None:
     response = client.post(
         "/v1/jobs",
         files=files,
-        data={"freeSample": "true"},
+        data={
+            "freeSample": "true",
+            "workflowKind": "legend_fixture_takeoff_v1",
+            "requestedScopes": ["fixture_counts", "cable_runs"],
+            "instructions": "Count only mapped electrical symbols.",
+        },
         headers={"Authorization": "Bearer service-secret"},
     )
     assert response.status_code == 202
     assert response.json()["job_id"] in submitted
-    assert app.state.store.load(response.json()["job_id"]).free_sample is True
+    stored = app.state.store.load(response.json()["job_id"])
+    assert stored.free_sample is True
+    assert (
+        stored.workflow_kind
+        == WorkflowKind.legend_fixture_takeoff_v1
+    )
+    assert stored.requested_scopes == [
+        RequestedScope.fixture_counts,
+        RequestedScope.cable_runs,
+    ]
+    assert (
+        stored.customer_instructions
+        == "Count only mapped electrical symbols."
+    )
 
 
 def test_codex_job_requires_api_key(tmp_path: Path) -> None:

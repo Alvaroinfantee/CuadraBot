@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og"
 
 export const alt =
-  "Cuadrabot: mediciones de obra autoservicio con planos marcados"
+  "Cuadrabot: mediciones guiadas por leyendas con planos anotados"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
@@ -57,7 +57,7 @@ export default function OpenGraphImage() {
                 maxWidth: 690,
               }}
             >
-              Mediciones de obra autoservicio en horas.
+              Mediciones guiadas por leyendas en horas.
             </div>
             <div
               style={{
@@ -68,8 +68,8 @@ export default function OpenGraphImage() {
                 marginTop: 28,
               }}
             >
-              Sube planos. Elige una especialidad. Descarga el PDF marcado y las
-              cantidades en Excel.
+              Sube planos PDF con una leyenda legible. Descarga recuentos
+              trazables, un PDF anotado y cantidades en Excel.
             </div>
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function OpenGraphImage() {
                 paddingBottom: 18,
               }}
             >
-              A-201 · PLANO
+              E-101 · ILUMINACIÓN
             </div>
             <div
               style={{
@@ -124,7 +124,7 @@ export default function OpenGraphImage() {
                   top: 30,
                 }}
               >
-                FL-03 · 42,6 m²
+                L-01 · 12 UD.
               </div>
               <div
                 style={{
@@ -138,7 +138,7 @@ export default function OpenGraphImage() {
                   right: 20,
                 }}
               >
-                D-02 · 3 uds.
+                R-01 · 8 UD.
               </div>
             </div>
           </div>

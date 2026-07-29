@@ -85,7 +85,9 @@ async function processOnce() {
     const result = await runTakeoff({
       sourcePdf,
       outputDir,
-      instructions: input.job.instructions ?? "",
+      workflowKind: input.job.workflow_kind,
+      requestedScopes: input.job.requested_scopes,
+      customerInstructions: input.job.customer_instructions,
       freeSample: input.job.free_sample === true,
       onProgress: (progress) => {
         stage = progress.stage

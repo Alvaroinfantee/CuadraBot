@@ -30,24 +30,24 @@ import { cn } from "@/lib/utils"
 export const metadata = buildLocalizedMetadata({
   locale: "en",
   path: "/",
-  title: "Self-serve construction takeoffs",
+  title: "PDF fixture takeoff and symbol counts",
   description:
-    "Upload scaled PDF plans and receive marked drawings plus Excel quantities in hours.",
+    "Upload PDF plans with a readable legend and receive source-linked fixture, device, and supported cable or conduit quantities in hours.",
   keywords: [
-    "construction takeoff",
-    "quantity takeoff",
-    "flooring takeoff",
-    "drywall takeoff",
-    "door takeoff",
-    "estimating",
+    "fixture takeoff",
+    "electrical fixture takeoff",
+    "lighting fixture count",
+    "PDF symbol counting",
+    "legend based takeoff",
+    "cable takeoff from PDF",
   ],
 })
 
 const steps = [
   {
     icon: FileUpIcon,
-    title: "Upload scaled plans",
-    body: "Choose one or more launch trades and upload a private PDF plan set.",
+    title: "Upload plans with a legend",
+    body: "Choose one or more legend-based scopes and upload a private PDF plan set.",
   },
   {
     icon: FileSearchIcon,
@@ -56,8 +56,8 @@ const steps = [
   },
   {
     icon: SparklesIcon,
-    title: "Cuadrabot measures the plans",
-    body: "The workflow extracts source-linked quantities, locations, confidence, and assumptions.",
+    title: "Cuadrabot maps and counts",
+    body: "The workflow reads the legend, maps supported codes and symbols, and records each source-linked placement.",
   },
   {
     icon: DownloadIcon,
@@ -68,22 +68,22 @@ const steps = [
 
 const tradeCards = [
   {
-    href: "/flooring-takeoff",
+    href: "/electrical-takeoff",
     code: "01",
-    title: "Flooring & finishes",
-    body: "Areas, perimeters, finish codes, room mapping, and source-linked markups.",
+    title: "Electrical & lighting fixtures",
+    body: "Legend-coded luminaires, devices, equipment, and source-linked placements by code and location.",
   },
   {
-    href: "/drywall-takeoff",
+    href: "/cable-takeoff",
     code: "02",
-    title: "Drywall, partitions & ceilings",
-    body: "Partition runs, wall types, ceiling areas, and traceable plan references.",
+    title: "Cable & conduit runs",
+    body: "Supported visible routes measured only when the legend is readable and the drawing states a usable scale.",
   },
   {
-    href: "/door-window-takeoff",
+    href: "/fixture-takeoff",
     code: "03",
-    title: "Doors, windows & openings",
-    body: "Counts by type, visible labels, page locations, and opening schedules.",
+    title: "Other legend-coded devices",
+    body: "Repeatable counts for supported installed symbols, with ambiguous or unresolved codes flagged rather than guessed.",
   },
 ] as const
 
@@ -97,15 +97,16 @@ export default function HomePage() {
           <div className="relative mx-auto grid min-h-[680px] w-full max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
             <div>
               <Badge variant="outline" className="mb-6 bg-white">
-                Verified construction quantities
+                Legend-driven fixture takeoffs
               </Badge>
               <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl">
-                Self-serve construction takeoffs in hours.
+                Count fixtures from PDF plans in hours.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-                Upload scaled PDF plans. See one real sheet measured free,
-                approve a fixed price, and receive marked drawings plus Excel
-                quantities—without buying takeoff software.
+                Upload a plan set with a readable legend. Cuadrabot maps each
+                supported code to the drawing, counts every placement, and
+                returns an annotated PDF plus an Excel workbook—fully
+                self-serve.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -147,8 +148,8 @@ export default function HomePage() {
         <section className="border-b bg-[#0b1f3a] text-white">
           <div className="mx-auto grid max-w-7xl divide-y divide-white/10 px-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6 lg:px-8">
             {[
-              ["In hours", "Automated turnaround for launch scopes"],
-              ["3 trades", "Focused self-serve coverage at launch"],
+              ["In hours", "Automated self-serve delivery"],
+              ["Legend-linked", "Codes, symbols, and visible plan locations"],
               ["PDF + XLSX", "Evidence and quantities you can keep"],
             ].map(([value, label]) => (
               <div key={value} className="px-4 py-7 text-center">
@@ -163,8 +164,8 @@ export default function HomePage() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionIntro
               eyebrow="How it works"
-              title="A clear chain from plan to quantity."
-              body="The self-serve workflow verifies, measures, validates, and delivers automatically. Every counted item stays tied to visible plan evidence."
+              title="A clear chain from legend to placement."
+              body="The self-serve workflow verifies, maps, counts, validates, and delivers automatically. Legend samples and repeated reference views are excluded from installed-item totals."
             />
             <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
               {steps.map((step, index) => {
@@ -191,9 +192,9 @@ export default function HomePage() {
         <section className="border-b bg-[#f5f7fa] py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionIntro
-              eyebrow="Launch scope"
-              title="Built around the trades that need repeatable counts."
-              body="Focused scope makes pricing, evidence, validation, and turnaround easier to understand. Larger sets remain self-serve through a fixed large-set tier."
+              eyebrow="Legend-based scope"
+              title="Built for fixtures, devices, and defensible routed quantities."
+              body="A readable legend defines the catalog. For cable or conduit runs, a visible route and stated scale are required. Anything ambiguous is reported as a limitation instead of being guessed."
             />
             <div className="mt-12 grid gap-5 lg:grid-cols-3">
               {tradeCards.map((trade) => (
@@ -210,7 +211,7 @@ export default function HomePage() {
                     {trade.body}
                   </p>
                   <span className="mt-8 flex items-center gap-2 text-sm font-medium text-primary">
-                    Explore this scope
+                    Explore this category
                     <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1" />
                   </span>
                 </Link>
@@ -223,15 +224,15 @@ export default function HomePage() {
           <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
             <SectionIntro
               eyebrow="What you receive"
-              title="Quantities with the evidence needed to check them."
-              body="The useful product is not a mystery spreadsheet. It is a reviewable package that lets an estimator trace what was counted and where."
+              title="Legend-coded quantities with evidence you can check."
+              body="The useful product is not a mystery total. It is a reviewable package that lets an estimator trace each counted placement to its code and plan location."
             />
             <div className="grid gap-4 sm:grid-cols-2">
               {[
-                [RulerIcon, "Marked plan PDF", "Every supported unit is tied to its page and visible location."],
-                [FileSpreadsheetIcon, "Excel quantity workbook", "Structured quantities ready for review, filtering, and downstream costing."],
-                [FileSearchIcon, "Source evidence", "Sheet, area, method, confidence, and unique unit identifiers."],
-                [ShieldCheckIcon, "Methodology and assumptions", "Clear scope boundaries, exclusions, and the checks applied before delivery."],
+                [RulerIcon, "Marked plan PDF", "Every supported placement is tied to its page, legend code, and visible location."],
+                [FileSpreadsheetIcon, "Excel quantity workbook", "Filterable rows and reconciled summaries by code, area, page, and floor."],
+                [FileSearchIcon, "Source evidence", "Stable unit ID, sheet, area, method, confidence, and visible geometry."],
+                [ShieldCheckIcon, "Methodology and limitations", "Clear scope boundaries, exclusions, ambiguous codes, and automated checks."],
               ].map(([Icon, title, body]) => (
                 <div key={String(title)} className="border p-6">
                   <Icon className="size-5 text-primary" />
@@ -290,11 +291,11 @@ export default function HomePage() {
             />
             <Accordion>
               {[
-                ["Is the free sample really free?", "Yes. One company can submit one sheet and one launch trade without buying credits. The same validation and evidence approach applies."],
+                ["Is the free sample really free?", "Yes. One company can submit one sheet with a visible applicable legend and one legend-based scope without buying credits. The same automated validation and evidence approach applies."],
                 ["Does Cuadrabot replace an estimator?", "No. Cuadrabot provides takeoff support and reviewable evidence. Your team remains responsible for scope interpretation, pricing, bid decisions, and final verification."],
-                ["What happens if my plan set is large?", "Sets beyond 25 pages move to the published Large Set tier and continue through the same self-serve workflow. The launch remains limited to the three supported trades."],
+                ["Does Cuadrabot count the legend itself?", "No. The legend is used as the item catalog. Legend samples, schedule rows, key plans, and repeated reference views are excluded from installed-placement totals."],
+                ["Can Cuadrabot measure cable or conduit runs?", "Only when the route is visibly drawn, the applicable legend is readable, and the sheet states a usable scale. Ambiguous routes or codes are flagged rather than guessed."],
                 ["Are my drawings private?", "Yes. Uploads and results use private storage and short-lived signed access. Service secrets and processor credentials never enter the browser."],
-                ["Can I request a correction?", "One correction request is included for delivered self-serve work when it stays within the approved scope and source plan set."],
               ].map(([question, answer]) => (
                 <AccordionItem key={question} value={question}>
                   <AccordionTrigger>{question}</AccordionTrigger>
@@ -311,11 +312,11 @@ export default function HomePage() {
           <div className="mx-auto flex max-w-4xl flex-col items-center px-4 text-center sm:px-6">
             <Clock3Icon className="size-8 text-primary" />
             <h2 className="mt-6 text-4xl font-semibold tracking-tight">
-              Turn your next plan set into bid-ready evidence.
+              Turn your next readable legend into source-linked quantities.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Start with one sheet free, then use credits only when the verified
-              scope makes sense.
+              Start with one sheet free, then use credits only when the
+              verified scope makes sense.
             </p>
             <Link
               href="/signup"
@@ -379,40 +380,40 @@ function TakeoffPreview() {
       <div className="grid min-h-[470px] gap-4 md:grid-cols-[1.1fr_0.9fr]">
         <div className="relative overflow-hidden border blueprint-fine-grid p-5">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold">A-201 · FLOOR PLAN</span>
+            <span className="font-semibold">E-101 · LIGHTING PLAN</span>
             <span className="font-mono text-primary">1:100</span>
           </div>
           <div className="relative mt-8 h-72 border-2 border-slate-600">
             <div className="absolute left-[38%] top-0 h-full border-l border-slate-500" />
             <div className="absolute left-0 top-[42%] w-full border-t border-slate-500" />
             <div className="absolute bottom-5 left-5 rounded-sm bg-primary px-2 py-1 text-[10px] text-white">
-              FL-03 · 42.6 m²
+              L-01 · 12 ea
             </div>
             <div className="absolute right-5 top-5 rounded-sm bg-amber-500 px-2 py-1 text-[10px] text-white">
-              D-02 · 3 ea
+              R-01 · 8 ea
             </div>
             <div className="absolute left-[44%] top-[48%] rounded-sm bg-emerald-600 px-2 py-1 text-[10px] text-white">
-              PT-01 · 18.4 lm
+              SW-01 · 5 ea
             </div>
           </div>
           <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
             <RulerIcon className="size-4 text-primary" />
-            Source coordinates retained for every supported quantity
+            Source coordinates retained for every supported placement
           </p>
         </div>
         <div className="flex flex-col border">
           <div className="border-b p-4">
-            <p className="text-sm font-semibold">Quantity summary</p>
+            <p className="text-sm font-semibold">Legend-code summary</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              168 source-linked units
+              168 source-linked placements
             </p>
           </div>
           <div className="flex-1 divide-y">
             {[
-              ["Floor finish FL-03", "42.6 m²"],
-              ["Partition PT-01", "18.4 lm"],
-              ["Door type D-02", "3 ea"],
-              ["Ceiling CL-01", "39.8 m²"],
+              ["Luminaire L-01", "64 ea"],
+              ["Receptacle R-01", "58 ea"],
+              ["Switch SW-01", "46 ea"],
+              ["Smoke detector FA-01", "18 ea"],
             ].map(([label, value]) => (
               <div
                 key={label}

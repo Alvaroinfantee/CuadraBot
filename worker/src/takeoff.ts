@@ -59,7 +59,9 @@ export class TakeoffServiceError extends Error {
 type RunTakeoffOptions = {
   sourcePdf: string
   outputDir: string
-  instructions: string
+  workflowKind: "legend_fixture_takeoff_v1"
+  requestedScopes: Array<"fixture_counts" | "cable_runs">
+  customerInstructions: string
   freeSample: boolean
   onProgress: (event: TakeoffProgressEvent) => Promise<void>
 }
@@ -81,12 +83,20 @@ export async function assertTakeoffServiceReady() {
 export async function runTakeoff({
   sourcePdf,
   outputDir,
-  instructions,
+  workflowKind,
+  requestedScopes,
+  customerInstructions,
   freeSample,
   onProgress,
 }: RunTakeoffOptions) {
   await assertTakeoffServiceReady()
-  const submission = await submitTakeoff(sourcePdf, instructions, freeSample)
+  const submission = await submitTakeoff({
+    sourcePdf,
+    workflowKind,
+    requestedScopes,
+    customerInstructions,
+    freeSample,
+  })
 
   await onProgress({
     stage: "takeoff_queued",
@@ -104,16 +114,38 @@ export async function runTakeoff({
   }
 }
 
-async function submitTakeoff(
-  sourcePdf: string,
-  instructions: string,
+async function submitTakeoff({
+  sourcePdf,
+  workflowKind,
+  requestedScopes,
+  customerInstructions,
+  freeSample,
+}: {
+  sourcePdf: string
+  workflowKind: "legend_fixture_takeoff_v1"
+  requestedScopes: Array<"fixture_counts" | "cable_runs">
+  customerInstructions: string
   freeSample: boolean
-): Promise<TakeoffSubmission> {
+}): Promise<TakeoffSubmission> {
+  if (!requestedScopes.length || new Set(requestedScopes).size !== requestedScopes.length) {
+    throw new TakeoffServiceError(
+      "Application returned an invalid trusted takeoff scope",
+      "service_protocol",
+      false
+    )
+  }
   const form = new FormData()
   const source = await openAsBlob(sourcePdf, { type: "application/pdf" })
   form.append("drawings_pdf", source, path.basename(sourcePdf))
-  if (instructions.trim()) {
-    form.append("instructions", instructions.trim().slice(0, 20_000))
+  form.append("workflowKind", workflowKind)
+  for (const scope of requestedScopes) {
+    form.append("requestedScopes", scope)
+  }
+  if (customerInstructions.trim()) {
+    form.append(
+      "instructions",
+      customerInstructions.trim().slice(0, 20_000)
+    )
   }
   form.append("freeSample", freeSample ? "true" : "false")
   if (workerConfig.codexModel) {

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (parsed.data.mode === "sample" && parsed.data.trades.length !== 1) {
-    return jsonError("A free sample covers exactly one trade.", 422)
+    return jsonError("A free sample covers exactly one scope.", 422)
   }
   if (parsed.data.mode === "sample" && !features.freeSample) {
     return jsonError("The free sample is currently unavailable.", 403)

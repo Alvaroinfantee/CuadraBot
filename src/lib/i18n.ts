@@ -22,9 +22,9 @@ export const publicMarketingPaths = [
   "/accuracy",
   "/security",
   "/faq",
-  "/flooring-takeoff",
-  "/drywall-takeoff",
-  "/door-window-takeoff",
+  "/fixture-takeoff",
+  "/electrical-takeoff",
+  "/cable-takeoff",
   "/privacy",
   "/terms",
   "/refund-policy",
@@ -162,8 +162,8 @@ export function buildLocalizedMetadata(input: {
           height: 630,
           alt:
             input.locale === "es"
-              ? "Mediciones de planos vinculadas a la fuente y libro de cantidades verificado de Cuadrabot"
-              : "Cuadrabot source-linked plan takeoff and verified quantity workbook",
+              ? "Medición de elementos guiada por leyendas, con plano anotado y cantidades trazables de Cuadrabot"
+              : "Cuadrabot legend-driven fixture takeoff with annotated plan and source-linked quantities",
         },
       ],
     },
@@ -272,7 +272,7 @@ export const commonCopy: Record<Locale, CommonCopy> = {
     },
     footer: {
       description:
-        "Self-serve construction takeoffs from scaled PDF plans, delivered in hours with marked evidence and downloadable quantities.",
+        "Self-serve legend-driven takeoffs from PDF plans, delivered in hours with source-linked fixture counts, marked evidence, and downloadable quantities.",
       disclaimer:
         "Takeoff support only. Not engineering, architectural, permit, or final-bid advice. Always verify quantities against the contract documents.",
       product: "Product",
@@ -302,10 +302,10 @@ export const commonCopy: Record<Locale, CommonCopy> = {
       companyFallback: "Company workspace",
     },
     auth: {
-      eyebrow: "Verified bid capacity",
-      title: "From scaled plans to marked quantities in hours.",
+      eyebrow: "Legend-driven takeoffs",
+      title: "From PDF legends to source-linked quantities in hours.",
       body:
-        "Private plan storage, source-linked counts, automatic validation, and downloadable PDF and Excel evidence.",
+        "Private plan storage, fixture and device counts, supported cable or conduit runs, automatic validation, and downloadable PDF and Excel evidence.",
     },
   },
   es: {
@@ -324,7 +324,7 @@ export const commonCopy: Record<Locale, CommonCopy> = {
     },
     footer: {
       description:
-        "Mediciones de obra autoservicio a partir de planos PDF a escala, entregadas en horas con planos marcados y cantidades descargables.",
+        "Mediciones autoservicio guiadas por leyendas de planos PDF, entregadas en horas con recuentos vinculados al origen, planos marcados y cantidades descargables.",
       disclaimer:
         "Solo ofrecemos apoyo para mediciones. No constituye asesoramiento de ingeniería, arquitectura, permisos ni oferta final. Verifica siempre las cantidades con los documentos contractuales.",
       product: "Producto",
@@ -354,10 +354,10 @@ export const commonCopy: Record<Locale, CommonCopy> = {
       companyFallback: "Espacio de trabajo de la empresa",
     },
     auth: {
-      eyebrow: "Capacidad verificada para licitar",
-      title: "De planos a escala a cantidades marcadas en horas.",
+      eyebrow: "Mediciones guiadas por la leyenda",
+      title: "De las leyendas del PDF a cantidades trazables en horas.",
       body:
-        "Almacenamiento privado, mediciones vinculadas a la fuente, validación automática y entregables descargables en PDF y Excel.",
+        "Almacenamiento privado, recuentos de elementos y dispositivos, recorridos compatibles de cable o canalización, validación automática y entregables en PDF y Excel.",
     },
   },
 }
@@ -370,11 +370,19 @@ export const localizedTradeLabels: Record<
     flooring_finishes: "Flooring & finishes",
     drywall_partitions_ceilings: "Drywall, partitions & ceilings",
     doors_windows_openings: "Doors, windows & openings",
+    electrical_fixtures: "Electrical & lighting fixtures",
+    cable_conduit_runs: "Cable & conduit runs",
+    other_legend_devices: "Other legend-coded devices",
+    fixture_device_counts: "Fixture & legend-device counts",
   },
   es: {
     flooring_finishes: "Suelos y acabados",
     drywall_partitions_ceilings: "Tabiquería, pladur y techos",
     doors_windows_openings: "Puertas, ventanas y huecos",
+    electrical_fixtures: "Equipos eléctricos y luminarias",
+    cable_conduit_runs: "Recorridos de cables y canalizaciones",
+    other_legend_devices: "Otros dispositivos codificados en la leyenda",
+    fixture_device_counts: "Recuento de equipos y dispositivos por leyenda",
   },
 }
 
@@ -413,29 +421,29 @@ const spanishPriceCopy: Record<
   free_sample: {
     name: "Muestra de una hoja",
     description:
-      "Una hoja real y una especialidad disponible, una vez por empresa.",
+      "Una hoja real con leyenda legible y un alcance, una vez por empresa.",
   },
   first_verified: {
     name: "Primera medición verificada",
-    description: "Una especialidad y hasta 5 páginas de planos.",
+    description: "Un alcance basado en leyenda y hasta 5 páginas de planos.",
   },
   essential: {
     name: "Esencial",
-    description: "Una especialidad y hasta 10 páginas de planos.",
+    description: "Un alcance basado en leyenda y hasta 10 páginas de planos.",
   },
   professional: {
     name: "Profesional",
-    description: "Una especialidad y hasta 25 páginas de planos.",
+    description: "Un alcance basado en leyenda y hasta 25 páginas de planos.",
   },
   multi_trade: {
-    name: "Multiespecialidad",
+    name: "Multialcance",
     description:
-      "Hasta 3 especialidades disponibles y 25 páginas de planos.",
+      "Recuentos de equipos y recorridos de cables o canalizaciones, hasta 25 páginas de planos.",
   },
   large_set: {
     name: "Proyecto grande",
     description:
-      "Hasta 3 especialidades disponibles y 250 páginas de planos.",
+      "Uno o ambos resultados basados en leyenda, hasta 250 páginas de planos.",
   },
 }
 

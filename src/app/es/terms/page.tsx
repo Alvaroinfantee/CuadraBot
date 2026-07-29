@@ -58,7 +58,7 @@ export default function TermsPageEs() {
             confidencial de terceros sin autorización.
           </Term>
           <Term title="4. Alcance y verificación">
-            Un precio fijo solo cubre el alcance de especialidades seleccionado,
+            Un precio fijo solo cubre el alcance basado en leyenda seleccionado,
             las páginas verificadas, el conjunto de planos de origen y los
             supuestos indicados. Eres responsable de contrastar los resultados
             con el conjunto completo de documentos contractuales,

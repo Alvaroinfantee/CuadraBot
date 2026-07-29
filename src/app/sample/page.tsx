@@ -16,17 +16,17 @@ import { cn } from "@/lib/utils"
 export const metadata = buildLocalizedMetadata({
   locale: "en",
   path: "/sample",
-  title: "Sample takeoff",
+  title: "Sample legend-based fixture takeoff",
   description:
-    "Preview the marked PDF, workbook structure, evidence, and validation context delivered by Cuadrabot.",
+    "Preview how Cuadrabot maps a readable PDF legend to source-linked fixture counts, an annotated plan, and an Excel workbook.",
 })
 
 const rows = [
-  ["FL-03", "Porcelain tile, 600x600", "A-201", "Retail / sales", "42.60", "m²", "High"],
-  ["FL-05", "Carpet tile", "A-201", "Office 104", "28.15", "m²", "High"],
-  ["PT-01", "100mm metal stud partition", "A-201", "Core / corridor", "18.40", "lm", "Medium"],
-  ["D-02", "900mm single leaf door", "A-201", "East suite", "3", "ea", "High"],
-  ["W-04", "Fixed glazed opening", "A-202", "North elevation", "6", "ea", "High"],
+  ["L-01", "Recessed LED luminaire", "E-101", "Retail / sales", "64", "ea", "High"],
+  ["L-02", "Linear pendant luminaire", "E-101", "Checkout", "12", "ea", "High"],
+  ["R-01", "Duplex receptacle", "E-102", "Retail / sales", "58", "ea", "High"],
+  ["SW-01", "Single-pole switch", "E-101", "Back of house", "46", "ea", "High"],
+  ["FA-01", "Smoke detector", "E-103", "Level 01", "18", "ea", "Medium"],
 ] as const
 
 export default function SamplePage() {
@@ -36,8 +36,8 @@ export default function SamplePage() {
       <main>
         <PageHero
           eyebrow="Sample takeoff"
-          title="See the evidence behind the number."
-          body="This illustrative sample shows the structure of a delivered package. Customer plans and actual outputs remain private to their workspace."
+          title="See how a legend code becomes a traceable count."
+          body="This illustrative electrical sample shows the legend, matching placements, workbook structure, and automated validation context. Customer plans and actual outputs remain private."
           primary="Create a free sample"
           secondary="Read accuracy controls"
           secondaryHref="/accuracy"
@@ -49,9 +49,9 @@ export default function SamplePage() {
               <div className="border bg-white p-5 shadow-lg">
                 <div className="flex items-center justify-between border-b pb-4">
                   <div>
-                    <p className="font-semibold">A-201 · Level 01 plan</p>
+                    <p className="font-semibold">E-101 · Lighting plan</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Marked output preview · scale 1:100
+                      Legend mapped from E-001 · marked output preview
                     </p>
                   </div>
                   <span className="border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -62,15 +62,17 @@ export default function SamplePage() {
                   <div className="absolute left-[34%] top-0 h-full border-l border-slate-500" />
                   <div className="absolute left-0 top-[38%] w-full border-t border-slate-500" />
                   <div className="absolute left-[34%] top-[68%] w-[66%] border-t border-slate-500" />
-                  <Marker className="left-[8%] top-[12%]" label="FL-03 · 42.60 m²" />
-                  <Marker className="left-[42%] top-[12%]" label="FL-05 · 28.15 m²" />
-                  <Marker className="left-[40%] top-[48%]" label="PT-01 · 18.40 lm" tone="amber" />
-                  <Marker className="bottom-[7%] right-[7%]" label="D-02 · 3 ea" tone="green" />
+                  <Marker className="left-[8%] top-[12%]" label="L-01 · 12 ea" />
+                  <Marker className="left-[42%] top-[12%]" label="L-02 · 4 ea" />
+                  <Marker className="left-[40%] top-[48%]" label="R-01 · 8 ea" tone="amber" />
+                  <Marker className="bottom-[7%] right-[7%]" label="SW-01 · 5 ea" tone="green" />
                 </div>
                 <div className="mt-5 grid grid-cols-3 gap-3 text-center text-xs">
                   <div className="border p-3">
                     <p className="font-semibold">168</p>
-                    <p className="mt-1 text-muted-foreground">Counted units</p>
+                    <p className="mt-1 text-muted-foreground">
+                      Counted placements
+                    </p>
                   </div>
                   <div className="border p-3">
                     <p className="font-semibold">168</p>
@@ -92,10 +94,10 @@ export default function SamplePage() {
                 </h2>
                 <div className="mt-8 space-y-4">
                   {[
-                    [FileTextIcon, "Annotated plan PDF", "Visible labels and locations on the original sheet."],
-                    [FileSpreadsheetIcon, "Quantity workbook", "Filterable rows and summaries for estimating workflows."],
-                    [FileJsonIcon, "Structured evidence", "Stable unit ID, page, area, method, confidence, quantity, and geometry."],
-                    [CheckCircle2Icon, "Methodology and validation", "Scope assumptions, validation metrics, and the automated delivery event."],
+                    [FileTextIcon, "Annotated plan PDF", "Every supported placement is marked with its legend code and visible location."],
+                    [FileSpreadsheetIcon, "Quantity workbook", "Filterable rows and reconciled summaries by code and plan location."],
+                    [FileJsonIcon, "Structured evidence", "Stable unit ID, legend code, page, area, method, confidence, quantity, and geometry."],
+                    [CheckCircle2Icon, "Methodology and limitations", "Legend exclusions, ambiguous items, validation metrics, and the automated delivery event."],
                   ].map(([Icon, title, body]) => (
                     <div key={String(title)} className="flex gap-4 border-b pb-4">
                       <Icon className="mt-1 size-5 shrink-0 text-primary" />
@@ -120,7 +122,7 @@ export default function SamplePage() {
                 Workbook preview
               </p>
               <h2 className="mt-3 text-3xl font-semibold">
-                Structured rows, not an unexplained total
+                Legend-coded rows, not an unexplained total
               </h2>
             </div>
             <div className="overflow-x-auto border bg-white">
@@ -158,10 +160,13 @@ export default function SamplePage() {
 
         <section className="py-16">
           <div className="mx-auto flex max-w-4xl flex-col items-center px-4 text-center sm:px-6">
-            <h2 className="text-3xl font-semibold">Use your own plan for the real test.</h2>
+            <h2 className="text-3xl font-semibold">
+              Use your own readable legend for the real test.
+            </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Your company receives one free sheet and one launch trade, with
-              the same private storage and automated validation gate.
+              Your company receives one free sheet where the applicable legend
+              is visible and one takeoff scope, with the same private storage
+              and automated validation gate.
             </p>
             <Link
               href="/signup"

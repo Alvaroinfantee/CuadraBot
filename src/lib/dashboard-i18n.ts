@@ -15,9 +15,9 @@ const englishDashboardCopy = {
   },
   overview: {
     eyebrow: "Customer workspace",
-    title: "Your takeoff desk",
+    title: "Your legend takeoff desk",
     description:
-      "Submit scaled plan sets, follow automated measurement, and download source-linked quantities when processing finishes.",
+      "Upload PDF plan sets with readable legends, follow automated code mapping and counting, and download source-linked results in hours.",
     newTakeoff: "New takeoff",
     availableCredits: "Available credits",
     usedAllTime: "used all time",
@@ -35,11 +35,11 @@ const englishDashboardCopy = {
     sampleBadge: "Included once per company",
     sampleTitle: "Try one sheet free",
     sampleBody:
-      "Pick one launch trade and one plan sheet. We will return a marked PDF and quantity workbook through the same automated workflow as paid work.",
+      "Pick one legend-based scope and a sheet where its legend is visible. We will return a marked PDF and quantity workbook through the same automated workflow as paid work.",
     sampleCta: "Start free sample",
     emptyTitle: "No takeoffs yet",
     emptyBody:
-      "Upload your first scaled PDF plan set to receive a fixed credit quote.",
+      "Upload your first PDF plan set with a readable legend to receive a fixed credit quote.",
     emptyCta: "Create a takeoff",
   },
   jobs: {
@@ -67,7 +67,7 @@ const englishDashboardCopy = {
       "The processing team has been notified. Reserved credits will be released for system failures.",
     progress: "Progress",
     planVerified: "Plan verified",
-    measured: "Measured",
+    measured: "Legend mapped",
     outputValidated: "Output validated",
     delivered: "Delivered",
     currentStage: "Current stage",
@@ -75,9 +75,17 @@ const englishDashboardCopy = {
     verifiedOutput: "Verified output",
     processingTitle: "Processing is still in progress",
     processingBody:
-      "Marked PDF, Excel quantities, source evidence, and methodology will appear here when processing completes.",
+      "The marked PDF, Excel quantities by legend code, source evidence, and methodology will appear here when processing completes.",
+    legendSummary: "Legend reconciliation",
+    legendEntries: "Legend entries",
+    mappedPlacements: "Counted placements",
+    measuredRuns: "Measured runs",
+    unresolvedSymbols: "Unresolved symbols",
+    legendCoverage: "Mapped coverage",
+    legendCoverageBody:
+      "Coverage compares mapped items with explicitly unresolved symbols. Review unresolved items in the delivered source-evidence JSON and limitations before using quantities.",
     scope: "Scope",
-    trades: "Trades",
+    trades: "Takeoff categories",
     instructions: "Instructions",
     noInstructions: "No additional instructions.",
     reserved: "Reserved",
@@ -102,7 +110,7 @@ const englishDashboardCopy = {
     title: "Request a correction",
     descriptionStart: "Describe one in-scope correction for",
     descriptionEnd:
-      "New documents, revisions, or added trade scope require a new quote.",
+      "New documents, revisions, or added legend scope require a new quote.",
     details: "Correction details",
     alreadyTitle: "Correction already requested",
     alreadyBody:
@@ -120,9 +128,9 @@ const englishDashboardCopy = {
   },
   newTakeoff: {
     eyebrow: "New project",
-    title: "Upload plans for takeoff",
+    title: "Upload a legend-based plan set",
     description:
-      "Launch scope: flooring and finishes, drywall and ceilings, or doors and openings. Supported sets remain self-serve up to 250 pages.",
+      "Choose fixture and legend-device counts, cable or conduit runs, or both. Supported sets remain self-serve up to 250 pages, with delivery in hours.",
     pausedTitle: "New takeoffs are temporarily paused",
     pausedBody:
       "New takeoff actions are temporarily unavailable. Please try again later.",
@@ -134,21 +142,24 @@ const englishDashboardCopy = {
     freeSample: "Free one-sheet sample",
     available: "Available",
     used: "Used",
-    freeSampleBody: "One launch trade, once per company.",
+    freeSampleBody: "One legend-based scope, once per company.",
     projectName: "Project name",
     projectPlaceholder: "Northside retail fit-out",
-    measurePrompt: "What should we measure?",
-    planSet: "Scaled PDF plan set",
+    measurePrompt: "What should Cuadrabot extract?",
+    scopeRequirementsTitle: "Legend and route requirements",
+    scopeRequirementsBody:
+      "The PDF must include a readable legend or schedule for selected codes. Cable or conduit quantities also require a visible route and a stated usable scale. Ambiguous items are flagged rather than guessed.",
+    planSet: "PDF plan set with a readable legend",
     chooseFile: "Choose a plan set or drop it here",
     fileLimitStart: "PDF only · up to",
     fileLimitEnd: "MB · 250 pages",
-    samplePage: "Sheet/page to measure",
+    samplePage: "Sheet/page to count",
     samplePageBody:
-      "We will extract only this PDF page for the free sample.",
+      "We will process only this PDF page for the free sample. Its applicable legend or schedule must be visible on the same sheet.",
     instructions: "Instructions and assumptions",
     instructionsPlaceholder:
-      "Areas to include or exclude, finish codes, alternates, naming conventions...",
-    verifying: "Verifying plan set",
+      "Legend sheet or page, codes to include, demolition or alternates to exclude, areas, levels, and naming rules...",
+    verifying: "Verifying the plan set",
     uploadQuote: "Upload and get fixed quote",
     fixedQuote: "Fixed quote",
     credits: "credits",
@@ -163,9 +174,10 @@ const englishDashboardCopy = {
     addCredits: "Add credits",
     noEstimateTitle: "No browser-estimated charges",
     noEstimateBody:
-      "Cuadrabot verifies the uploaded object and actual PDF page count on the server before showing the price.",
+      "Cuadrabot verifies the uploaded object and actual PDF page count before showing the price. Unresolved or ambiguous legend codes are flagged rather than guessed.",
     privateStorage: "Private object storage",
-    pageVerification: "Scale and page verification",
+    pageVerification:
+      "Readable legend required · visible route and stated scale required for measured runs",
     automatedValidation: "Automated validation before delivery",
     invalidPdf: "Upload a PDF plan set.",
     createError: "Could not create the takeoff.",
@@ -268,9 +280,9 @@ const spanishDashboardCopy = {
   },
   overview: {
     eyebrow: "Espacio de trabajo del cliente",
-    title: "Tu mesa de mediciones",
+    title: "Tu mesa de mediciones por leyenda",
     description:
-      "Envía planos PDF a escala, sigue la medición automatizada y descarga cantidades vinculadas a la fuente al finalizar el procesamiento.",
+      "Sube planos PDF con leyendas legibles, sigue el mapeo y recuento automatizado de códigos y descarga resultados vinculados al plano en cuestión de horas.",
     newTakeoff: "Nueva medición",
     availableCredits: "Créditos disponibles",
     usedAllTime: "utilizados en total",
@@ -288,11 +300,11 @@ const spanishDashboardCopy = {
     sampleBadge: "Incluida una vez por empresa",
     sampleTitle: "Prueba una hoja gratis",
     sampleBody:
-      "Elige una especialidad disponible y una hoja del plano. Recibirás un PDF marcado y un libro de cantidades mediante el mismo flujo automatizado que los trabajos de pago.",
+      "Elige un alcance basado en leyenda y una hoja donde la leyenda sea visible. Recibirás un PDF marcado y un libro de cantidades mediante el mismo flujo automatizado que los trabajos de pago.",
     sampleCta: "Iniciar muestra gratuita",
     emptyTitle: "Aún no hay mediciones",
     emptyBody:
-      "Carga tu primer juego de planos PDF a escala para recibir un presupuesto fijo en créditos.",
+      "Carga tu primer juego de planos PDF con una leyenda legible para recibir un presupuesto fijo en créditos.",
     emptyCta: "Crear una medición",
   },
   jobs: {
@@ -320,7 +332,7 @@ const spanishDashboardCopy = {
       "Se ha avisado al equipo de soporte. Los créditos reservados se liberarán si se trata de un fallo del sistema.",
     progress: "Progreso",
     planVerified: "Plano verificado",
-    measured: "Medido",
+    measured: "Leyenda relacionada",
     outputValidated: "Resultado validado",
     delivered: "Entregado",
     currentStage: "Etapa actual",
@@ -328,9 +340,17 @@ const spanishDashboardCopy = {
     verifiedOutput: "Resultado verificado",
     processingTitle: "El procesamiento sigue en curso",
     processingBody:
-      "El PDF marcado, las cantidades en Excel, la evidencia de origen y la metodología aparecerán aquí cuando termine el procesamiento.",
+      "El PDF marcado, las cantidades en Excel por código de leyenda, la evidencia de origen y la metodología aparecerán aquí cuando termine el procesamiento.",
+    legendSummary: "Conciliación con la leyenda",
+    legendEntries: "Entradas de leyenda",
+    mappedPlacements: "Ubicaciones contadas",
+    measuredRuns: "Recorridos medidos",
+    unresolvedSymbols: "Símbolos sin resolver",
+    legendCoverage: "Cobertura relacionada",
+    legendCoverageBody:
+      "La cobertura compara los elementos relacionados con los símbolos marcados como no resueltos. Revisa estos elementos en el JSON de evidencia y las limitaciones entregadas antes de usar las cantidades.",
     scope: "Alcance",
-    trades: "Especialidades",
+    trades: "Categorías de medición",
     instructions: "Instrucciones",
     noInstructions: "Sin instrucciones adicionales.",
     reserved: "Reservados",
@@ -356,7 +376,7 @@ const spanishDashboardCopy = {
     title: "Solicitar una corrección",
     descriptionStart: "Describe una corrección dentro del alcance para",
     descriptionEnd:
-      "Los documentos nuevos, las revisiones o una especialidad adicional requieren otro presupuesto.",
+      "Los documentos nuevos, las revisiones o un alcance adicional de leyenda requieren otro presupuesto.",
     details: "Detalles de la corrección",
     alreadyTitle: "Corrección ya solicitada",
     alreadyBody:
@@ -374,9 +394,9 @@ const spanishDashboardCopy = {
   },
   newTakeoff: {
     eyebrow: "Nuevo proyecto",
-    title: "Carga los planos para medir",
+    title: "Carga planos con leyenda",
     description:
-      "Alcance inicial: suelos y acabados, tabiquería y techos, o puertas y huecos. Los proyectos compatibles siguen siendo autoservicio hasta 250 páginas.",
+      "Elige recuentos de equipos y dispositivos por leyenda, recorridos de cables o canalizaciones, o ambos. Los proyectos compatibles siguen siendo autoservicio hasta 250 páginas, con entrega en horas.",
     pausedTitle: "Las nuevas mediciones están pausadas temporalmente",
     pausedBody:
       "Las nuevas mediciones no están disponibles temporalmente. Inténtalo de nuevo más tarde.",
@@ -389,20 +409,23 @@ const spanishDashboardCopy = {
     freeSample: "Muestra gratuita de una hoja",
     available: "Disponible",
     used: "Utilizada",
-    freeSampleBody: "Una especialidad disponible, una vez por empresa.",
+    freeSampleBody: "Un alcance basado en leyenda, una vez por empresa.",
     projectName: "Nombre del proyecto",
     projectPlaceholder: "Reforma de local en Gran Vía",
-    measurePrompt: "¿Qué debemos medir?",
-    planSet: "Juego de planos PDF a escala",
+    measurePrompt: "¿Qué debe extraer Cuadrabot?",
+    scopeRequirementsTitle: "Requisitos de leyenda y recorrido",
+    scopeRequirementsBody:
+      "El PDF debe incluir una leyenda o cuadro legible para los códigos seleccionados. Las cantidades de cables o canalizaciones también requieren una ruta visible y una escala utilizable indicada. Los elementos ambiguos se señalan, no se adivinan.",
+    planSet: "Juego de planos PDF con leyenda legible",
     chooseFile: "Elige un juego de planos o arrástralo aquí",
     fileLimitStart: "Solo PDF · hasta",
     fileLimitEnd: "MB · 250 páginas",
-    samplePage: "Hoja o página que se medirá",
+    samplePage: "Hoja o página que se contará",
     samplePageBody:
-      "Para la muestra gratuita solo extraeremos esta página del PDF.",
+      "Para la muestra gratuita solo procesaremos esta página del PDF. La leyenda o cuadro aplicable debe estar visible en la misma hoja.",
     instructions: "Instrucciones y supuestos",
     instructionsPlaceholder:
-      "Zonas que se deben incluir o excluir, códigos de acabado, alternativas, convenciones de nombres...",
+      "Hoja o página de la leyenda, códigos que incluir, demoliciones o alternativas que excluir, zonas, niveles y reglas de nombres...",
     verifying: "Verificando los planos",
     uploadQuote: "Cargar y obtener presupuesto fijo",
     fixedQuote: "Presupuesto fijo",
@@ -418,9 +441,10 @@ const spanishDashboardCopy = {
     addCredits: "Añadir créditos",
     noEstimateTitle: "Sin cargos calculados en el navegador",
     noEstimateBody:
-      "Cuadrabot verifica el archivo cargado y el número real de páginas del PDF en el servidor antes de mostrar el precio.",
+      "Cuadrabot verifica el archivo cargado y el número real de páginas del PDF antes de mostrar el precio. Los códigos de leyenda ambiguos o sin resolver se señalan, no se adivinan.",
     privateStorage: "Almacenamiento privado",
-    pageVerification: "Verificación de escala y páginas",
+    pageVerification:
+      "Leyenda legible obligatoria · ruta visible y escala indicada para recorridos medidos",
     automatedValidation: "Validación automática antes de la entrega",
     invalidPdf: "Carga un juego de planos en PDF.",
     createError: "No se pudo crear la medición.",
@@ -557,11 +581,11 @@ export function formatPlanPages(value: number, locale: Locale) {
 export function formatTrades(value: number, locale: Locale) {
   if (locale === "es") {
     return `${formatDashboardNumber(value, locale)} ${
-      value === 1 ? "especialidad" : "especialidades"
+      value === 1 ? "alcance" : "alcances"
     }`
   }
   return `${formatDashboardNumber(value, locale)} ${
-    value === 1 ? "trade" : "trades"
+    value === 1 ? "scope" : "scopes"
   }`
 }
 
@@ -572,11 +596,11 @@ const englishStages: Record<string, string> = {
   queued: "Queued",
   claimed: "Preparing processing",
   input_download: "Downloading the source plan",
-  takeoff_processing: "Measuring the plans",
-  takeoff_queued: "Queued for measurement",
-  takeoff_codex_analysis: "Analyzing the plans",
+  takeoff_processing: "Reading legends and counting placements",
+  takeoff_queued: "Queued for legend-based takeoff",
+  takeoff_codex_analysis: "Mapping legend codes and symbols",
   takeoff_replay_validation: "Validating the result",
-  takeoff_takeoff_validation: "Validating quantities",
+  takeoff_takeoff_validation: "Reconciling quantities by legend code",
   takeoff_pdf_annotation: "Marking the PDF",
   takeoff_completed: "Preparing delivery",
   artifact_upload: "Uploading deliverables",
@@ -598,11 +622,11 @@ const spanishStages: Record<string, string> = {
   queued: "En cola",
   claimed: "Preparando el procesamiento",
   input_download: "Descargando el plano original",
-  takeoff_processing: "Midiendo los planos",
-  takeoff_queued: "En cola para medir",
-  takeoff_codex_analysis: "Analizando los planos",
+  takeoff_processing: "Leyendo leyendas y contando ubicaciones",
+  takeoff_queued: "En cola para la medición por leyenda",
+  takeoff_codex_analysis: "Relacionando códigos y símbolos de la leyenda",
   takeoff_replay_validation: "Validando el resultado",
-  takeoff_takeoff_validation: "Validando las cantidades",
+  takeoff_takeoff_validation: "Conciliando cantidades por código de leyenda",
   takeoff_pdf_annotation: "Marcando el PDF",
   takeoff_completed: "Preparando la entrega",
   artifact_upload: "Cargando los entregables",
@@ -759,7 +783,9 @@ const spanishCustomerErrors: Record<string, string> = {
     "La configuración de las mediciones no está disponible temporalmente.",
   "Check the project details.": "Revisa los datos del proyecto.",
   "A free sample covers exactly one trade.":
-    "La muestra gratuita cubre exactamente una especialidad.",
+    "La muestra gratuita cubre exactamente un alcance.",
+  "A free sample covers exactly one scope.":
+    "La muestra gratuita cubre exactamente un alcance.",
   "The free sample is currently unavailable.":
     "La muestra gratuita no está disponible en este momento.",
   "The free sample for this workspace has already been used.":

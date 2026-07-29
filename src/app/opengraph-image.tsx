@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og"
 
 export const alt =
-  "Cuadrabot self-serve construction takeoffs with marked plan evidence"
+  "Cuadrabot legend-driven fixture takeoffs with marked plan evidence"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
@@ -58,7 +58,7 @@ export default function OpenGraphImage() {
                   maxWidth: 690,
                 }}
               >
-                Self-serve construction takeoffs in hours.
+                Legend-driven fixture takeoffs in hours.
               </div>
               <div
                 style={{
@@ -69,8 +69,8 @@ export default function OpenGraphImage() {
                   marginTop: 28,
                 }}
               >
-                Upload plans. Choose a trade. Download marked PDF and Excel
-                quantities.
+                Upload PDF plans with a readable legend. Download source-linked
+                counts, a marked PDF, and Excel quantities.
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function OpenGraphImage() {
                   paddingBottom: 18,
                 }}
               >
-                A-201 · PLAN
+                E-101 · LIGHTING PLAN
               </div>
               <div
                 style={{
@@ -125,7 +125,7 @@ export default function OpenGraphImage() {
                     top: 30,
                   }}
                 >
-                  FL-03 · 42.6 m²
+                  L-01 · 12 EA
                 </div>
                 <div
                   style={{
@@ -139,7 +139,7 @@ export default function OpenGraphImage() {
                     right: 20,
                   }}
                 >
-                  D-02 · 3 ea
+                  R-01 · 8 EA
                 </div>
               </div>
             </div>

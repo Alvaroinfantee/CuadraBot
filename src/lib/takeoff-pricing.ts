@@ -25,7 +25,8 @@ const prices: Record<TakeoffPricingTier, Omit<TakeoffPrice, "tier">> = {
     priceCents: 0,
     turnaroundHours: 8,
     selfServe: true,
-    description: "One real sheet, one launch trade, once per company.",
+    description:
+      "One real sheet with a readable legend, one scope, once per company.",
   },
   first_verified: {
     name: "First verified takeoff",
@@ -33,7 +34,7 @@ const prices: Record<TakeoffPricingTier, Omit<TakeoffPrice, "tier">> = {
     priceCents: 4_900,
     turnaroundHours: 8,
     selfServe: true,
-    description: "One trade and up to 5 plan pages.",
+    description: "One legend-based scope and up to 5 plan pages.",
   },
   essential: {
     name: "Essential",
@@ -41,7 +42,7 @@ const prices: Record<TakeoffPricingTier, Omit<TakeoffPrice, "tier">> = {
     priceCents: 9_900,
     turnaroundHours: 8,
     selfServe: true,
-    description: "One trade and up to 10 plan pages.",
+    description: "One legend-based scope and up to 10 plan pages.",
   },
   professional: {
     name: "Professional",
@@ -49,15 +50,16 @@ const prices: Record<TakeoffPricingTier, Omit<TakeoffPrice, "tier">> = {
     priceCents: 17_900,
     turnaroundHours: 8,
     selfServe: true,
-    description: "One trade and up to 25 plan pages.",
+    description: "One legend-based scope and up to 25 plan pages.",
   },
   multi_trade: {
-    name: "Multi-Trade",
+    name: "Multi-Scope",
     credits: 299,
     priceCents: 29_900,
     turnaroundHours: 8,
     selfServe: true,
-    description: "Up to 3 launch trades and 25 plan pages.",
+    description:
+      "Fixture/device counts plus cable/conduit runs, up to 25 plan pages.",
   },
   large_set: {
     name: "Large Set",
@@ -65,7 +67,8 @@ const prices: Record<TakeoffPricingTier, Omit<TakeoffPrice, "tier">> = {
     priceCents: 49_900,
     turnaroundHours: 8,
     selfServe: true,
-    description: "Up to 3 launch trades and 250 plan pages.",
+    description:
+      "One or both legend-based outputs, up to 250 plan pages.",
   },
 }
 
@@ -97,7 +100,7 @@ export function getTakeoffPrice(input: {
 
   if (tradeCount === 1 && pageCount <= 10) return withTier("essential")
   if (tradeCount === 1 && pageCount <= 25) return withTier("professional")
-  if (tradeCount <= 3 && pageCount <= 25) return withTier("multi_trade")
+  if (tradeCount <= 2 && pageCount <= 25) return withTier("multi_trade")
 
   return withTier("large_set")
 }

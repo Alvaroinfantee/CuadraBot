@@ -28,7 +28,7 @@ export const metadata = buildLocalizedMetadata({
   path: "/pricing",
   title: "Precios",
   description:
-    "Precios fijos para mediciones de obra, paquetes de créditos reutilizables y planes mensuales opcionales.",
+    "Precios fijos para mediciones autoservicio de elementos, dispositivos y recorridos compatibles guiadas por leyendas, con créditos y planes opcionales.",
 })
 
 const packNames: Record<(typeof creditPacks)[number]["sku"], string> = {
@@ -48,13 +48,14 @@ export default function PricingPageEs() {
               Precios transparentes
             </p>
             <h1 className="mt-4 max-w-4xl text-5xl font-semibold tracking-tight sm:text-6xl">
-              Compra capacidad verificada para licitar, no otra licencia por
-              usuario.
+              Compra capacidad de medición guiada por leyendas, no otra
+              licencia por usuario.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Empieza con una hoja gratis. Cada trabajo de pago recibe un precio
-              fijo en créditos después de verificar el PDF subido y su número
-              real de páginas.
+              Empieza gratis con una hoja que muestre una leyenda legible. Cada
+              trabajo de pago recibe un precio fijo en créditos después de
+              verificar el PDF, su número real de páginas y los alcances
+              seleccionados.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -85,7 +86,7 @@ export default function PricingPageEs() {
                   Por medición
                 </p>
                 <h2 className="mt-3 text-3xl font-semibold">
-                  Alcances autoservicio con precio fijo
+                  Alcances autoservicio por leyenda con precio fijo
                 </h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-muted-foreground">
@@ -115,7 +116,7 @@ export default function PricingPageEs() {
                     <ul className="mt-6 space-y-3 border-t pt-5 text-sm">
                       {[
                         "PDF marcado",
-                        "Cantidades en Excel",
+                        "Cantidades en Excel por código de leyenda",
                         "Validación automatizada",
                         "Una corrección",
                       ].map((item) => (
@@ -139,7 +140,7 @@ export default function PricingPageEs() {
                 Planes mensuales opcionales
               </p>
               <h2 className="mt-3 text-3xl font-semibold">
-                Créditos previsibles para un volumen recurrente de ofertas
+                Créditos previsibles para un volumen recurrente de mediciones
               </h2>
               <p className="mt-3 max-w-2xl text-muted-foreground">
                 Los créditos mensuales se conceden después de cada factura

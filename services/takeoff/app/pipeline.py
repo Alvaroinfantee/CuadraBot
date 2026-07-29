@@ -17,6 +17,7 @@ from .models import (
     ArtifactInfo,
     JobRecord,
     JobStatus,
+    RequestedScope,
     utc_now,
 )
 from .store import JobStore
@@ -271,9 +272,11 @@ class PipelineManager:
                     job_dir=job_dir,
                     api_key=codex_api_key,
                     model=record.model,
-                    instructions=record.instructions,
+                    instructions=record.customer_instructions,
                     has_template=(inputs_dir / "template.xlsx").exists(),
                     has_prices=(inputs_dir / "prices.xlsx").exists(),
+                    workflow_kind=record.workflow_kind,
+                    requested_scopes=record.requested_scopes,
                 )
 
             self.store.update(
@@ -291,6 +294,29 @@ class PipelineManager:
             if takeoff.source.sha256 != source_hash:
                 raise ValueError(
                     "takeoff.json source SHA-256 does not match the uploaded PDF"
+                )
+            if (
+                any(
+                    asset.measurement_kind == "count"
+                    for asset in takeoff.assets
+                )
+                and RequestedScope.fixture_counts
+                not in record.requested_scopes
+            ):
+                raise ValueError(
+                    "takeoff.json contains fixture counts outside the trusted "
+                    "requested scopes"
+                )
+            if (
+                any(
+                    asset.measurement_kind == "linear"
+                    for asset in takeoff.assets
+                )
+                and RequestedScope.cable_runs not in record.requested_scopes
+            ):
+                raise ValueError(
+                    "takeoff.json contains linear runs outside the trusted "
+                    "requested scopes"
                 )
             if replay_takeoff is None or workbook_path.exists():
                 validate_workbook_artifact(
@@ -353,12 +379,45 @@ class PipelineManager:
                 path.name: self._artifact(job_id, path)
                 for path in candidates
             }
+            mapped_assets = len(takeoff.assets)
+            unresolved_symbols = len(takeoff.unresolved_symbols)
+            legend_coverage_denominator = mapped_assets + unresolved_symbols
+            linear_quantity_by_unit: dict[str, float] = {}
+            for asset in takeoff.assets:
+                if asset.measurement_kind != "linear":
+                    continue
+                linear_quantity_by_unit[asset.unit] = (
+                    linear_quantity_by_unit.get(asset.unit, 0)
+                    + asset.quantity
+                )
             metrics = {
                 "pages": actual_pages,
-                "counted_units": len(takeoff.assets),
+                "counted_units": mapped_assets,
+                "count_placements": sum(
+                    asset.measurement_kind == "count"
+                    for asset in takeoff.assets
+                ),
+                "linear_runs": sum(
+                    asset.measurement_kind == "linear"
+                    for asset in takeoff.assets
+                ),
+                "linear_path_points": sum(
+                    len(asset.path or [])
+                    for asset in takeoff.assets
+                    if asset.measurement_kind == "linear"
+                ),
+                "linear_quantity_by_unit": linear_quantity_by_unit,
                 "annotated_units": summary.annotated_asset_count,
                 "skipped_annotations": summary.skipped_asset_count,
                 "unique_codes": len({asset.code for asset in takeoff.assets}),
+                "legend_entries": len(takeoff.legend_entries),
+                "mapped_assets": mapped_assets,
+                "unresolved_symbols": unresolved_symbols,
+                "legend_coverage_percent": (
+                    mapped_assets / legend_coverage_denominator * 100
+                    if legend_coverage_denominator
+                    else 100.0
+                ),
             }
             self.store.update(
                 job_id,

@@ -1,11 +1,11 @@
 import { z } from "zod"
 import { maxUploadBytes, maxUploadMb } from "@/lib/config"
-import { takeoffTrades } from "@/lib/takeoff-types"
+import { selectableTakeoffTrades } from "@/lib/takeoff-types"
 
 export const takeoffDraftSchema = z.object({
   projectName: z.string().trim().min(2).max(120),
   mode: z.enum(["sample", "standard"]).default("standard"),
-  trades: z.array(z.enum(takeoffTrades)).min(1).max(3),
+  trades: z.array(z.enum(selectableTakeoffTrades)).min(1).max(2),
   notes: z.string().trim().max(4_000).optional().default(""),
   samplePage: z.number().int().positive().max(250).optional(),
   filename: z.string().trim().min(1).max(220),

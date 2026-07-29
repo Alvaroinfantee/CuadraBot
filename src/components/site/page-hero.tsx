@@ -78,14 +78,14 @@ export function CtaBand({ locale = "en" }: { locale?: Locale }) {
   const copy =
     locale === "es"
       ? {
-          title: "Prueba una hoja real sin coste.",
+          title: "Prueba una hoja con leyenda sin coste.",
           body:
-            "Sube un PDF a escala, elige una especialidad disponible y recibe el mismo plano marcado que entregamos en los trabajos de pago.",
+            "Sube un PDF con una leyenda legible, elige un alcance y recibe en horas el mismo plano anotado y libro de cantidades que entregamos en los trabajos de pago.",
         }
       : {
-          title: "See one real sheet measured free.",
+          title: "See one real legend-based sheet counted free.",
           body:
-            "Upload a scaled PDF, pick one launch trade, and receive the same marked evidence used for paid work.",
+            "Upload a PDF with a readable legend, pick one scope, and receive in hours the same annotated plan and quantity workbook used for paid work.",
         }
   return (
     <section className="blueprint-grid py-16">

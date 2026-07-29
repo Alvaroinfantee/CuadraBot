@@ -52,7 +52,7 @@ export default function TermsPage() {
             authority.
           </Term>
           <Term title="4. Scope and verification">
-            A fixed quote covers only the selected trade scope, verified pages,
+            A fixed quote covers only the selected legend-based scope, verified pages,
             source plan set, and stated assumptions. You are responsible for
             checking outputs against the complete contract documents,
             specifications, schedules, addenda, alternates, and field
