@@ -1,30 +1,66 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
-import { Toaster } from "@/components/ui/sonner";
-import "./globals.css";
-
-const googleAdsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ?? "AW-18182187189";
+import type { Metadata } from "next"
+import { Geist, Geist_Mono } from "next/font/google"
+import { Toaster } from "@/components/ui/sonner"
+import "./globals.css"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-});
+})
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-});
+})
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cuadrabot.com"
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://cuadrabot.com"),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "Cuadrabot | Construction takeoffs from blueprint PDFs",
+    default: "Cuadrabot | Self-serve construction takeoffs",
     template: "%s | Cuadrabot",
   },
   description:
-    "Upload blueprint PDFs, get an instant takeoff quote, pay securely, and receive reviewed takeoff files.",
-};
+    "Upload scaled PDF plans and receive marked drawings plus Excel quantities in hours.",
+  applicationName: "Cuadrabot",
+  keywords: [
+    "construction takeoff",
+    "quantity takeoff",
+    "flooring takeoff",
+    "drywall takeoff",
+    "door takeoff",
+    "estimating",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "Cuadrabot",
+    title: "Self-serve construction takeoffs in hours.",
+    description:
+      "Upload scaled PDF plans and receive marked drawings plus Excel quantities.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Cuadrabot source-linked plan takeoff and verified quantity workbook",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Self-serve construction takeoffs in hours.",
+    description:
+      "Upload scaled PDF plans and receive marked drawings plus Excel quantities.",
+    images: ["/opengraph-image"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+}
 
 export default function RootLayout({
   children,
@@ -37,23 +73,6 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {googleAdsId ? (
-          <>
-            <Script
-              id="google-ads-gtag-src"
-              src={`https://www.googletagmanager.com/gtag/js?id=${googleAdsId}`}
-              strategy="beforeInteractive"
-            />
-            <Script id="google-ads-gtag-init" strategy="beforeInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${googleAdsId}');
-              `}
-            </Script>
-          </>
-        ) : null}
         {children}
         <Toaster />
       </body>

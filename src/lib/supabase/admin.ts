@@ -1,12 +1,18 @@
 import "server-only"
 
 import { createClient } from "@supabase/supabase-js"
-import { getRequiredEnv } from "@/lib/config"
+import {
+  getRequiredEnv,
+  getSupabaseSecretKey,
+} from "@/lib/config"
 
 export function createSupabaseAdminClient() {
   return createClient(
     getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    getSupabaseSecretKey() ??
+      (() => {
+        throw new Error("Missing Supabase secret key.")
+      })(),
     {
       auth: {
         autoRefreshToken: false,

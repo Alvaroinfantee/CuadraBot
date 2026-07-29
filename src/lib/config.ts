@@ -1,15 +1,17 @@
 export const defaultCurrency = process.env.DEFAULT_CURRENCY ?? "usd"
-export const customerUploadBucket =
-  process.env.CUSTOMER_UPLOAD_BUCKET ?? "customer-uploads"
-export const blenderOutputBucket =
-  process.env.BLENDER_OUTPUT_BUCKET ?? "render-outputs"
+export const takeoffUploadBucket =
+  process.env.TAKEOFF_UPLOAD_BUCKET ?? "takeoff-uploads"
+export const takeoffResultBucket =
+  process.env.TAKEOFF_RESULT_BUCKET ?? "takeoff-results"
 export const maxUploadMb = Number(process.env.MAX_UPLOAD_MB ?? "100")
 export const maxUploadBytes = maxUploadMb * 1024 * 1024
+export const maxPlanPages = Number(process.env.MAX_PLAN_PAGES ?? "250")
 export const ownerRequestEmail =
   process.env.OWNER_REQUEST_EMAIL ?? process.env.ADMIN_EMAIL ?? "ainfante@cuadrabot.com"
-export const jobReminderEmail =
-  process.env.JOB_REMINDER_EMAIL ?? "alvaroinfantee@gmail.com"
 export const simulationEmailToken = process.env.SIMULATION_EMAIL_TOKEN ?? null
+export const demoModeEnabled = process.env.ENABLE_DEMO_MODE === "true"
+export const stripeAutomaticTaxEnabled =
+  process.env.STRIPE_AUTOMATIC_TAX_ENABLED === "true"
 
 export function getSiteUrl() {
   return (
@@ -29,11 +31,27 @@ export function getRequiredEnv(name: string) {
   return value
 }
 
+export function getSupabasePublicKey() {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    null
+  )
+}
+
+export function getSupabaseSecretKey() {
+  return (
+    process.env.SUPABASE_SECRET_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    null
+  )
+}
+
 export function hasSupabaseServerEnv() {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      getSupabasePublicKey() &&
+      getSupabaseSecretKey()
   )
 }
 

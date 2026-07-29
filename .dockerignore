@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.env*
+coverage
+services/takeoff/data
+cuadrabot-takeoff-worker-jobs

@@ -2,14 +2,17 @@ import "server-only"
 
 import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
-import { getRequiredEnv } from "@/lib/config"
+import { getRequiredEnv, getSupabasePublicKey } from "@/lib/config"
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies()
 
   return createServerClient(
     getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    getRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    getSupabasePublicKey() ??
+      (() => {
+        throw new Error("Missing Supabase publishable key.")
+      })(),
     {
       cookies: {
         getAll() {

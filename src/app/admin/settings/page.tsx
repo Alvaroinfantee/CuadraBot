@@ -1,74 +1,159 @@
-import { AdminShell } from "@/components/admin/admin-shell"
-import { Badge } from "@/components/ui/badge"
-import { requireAdmin } from "@/lib/auth"
+import { updateSetting } from "@/app/admin/actions"
+import { updateProjectFileRetention } from "@/app/admin/retention-actions"
+import { AdminHeader } from "@/components/admin/admin-ui"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { getAdminSnapshot } from "@/lib/admin-data"
+import {
+  DEFAULT_PROJECT_FILE_RETENTION_DAYS,
+  MAX_PROJECT_FILE_RETENTION_DAYS,
+  MIN_PROJECT_FILE_RETENTION_DAYS,
+  parseProjectFileRetentionDays,
+  PROJECT_FILE_RETENTION_SETTING_KEY,
+} from "@/lib/project-file-retention"
 
-export const metadata = {
-  title: "Admin settings",
-}
+export const metadata = { title: "Admin settings" }
 
-export const dynamic = "force-dynamic"
-
-const requiredEnv = [
-  "NEXT_PUBLIC_SITE_URL",
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
-  "STRIPE_SECRET_KEY",
-  "STRIPE_WEBHOOK_SECRET",
-  "RESEND_API_KEY",
-  "FROM_EMAIL",
-  "OWNER_REQUEST_EMAIL",
-  "JOB_REMINDER_EMAIL",
-  "WORKER_API_KEY",
-]
-
-const optionalEnv = [
-  "DEFAULT_CURRENCY",
-  "MAX_UPLOAD_MB",
-  "ADMIN_EMAIL",
-  "BLENDER_OUTPUT_BUCKET",
-  "CUSTOMER_UPLOAD_BUCKET",
-]
+const editable = new Set([
+  "features.free_sample",
+  "features.subscriptions",
+  "features.maintenance",
+])
 
 export default async function AdminSettingsPage() {
-  await requireAdmin()
-
-  return (
-    <AdminShell title="Settings">
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-4 border p-6">
-          <h2 className="text-2xl font-semibold">Environment</h2>
-          <EnvList names={requiredEnv} required />
-        </div>
-        <div className="flex flex-col gap-4 border p-6">
-          <h2 className="text-2xl font-semibold">Optional settings</h2>
-          <EnvList names={optionalEnv} />
-        </div>
-      </section>
-      <section className="border p-6">
-        <h2 className="mb-3 text-2xl font-semibold">Worker security model</h2>
-        <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-          The website never exposes the owner PC, Blender, MCP server, or local network. The local worker authenticates with a bearer API key, polls the public API, downloads signed URLs for claimed jobs, runs local rendering, and uploads final files back through authenticated worker endpoints.
-        </p>
-      </section>
-    </AdminShell>
+  const data = await getAdminSnapshot()
+  const retentionSetting = data.settings.find(
+    (setting) => setting.key === PROJECT_FILE_RETENTION_SETTING_KEY
   )
-}
+  const parsedRetention = parseProjectFileRetentionDays(retentionSetting?.value)
+  const displayedRetentionDays = parsedRetention.ok
+    ? parsedRetention.days
+    : DEFAULT_PROJECT_FILE_RETENTION_DAYS
 
-function EnvList({ names, required = false }: { names: string[]; required?: boolean }) {
   return (
-    <div className="flex flex-col gap-2">
-      {names.map((name) => {
-        const configured = Boolean(process.env[name])
-        return (
-          <div key={name} className="flex items-center justify-between gap-4 border px-3 py-2 text-sm">
-            <span className="font-mono">{name}</span>
-            <Badge variant={configured ? "secondary" : "outline"} className="rounded-sm">
-              {configured ? "Configured" : required ? "Required" : "Default"}
-            </Badge>
-          </div>
-        )
-      })}
+    <div className="space-y-8">
+      <AdminHeader
+        eyebrow="Configuration"
+        title="Product settings"
+        body="Manage launch switches and project-file retention without editing code. Every update requires a reason and is written to the audit log."
+      />
+      <Alert>
+        <AlertTitle>Settings are not secret storage</AlertTitle>
+        <AlertDescription>
+          Stripe keys, Supabase keys, worker secrets, and processor credentials
+          belong in the deployment secret manager, never in this table.
+        </AlertDescription>
+      </Alert>
+      {!parsedRetention.ok ? (
+        <Alert variant="destructive">
+          <AlertTitle>Retention setting needs attention</AlertTitle>
+          <AlertDescription>
+            Scheduled project-file deletion is paused because the setting is
+            missing or invalid. Saving the form below restores a valid value.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>Project-file retention</CardTitle>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Keep tracked uploads and generated takeoff files for this many days
+            after a job is completed, failed, or canceled. Active work,
+            customer/account records, billing records, credit history, job
+            history, and audit records are not deleted by this control.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <form action={updateProjectFileRetention} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="project-file-retention-days">
+                Retention window in days
+              </Label>
+              <Input
+                id="project-file-retention-days"
+                name="days"
+                type="number"
+                min={MIN_PROJECT_FILE_RETENTION_DAYS}
+                max={MAX_PROJECT_FILE_RETENTION_DAYS}
+                step={1}
+                defaultValue={displayedRetentionDays}
+                required
+              />
+              <p className="text-xs leading-5 text-muted-foreground">
+                Allowed range: {MIN_PROJECT_FILE_RETENTION_DAYS}–
+                {MAX_PROJECT_FILE_RETENTION_DAYS} days. Launch default:{" "}
+                {DEFAULT_PROJECT_FILE_RETENTION_DAYS} days. Changes affect the
+                public data-handling commitment and should be approved by the
+                operator responsible for privacy and support.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project-file-retention-reason">
+                Reason for changing retention
+              </Label>
+              <Input
+                id="project-file-retention-reason"
+                name="reason"
+                minLength={5}
+                maxLength={500}
+                placeholder="For example: approved annual privacy review"
+                required
+              />
+            </div>
+            <Button type="submit">Save retention window</Button>
+          </form>
+        </CardContent>
+      </Card>
+      <div className="grid gap-5 lg:grid-cols-2">
+        {data.settings
+          .filter(
+            (setting) => setting.key !== PROJECT_FILE_RETENTION_SETTING_KEY
+          )
+          .map((setting) => (
+            <Card key={setting.key}>
+              <CardHeader>
+                <CardTitle className="font-mono text-base">
+                  {setting.key}
+                </CardTitle>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {setting.description}
+                </p>
+              </CardHeader>
+              <CardContent>
+                {editable.has(setting.key) ? (
+                  <form action={updateSetting} className="space-y-4">
+                    <input type="hidden" name="key" value={setting.key} />
+                    <div className="space-y-2">
+                      <Label htmlFor={`${setting.key}-value`}>JSON value</Label>
+                      <Input
+                        id={`${setting.key}-value`}
+                        name="value"
+                        defaultValue={JSON.stringify(setting.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`${setting.key}-reason`}>Reason</Label>
+                      <Input
+                        id={`${setting.key}-reason`}
+                        name="reason"
+                        placeholder="Why is this changing?"
+                        required
+                      />
+                    </div>
+                    <Button type="submit">Save setting</Button>
+                  </form>
+                ) : (
+                  <pre className="overflow-x-auto border bg-muted/30 p-4 text-xs">
+                    {JSON.stringify(setting.value, null, 2)}
+                  </pre>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+      </div>
     </div>
   )
 }
