@@ -1,7 +1,7 @@
-.git
-.next
 node_modules
+.next
+.git
 .env*
-*.log
-CuadraBot Logo.jpeg
-README.md
+coverage
+services/takeoff/data
+cuadrabot-takeoff-worker-jobs

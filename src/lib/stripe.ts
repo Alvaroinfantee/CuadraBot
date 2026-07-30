@@ -1,49 +1,46 @@
-import Stripe from "stripe";
+import "server-only"
 
-let _stripe: Stripe | null = null;
+import Stripe from "stripe"
+import { getOptionalEnv } from "@/lib/config"
 
-export function getStripeInstance(): Stripe {
-    if (!_stripe) {
-        if (!process.env.STRIPE_SECRET_KEY) {
-            throw new Error("STRIPE_SECRET_KEY environment variable is not set");
-        }
-        _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    }
-    return _stripe;
+export const STRIPE_API_VERSION = "2026-04-22.dahlia" as const
+
+let stripeClient: Stripe | null = null
+
+export class StripeConfigurationError extends Error {
+  readonly code = "stripe_not_configured"
+  readonly envName: string
+
+  constructor(envName: string) {
+    super(`Missing required Stripe environment variable: ${envName}`)
+    this.name = "StripeConfigurationError"
+    this.envName = envName
+  }
 }
 
-// Use this in API routes — lazily initialized at runtime
-export const stripe = {
-    get customers() { return getStripeInstance().customers; },
-    get checkout() { return getStripeInstance().checkout; },
-    get subscriptions() { return getStripeInstance().subscriptions; },
-    get webhooks() { return getStripeInstance().webhooks; },
-    get prices() { return getStripeInstance().prices; },
-    get products() { return getStripeInstance().products; },
-    get invoices() { return getStripeInstance().invoices; },
-} as unknown as Stripe;
+export function getStripe() {
+  if (stripeClient) return stripeClient
 
-export const PLAN = {
-    key: "pro",
-    name: "CuadraBot Pro",
-    description: "Acceso completo a la plataforma de contabilidad inteligente",
-    price: 30,
-    currency: "USD",
-    trialDays: 2, // 48 hours
-    priceId: process.env.STRIPE_PRICE_PRO!,
-    features: [
-        "Empresas ilimitadas",
-        "Todos los reportes fiscales DGII",
-        "Clasificación con IA",
-        "Exportación de reportes",
-        "Soporte prioritario",
-        "Actualizaciones continuas",
-    ],
-} as const;
+  stripeClient = new Stripe(getStripeEnv("STRIPE_SECRET_KEY"), {
+    apiVersion: STRIPE_API_VERSION,
+    maxNetworkRetries: 2,
+    timeout: 20_000,
+    typescript: true,
+  })
 
-// Keep backwards-compatible PLANS export for any code that references it
-export const PLANS = {
-    pro: PLAN,
-} as const;
+  return stripeClient
+}
 
-export type PlanKey = keyof typeof PLANS;
+export function getStripeWebhookSecret() {
+  return getStripeEnv("STRIPE_WEBHOOK_SECRET")
+}
+
+function getStripeEnv(name: string) {
+  const value = getOptionalEnv(name)?.trim()
+
+  if (!value) {
+    throw new StripeConfigurationError(name)
+  }
+
+  return value
+}

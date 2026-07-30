@@ -1,90 +1,86 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import Providers from "@/components/Providers";
-import "./globals.css";
+import type { Metadata } from "next"
+import { Geist, Geist_Mono } from "next/font/google"
+import { headers } from "next/headers"
+import { Toaster } from "@/components/ui/sonner"
+import { normalizeLocale } from "@/lib/i18n"
+import "./globals.css"
 
-const inter = Inter({
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  variable: "--font-inter",
-});
+})
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+})
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cuadrabot.com"
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "CuadraBot — Contabilidad Inteligente para República Dominicana",
-    template: "%s | CuadraBot",
+    default: "Cuadrabot | Legend-driven fixture takeoffs",
+    template: "%s | Cuadrabot",
   },
   description:
-    "Automatiza tu contabilidad fiscal en República Dominicana. Sube tus CSV y obtén todos los reportes necesarios para pagar tus impuestos con inteligencia artificial.",
+    "Upload PDF plans with a readable legend and receive source-linked fixture, device, and supported cable or conduit quantities in hours.",
+  applicationName: "Cuadrabot",
   keywords: [
-    "contabilidad",
-    "impuestos",
-    "República Dominicana",
-    "DGII",
-    "CPA",
-    "contador",
-    "fiscal",
-    "automatización",
-    "inteligencia artificial",
-    "reportes fiscales",
-    "declaración de impuestos",
+    "fixture takeoff",
+    "electrical fixture takeoff",
+    "lighting fixture count",
+    "PDF symbol counting",
+    "legend based takeoff",
+    "cable takeoff from PDF",
   ],
-  authors: [{ name: "CuadraBot" }],
-  creator: "CuadraBot",
   openGraph: {
     type: "website",
-    locale: "es_DO",
-    url: "/",
-    siteName: "CuadraBot",
-    title: "CuadraBot — Contabilidad Inteligente para República Dominicana",
+    siteName: "Cuadrabot",
+    title: "Legend-driven fixture takeoffs in hours.",
     description:
-      "Automatiza tu contabilidad fiscal en RD. Sube tus CSV y obtén reportes fiscales con IA.",
+      "Upload PDF plans with a readable legend and receive source-linked counts, a marked PDF, and Excel quantities.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "CuadraBot - Contabilidad Inteligente",
+        alt: "Cuadrabot legend-driven fixture takeoff with source-linked evidence",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CuadraBot — Contabilidad Inteligente",
+    title: "Legend-driven fixture takeoffs in hours.",
     description:
-      "Automatiza tu contabilidad fiscal en RD con inteligencia artificial.",
-    images: ["/og-image.png"],
+      "Upload PDF plans with a readable legend and receive source-linked counts, a marked PDF, and Excel quantities.",
+    images: ["/opengraph-image"],
   },
   robots: {
     index: true,
     follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
   },
-};
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers()
+  const locale = normalizeLocale(
+    requestHeaders.get("x-cuadrabot-locale")
+  )
+
   return (
-    <html lang="es" className={inter.variable}>
-      <head>
-        {/* Google Analytics placeholder */}
-        {/* <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script> */}
-
-        {/* Meta Pixel placeholder */}
-        {/* <script dangerouslySetInnerHTML={{ __html: `...` }} /> */}
-
-        <link rel="icon" href="/favicon.ico" />
-      </head>
-      <body className="antialiased">{children}</body>
+    <html
+      lang={locale}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

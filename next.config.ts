@@ -1,35 +1,57 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
+  output: "standalone",
+  poweredByHeader: false,
+  async redirects() {
+    return [
       {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com",
+        source: "/flooring-takeoff",
+        destination: "/fixture-takeoff",
+        permanent: true,
       },
-    ],
+      {
+        source: "/drywall-takeoff",
+        destination: "/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/door-window-takeoff",
+        destination: "/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/es/flooring-takeoff",
+        destination: "/es/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/es/drywall-takeoff",
+        destination: "/es/fixture-takeoff",
+        permanent: true,
+      },
+      {
+        source: "/es/door-window-takeoff",
+        destination: "/es/fixture-takeoff",
+        permanent: true,
+      },
+    ];
   },
   async headers() {
     return [
       {
-        // Only apply CSP to the dashboard/app page where the iframe lives
-        source: "/dashboard/app",
+        source: "/(.*)",
         headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
-            key: "Content-Security-Policy",
-            value: [
-              "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "frame-src 'self' https://cpa-app-7xheb.ondigitalocean.app https://checkout.stripe.com https://js.stripe.com",
-              "connect-src 'self' https://*.stripe.com",
-              "img-src 'self' data: https:",
-              "font-src 'self' https://fonts.gstatic.com",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
-            ].join("; "),
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
           },
         ],
       },
-    ];
+    ]
   },
 };
 
