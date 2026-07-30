@@ -114,7 +114,10 @@ export default async function LoginPage({
             id="email"
             name="email"
             type="email"
-            autoComplete="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
           />
         </div>

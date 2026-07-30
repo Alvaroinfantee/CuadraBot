@@ -28,7 +28,7 @@ export async function refreshSupabaseSession(
       getAll() {
         return request.cookies.getAll()
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, responseHeaders) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         )
@@ -39,6 +39,9 @@ export async function refreshSupabaseSession(
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options)
         )
+        Object.entries(responseHeaders).forEach(([name, value]) => {
+          response.headers.set(name, value)
+        })
       },
     },
   })

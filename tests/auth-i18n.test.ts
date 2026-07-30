@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { signInNoticeCode } from "../src/lib/auth-errors"
 import { localizeAuthNotice } from "../src/lib/auth-notices"
 
 test("auth notices use stable codes and render in the selected language", () => {
@@ -40,4 +41,16 @@ test("untrusted auth query text is never rendered verbatim", () => {
     ),
     "No pudimos completar esa solicitud de cuenta. Inténtalo de nuevo."
   )
+})
+
+test("sign-in errors distinguish bad credentials from service failures", () => {
+  assert.equal(
+    signInNoticeCode({ code: "invalid_credentials" }),
+    "invalid_credentials"
+  )
+  assert.equal(
+    signInNoticeCode({ code: "over_request_rate_limit" }),
+    "request_failed"
+  )
+  assert.equal(signInNoticeCode({ code: null }), "request_failed")
 })

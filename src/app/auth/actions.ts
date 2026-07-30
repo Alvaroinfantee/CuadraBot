@@ -14,6 +14,7 @@ import {
 } from "@/lib/i18n-server"
 import { safeRelativePath } from "@/lib/safe-redirect"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { signInNoticeCode } from "@/lib/auth-errors"
 
 function textField(formData: FormData, name: string) {
   const value = formData.get(name)
@@ -69,9 +70,13 @@ export async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
+    console.warn("Supabase sign-in failed.", {
+      code: error.code ?? "unknown",
+      status: error.status ?? null,
+    })
     redirect(
       actionRedirectPath("/login", locale, {
-        error: "invalid_credentials",
+        error: signInNoticeCode(error),
         next,
       })
     )
