@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish_images:
+        description: Publish immutable executor images for the selected commit
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install isolated PDF verifier
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y qpdf
+      - run: npm ci
+      - run: npm run test:executor
+      - run: npm test
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Build and smoke-test the production web runtime
+        run: |
+          docker build --tag "cuadrabot-web:${GITHUB_SHA}" .
+          docker run --rm --entrypoint /usr/bin/qpdf "cuadrabot-web:${GITHUB_SHA}" --version
+
+  takeoff-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/takeoff
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/takeoff/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest
+
+  deployment-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate deployment bundle
+        run: bash deploy/scripts/static-check.sh
+
+  publish-executor-images:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_images)
+    needs: [web, takeoff-service, deployment-bundle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Prepare lowercase immutable image names
+        shell: bash
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "BASE_REPO=ghcr.io/${owner}/cuadrabot-takeoff-base" >> "$GITHUB_ENV"
+          echo "BASE_IMAGE=ghcr.io/${owner}/cuadrabot-takeoff-base:build-${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "PROCESSOR_TAG=ghcr.io/${owner}/cuadrabot-takeoff:sha-${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "EXECUTOR_TAG=ghcr.io/${owner}/cuadrabot-executor:sha-${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and publish pinned takeoff base
+        id: base
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: services/takeoff
+          push: true
+          tags: ${{ env.BASE_IMAGE }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=takeoff-base
+          cache-to: type=gha,mode=max,scope=takeoff-base
+
+      - name: Build and publish disposable processor
+        id: processor
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: executor/Dockerfile.processor
+          push: true
+          tags: ${{ env.PROCESSOR_TAG }}
+          build-args: TAKEOFF_BASE_IMAGE=${{ env.BASE_REPO }}@${{ steps.base.outputs.digest }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=processor
+          cache-to: type=gha,mode=max,scope=processor
+
+      - name: Build and publish egress executor
+        id: executor
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: executor/Dockerfile.egress
+          push: true
+          tags: ${{ env.EXECUTOR_TAG }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=executor
+          cache-to: type=gha,mode=max,scope=executor
+
+      - name: Record deployable digest references
+        shell: bash
+        env:
+          PROCESSOR_DIGEST: ${{ steps.processor.outputs.digest }}
+          EXECUTOR_DIGEST: ${{ steps.executor.outputs.digest }}
+        run: |
+          [[ "$PROCESSOR_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          [[ "$EXECUTOR_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          processor_repo="${PROCESSOR_TAG%%:*}"
+          executor_repo="${EXECUTOR_TAG%%:*}"
+          umask 077
+          {
+            echo "RELEASE_COMMIT=${GITHUB_SHA}"
+            echo "EXECUTOR_PROCESSOR_IMAGE=${processor_repo}@${PROCESSOR_DIGEST}"
+            echo "EXECUTOR_IMAGE=${executor_repo}@${EXECUTOR_DIGEST}"
+          } > production-image-digests.env
+          cat production-image-digests.env >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: production-image-digests-${{ github.sha }}
+          path: production-image-digests.env
+          if-no-files-found: error
+          retention-days: 30
+
