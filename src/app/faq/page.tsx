@@ -34,7 +34,7 @@ const sections = [
     title: "Pricing and credits",
     questions: [
       ["How is the price decided?", "The server verifies the actual uploaded PDF and page count, then applies the published scope tiers. Browser-supplied page counts, prices, and credit amounts are never trusted."],
-      ["Do I need a subscription?", "No. You can buy a reusable credit pack, subscribe for monthly credits, or start with one free sheet. There is no seat license and no unlimited plan."],
+      ["Do takeoffs require credits?", "Yes. Every takeoff requires credits through a reusable credit pack or a subscription with monthly credits. There is no seat license and no unlimited plan."],
       ["When are credits charged?", "Credits are reserved when you approve the verified quote and settled after delivery. A system failure releases the reservation."],
       ["Do credits expire?", "Credits do not expire during the launch version. If an expiry policy is introduced later, it will apply prospectively and will be shown before purchase."],
     ],

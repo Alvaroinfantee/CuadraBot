@@ -61,7 +61,7 @@ export default function SecurityPageEs() {
           eyebrow="Seguridad y privacidad"
           title="Tus planos son datos del cliente, no contenido público."
           body="Cuadrabot separa el acceso del navegador, la autoridad de la aplicación, las credenciales de procesamiento y los controles administrativos que protegen los archivos privados de cada proyecto."
-          primary="Probar un plano gratis"
+          primary="Crear una cuenta"
           secondary="Leer la política de privacidad"
           secondaryHref="/es/privacy"
           locale="es"

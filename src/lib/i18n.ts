@@ -267,7 +267,7 @@ export const commonCopy: Record<Locale, CommonCopy> = {
       security: "Security",
       faq: "FAQ",
       login: "Log in",
-      freeCta: "Check my plans free",
+      freeCta: "Create account",
       openNavigation: "Open navigation",
     },
     footer: {
@@ -319,7 +319,7 @@ export const commonCopy: Record<Locale, CommonCopy> = {
       security: "Seguridad",
       faq: "Preguntas frecuentes",
       login: "Iniciar sesión",
-      freeCta: "Probar un plano gratis",
+      freeCta: "Crear una cuenta",
       openNavigation: "Abrir navegación",
     },
     footer: {

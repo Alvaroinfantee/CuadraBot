@@ -113,7 +113,7 @@ export default function HomePage() {
                   href="/signup"
                   className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
                 >
-                  Check my plans free
+                  Create account
                   <ArrowRightIcon />
                 </Link>
                 <Link
@@ -291,7 +291,7 @@ export default function HomePage() {
             />
             <Accordion>
               {[
-                ["Is the free sample really free?", "Yes. One company can submit one sheet with a visible applicable legend and one legend-based scope without buying credits. The same automated validation and evidence approach applies."],
+                ["Do takeoffs require credits?", "Yes. Every takeoff requires credits. Buy a reusable credit pack or subscribe for monthly credits, then approve the fixed quote after the uploaded PDF and scope are verified."],
                 ["Does Cuadrabot replace an estimator?", "No. Cuadrabot provides takeoff support and reviewable evidence. Your team remains responsible for scope interpretation, pricing, bid decisions, and final verification."],
                 ["Does Cuadrabot count the legend itself?", "No. The legend is used as the item catalog. Legend samples, schedule rows, key plans, and repeated reference views are excluded from installed-placement totals."],
                 ["Can Cuadrabot measure cable or conduit runs?", "Only when the route is visibly drawn, the applicable legend is readable, and the sheet states a usable scale. Ambiguous routes or codes are flagged rather than guessed."],
@@ -315,14 +315,14 @@ export default function HomePage() {
               Turn your next readable legend into source-linked quantities.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Start with one sheet free, then use credits only when the
-              verified scope makes sense.
+              Create an account, add credits through a reusable pack or monthly
+              subscription, then approve the verified fixed quote.
             </p>
             <Link
               href="/signup"
               className={cn(buttonVariants({ size: "lg" }), "mt-8 h-12 px-7")}
             >
-              Check my plans free
+              Create account
               <ArrowRightIcon />
             </Link>
           </div>

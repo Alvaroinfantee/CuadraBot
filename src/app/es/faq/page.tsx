@@ -59,8 +59,8 @@ const sections = [
         "El servidor verifica el PDF realmente cargado y su número de páginas y, después, aplica los niveles de alcance publicados. Nunca se confía en recuentos de páginas, precios ni importes de créditos enviados por el navegador.",
       ],
       [
-        "¿Necesito una suscripción?",
-        "No. Puedes comprar un paquete de créditos reutilizable, suscribirte para recibir créditos mensuales o empezar con una hoja gratis. No hay licencias por usuario ni planes ilimitados.",
+        "¿Las mediciones requieren créditos?",
+        "Sí. Cada medición requiere créditos mediante un paquete reutilizable o una suscripción con créditos mensuales. No hay licencias por usuario ni planes ilimitados.",
       ],
       [
         "¿Cuándo se cobran los créditos?",
@@ -112,7 +112,7 @@ export default function FaqPageEs() {
           eyebrow="Preguntas frecuentes"
           title="Respuestas claras antes de subir tus planos."
           body="Alcance, precios, evidencias, privacidad y aquello de lo que Cuadrabot se hace —y no se hace— responsable."
-          primary="Probar un plano gratis"
+          primary="Crear una cuenta"
           secondary="Ver precios"
           secondaryHref="/es/pricing"
           locale="es"

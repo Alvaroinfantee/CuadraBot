@@ -39,16 +39,16 @@ export default function PricingPage() {
               Buy legend-driven takeoff capacity, not another seat license.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Start with one sheet that shows a readable legend free. Every
-              paid job receives a fixed credit quote after the uploaded PDF,
-              page count, and selected scopes are verified.
+              Every takeoff requires credits from a reusable pack or monthly
+              subscription. You receive a fixed credit quote after the uploaded
+              PDF, page count, and selected scopes are verified.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/signup"
                 className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
               >
-                Check my plans free
+                Create account
                 <ArrowRightIcon />
               </Link>
               <Link
@@ -169,7 +169,7 @@ export default function PricingPage() {
                       "mt-6 w-full"
                     )}
                   >
-                    Create workspace
+                    Create account
                   </Link>
                 </article>
               ))}
@@ -212,7 +212,7 @@ export default function PricingPage() {
                       "mt-6 w-full"
                     )}
                   >
-                    Create workspace
+                    Create account
                   </Link>
                 </article>
               ))}
@@ -239,7 +239,7 @@ export default function PricingPage() {
               href="/signup"
               className={cn(buttonVariants({ variant: "secondary" }), "shrink-0")}
             >
-              Start with one sheet free
+              Create account
             </Link>
           </div>
         </section>

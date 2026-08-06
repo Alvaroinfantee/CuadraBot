@@ -81,7 +81,7 @@ export default function SamplePageEs() {
           eyebrow="Ejemplo de medición"
           title="Comprueba cómo un código de leyenda se convierte en un recuento trazable."
           body="Este ejemplo eléctrico ilustrativo muestra la leyenda, las ubicaciones correspondientes, la estructura del libro y el contexto de validación automatizada. Los planos reales permanecen privados."
-          primary="Crear una muestra gratis"
+          primary="Crear una cuenta"
           secondary="Ver los controles de precisión"
           secondaryHref="/es/accuracy"
           locale="es"
@@ -249,9 +249,9 @@ export default function SamplePageEs() {
               Haz la prueba real con tu propia leyenda legible.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Tu empresa recibe una hoja donde sea visible la leyenda aplicable
-              y un alcance de medición gratis, con el mismo almacenamiento
-              privado y el mismo control de validación automatizado.
+              Esta página es una vista previa ilustrativa del resultado. Crea
+              una cuenta, compra créditos mediante un paquete o una suscripción
+              y envía tus propios planos legibles para una medición real.
             </p>
             <Link
               href={localizedAuthPath("/signup", "es")}
@@ -260,7 +260,7 @@ export default function SamplePageEs() {
                 "mt-7 h-12 px-7"
               )}
             >
-              Probar un plano gratis
+              Crear una cuenta
               <ArrowRightIcon />
             </Link>
           </div>

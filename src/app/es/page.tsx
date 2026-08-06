@@ -131,7 +131,7 @@ export default function HomePageEs() {
                   href={localizedAuthPath("/signup", "es")}
                   className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
                 >
-                  Probar un plano gratis
+                  Crear una cuenta
                   <ArrowRightIcon />
                 </Link>
                 <Link
@@ -338,8 +338,8 @@ export default function HomePageEs() {
             <Accordion>
               {[
                 [
-                  "¿La muestra gratis es realmente gratuita?",
-                  "Sí. Una empresa puede enviar una hoja que muestre la leyenda aplicable y un alcance basado en leyenda sin comprar créditos. Se aplica el mismo enfoque de validación automatizada y evidencias.",
+                  "¿Las mediciones requieren créditos?",
+                  "Sí. Cada medición requiere créditos. Compra un paquete reutilizable o suscríbete para recibir créditos mensuales; después aprueba el precio fijo una vez verificados el PDF subido y el alcance.",
                 ],
                 [
                   "¿Cuadrabot sustituye a un profesional de la estimación?",
@@ -377,8 +377,8 @@ export default function HomePageEs() {
               plano.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Empieza con una hoja gratis y usa créditos solo cuando el alcance
-              verificado tenga sentido.
+              Crea una cuenta, añade créditos mediante un paquete reutilizable
+              o una suscripción mensual y aprueba el precio fijo verificado.
             </p>
             <Link
               href={localizedAuthPath("/signup", "es")}
@@ -387,7 +387,7 @@ export default function HomePageEs() {
                 "mt-8 h-12 px-7"
               )}
             >
-              Probar un plano gratis
+              Crear una cuenta
               <ArrowRightIcon />
             </Link>
           </div>

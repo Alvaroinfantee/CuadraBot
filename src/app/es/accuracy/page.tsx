@@ -61,7 +61,7 @@ export default function AccuracyPageEs() {
           eyebrow="Precisión y validación"
           title="Cada cantidad debe poder rastrearse hasta un código de leyenda y una ubicación del plano."
           body="Cuadrabot no presenta la automatización como certeza. Conserva evidencias de origen, nivel de confianza, supuestos y validaciones comprobables por máquina, mientras tu equipo mantiene el criterio final de estimación."
-          primary="Probar un plano gratis"
+          primary="Crear una cuenta"
           secondary="Ver un ejemplo de entrega"
           locale="es"
         />

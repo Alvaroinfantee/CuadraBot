@@ -38,7 +38,7 @@ export default function SamplePage() {
           eyebrow="Sample takeoff"
           title="See how a legend code becomes a traceable count."
           body="This illustrative electrical sample shows the legend, matching placements, workbook structure, and automated validation context. Customer plans and actual outputs remain private."
-          primary="Create a free sample"
+          primary="Create account"
           secondary="Read accuracy controls"
           secondaryHref="/accuracy"
         />
@@ -164,15 +164,15 @@ export default function SamplePage() {
               Use your own readable legend for the real test.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Your company receives one free sheet where the applicable legend
-              is visible and one takeoff scope, with the same private storage
-              and automated validation gate.
+              This page is an illustrative output preview. Create an account,
+              buy credits through a pack or subscription, and submit your own
+              readable plans for a real takeoff.
             </p>
             <Link
               href="/signup"
               className={cn(buttonVariants({ size: "lg" }), "mt-7 h-12 px-7")}
             >
-              Check my plans free
+              Create account
               <ArrowRightIcon />
             </Link>
           </div>

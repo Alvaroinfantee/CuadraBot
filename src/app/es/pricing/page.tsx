@@ -52,9 +52,9 @@ export default function PricingPageEs() {
               licencia por usuario.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Empieza gratis con una hoja que muestre una leyenda legible. Cada
-              trabajo de pago recibe un precio fijo en créditos después de
-              verificar el PDF, su número real de páginas y los alcances
+              Cada medición requiere créditos de un paquete reutilizable o una
+              suscripción mensual. Recibes un precio fijo en créditos después
+              de verificar el PDF, su número real de páginas y los alcances
               seleccionados.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -62,7 +62,7 @@ export default function PricingPageEs() {
                 href={localizedAuthPath("/signup", "es")}
                 className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
               >
-                Probar un plano gratis
+                Crear una cuenta
                 <ArrowRightIcon />
               </Link>
               <Link
@@ -193,7 +193,7 @@ export default function PricingPageEs() {
                       "mt-6 w-full"
                     )}
                   >
-                    Crear un espacio de trabajo
+                    Crear una cuenta
                   </Link>
                 </article>
               ))}
@@ -239,7 +239,7 @@ export default function PricingPageEs() {
                       "mt-6 w-full"
                     )}
                   >
-                    Crear un espacio de trabajo
+                    Crear una cuenta
                   </Link>
                 </article>
               ))}
@@ -270,7 +270,7 @@ export default function PricingPageEs() {
                 "shrink-0"
               )}
             >
-              Empieza con una hoja gratis
+              Crear una cuenta
             </Link>
           </div>
         </section>
