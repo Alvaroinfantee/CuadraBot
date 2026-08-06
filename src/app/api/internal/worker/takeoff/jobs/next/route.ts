@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { jsonError } from "@/lib/http"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { normalizeTakeoffJobClaimResult } from "@/lib/takeoff-job-claim"
 import { requireWorker } from "@/lib/worker-auth"
 
 export const dynamic = "force-dynamic"
@@ -15,5 +16,5 @@ export async function GET(request: Request) {
   })
 
   if (error) return jsonError(error.message, 500)
-  return NextResponse.json({ job: data ?? null })
+  return NextResponse.json({ job: normalizeTakeoffJobClaimResult(data) })
 }

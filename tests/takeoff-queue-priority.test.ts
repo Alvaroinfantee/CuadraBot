@@ -4,6 +4,7 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { PGlite } from "@electric-sql/pglite"
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto"
+import { normalizeTakeoffJobClaimResult } from "../src/lib/takeoff-job-claim"
 
 const migrationsDirectory = fileURLToPath(
   new URL("../supabase/migrations", import.meta.url)
@@ -162,6 +163,7 @@ test("next-job route delegates selection and claim to the atomic RPC", async () 
 
   assert.match(route, /\.rpc\("claim_next_takeoff_job"/)
   assert.match(route, /p_worker_id:\s*worker\.workerId/)
+  assert.match(route, /normalizeTakeoffJobClaimResult\(data\)/)
   assert.doesNotMatch(route, /\.order\("priority"/)
   assert.doesNotMatch(route, /\.from\("takeoff_jobs"\)/)
 
@@ -176,6 +178,75 @@ test("next-job route delegates selection and claim to the atomic RPC", async () 
   )
   assert.match(migration, /pg_advisory_xact_lock/)
   assert.match(migration, /hashtext\(p_worker_id\)/)
+})
+
+test("claim acknowledgement rejects an empty composite as unavailable", async () => {
+  const route = await readFile(
+    fileURLToPath(
+      new URL(
+        "../src/app/api/internal/worker/takeoff/jobs/[id]/claim/route.ts",
+        import.meta.url
+      )
+    ),
+    "utf8"
+  )
+
+  assert.match(route, /normalizeTakeoffJobClaimResult\(data\)/)
+  assert.match(route, /if \(!job\).*409/)
+  assert.match(route, /NextResponse\.json\(\{ job \}\)/)
+})
+
+test("next-job response preserves an explicit null claim", () => {
+  assert.equal(normalizeTakeoffJobClaimResult(null), null)
+  assert.equal(normalizeTakeoffJobClaimResult(undefined), null)
+})
+
+test("next-job response normalizes an all-null PostgREST composite to no job", () => {
+  const emptyComposite = {
+    id: null,
+    user_id: null,
+    status: null,
+    claim_token: null,
+  }
+  assert.equal(normalizeTakeoffJobClaimResult(emptyComposite), null)
+})
+
+test("next-job response rejects partial composites and invalid job IDs", () => {
+  const emptyComposite = {
+    id: null,
+    user_id: null,
+    status: null,
+    claim_token: null,
+  }
+  assert.equal(
+    normalizeTakeoffJobClaimResult({
+      ...emptyComposite,
+      status: "processing",
+    }),
+    null
+  )
+  assert.equal(
+    normalizeTakeoffJobClaimResult({
+      ...emptyComposite,
+      id: "not-a-uuid",
+      status: "processing",
+    }),
+    null
+  )
+  assert.equal(normalizeTakeoffJobClaimResult({}), null)
+  assert.equal(normalizeTakeoffJobClaimResult([]), null)
+  assert.equal(normalizeTakeoffJobClaimResult("not-a-job"), null)
+  assert.equal(normalizeTakeoffJobClaimResult(42), null)
+})
+
+test("next-job response preserves a claimed job with a valid ID", () => {
+  const claimedJob = {
+    id: "60606060-6060-4060-8060-606060606060",
+    user_id: customerId,
+    status: "processing",
+    claim_token: null,
+  }
+  assert.equal(normalizeTakeoffJobClaimResult(claimedJob), claimedJob)
 })
 
 type ClaimedJob = {

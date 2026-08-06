@@ -5,6 +5,7 @@ import {
   requestBodyLimits,
 } from "@/lib/request-body"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { normalizeTakeoffJobClaimResult } from "@/lib/takeoff-job-claim"
 import { requireWorker } from "@/lib/worker-auth"
 
 type Context = { params: Promise<{ id: string }> }
@@ -39,7 +40,8 @@ export async function POST(request: Request, context: Context) {
   })
 
   if (error) return jsonError(error.message, 500)
-  if (!data) return jsonError("Takeoff is no longer available.", 409)
+  const job = normalizeTakeoffJobClaimResult(data)
+  if (!job) return jsonError("Takeoff is no longer available.", 409)
 
-  return NextResponse.json({ job: data })
+  return NextResponse.json({ job })
 }
