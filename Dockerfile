@@ -9,7 +9,7 @@ FROM base AS builder
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN mkdir -p public && npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production \
