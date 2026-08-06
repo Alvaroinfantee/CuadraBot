@@ -1,0 +1,11 @@
+[Unit]
+Description=Run CuadraBot generated-file retention daily
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 UTC
+AccuracySec=30s
+Persistent=true
+Unit=cuadrabot-retention.service
+
+[Install]
+WantedBy=timers.target

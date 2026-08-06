@@ -1,16 +1,26 @@
-import type { MetadataRoute } from "next";
+import type { MetadataRoute } from "next"
+import { getSiteUrl } from "@/lib/config"
+
+const privateRoutePrefixes = [
+  "/admin",
+  "/api",
+  "/auth",
+  "/dashboard",
+  "/demo",
+] as const
 
 export default function robots(): MetadataRoute.Robots {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-    return {
-        rules: [
-            {
-                userAgent: "*",
-                allow: "/",
-                disallow: ["/dashboard/", "/admin/", "/api/"],
-            },
-        ],
-        sitemap: `${baseUrl}/sitemap.xml`,
-    };
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: privateRoutePrefixes.flatMap((prefix) => [
+          prefix,
+          `/es${prefix}`,
+        ]),
+      },
+    ],
+    sitemap: `${getSiteUrl()}/sitemap.xml`,
+  }
 }

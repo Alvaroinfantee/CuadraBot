@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["completed", "blocked"]
+    },
+    "message": {
+      "type": "string"
+    },
+    "takeoff_json": {
+      "type": "string"
+    },
+    "workbook": {
+      "type": "string"
+    },
+    "methodology_json": {
+      "type": "string"
+    },
+    "pages_reviewed": {
+      "type": "integer"
+    },
+    "counted_units": {
+      "type": "integer"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "status",
+    "message",
+    "takeoff_json",
+    "workbook",
+    "methodology_json",
+    "pages_reviewed",
+    "counted_units",
+    "limitations"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,7 @@
+ARG TAKEOFF_BASE_IMAGE=cuadrabot-takeoff-base:local
+FROM ${TAKEOFF_BASE_IMAGE}
+
+USER root
+COPY --chmod=0555 executor/bin/codex-egress /usr/local/bin/codex-egress
+ENV CODEX_BIN=/usr/local/bin/codex-egress
+USER takeoff

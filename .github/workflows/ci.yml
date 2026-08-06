@@ -153,4 +153,3 @@ jobs:
           path: production-image-digests.env
           if-no-files-found: error
           retention-days: 30
-

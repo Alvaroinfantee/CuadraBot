@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analyze Building Drawings"
+  short_description: "Index and query construction drawing sets"
+  default_prompt: "Use $analyze-building-drawings to index this construction drawing set and answer questions with page-level evidence."

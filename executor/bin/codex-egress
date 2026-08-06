@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -lt 1 ] || [ "$1" != "exec" ]; then
+  echo "The CuadraBot Codex wrapper permits only non-interactive exec" >&2
+  exit 64
+fi
+shift
+
+exec /usr/local/bin/codex exec \
+  --config 'model_provider="cuadrabot_egress"' \
+  --config 'model_providers.cuadrabot_egress.name="CuadraBot restricted OpenAI egress"' \
+  --config 'model_providers.cuadrabot_egress.base_url="http://openai-egress:8091/v1"' \
+  --config 'model_providers.cuadrabot_egress.env_key="CODEX_API_KEY"' \
+  --config 'model_providers.cuadrabot_egress.wire_api="responses"' \
+  --config 'model_providers.cuadrabot_egress.request_max_retries=2' \
+  --config 'model_providers.cuadrabot_egress.stream_max_retries=2' \
+  --config 'model_providers.cuadrabot_egress.stream_idle_timeout_ms=300000' \
+  --config 'model_providers.cuadrabot_egress.supports_websockets=false' \
+  --config 'model_providers.cuadrabot_egress.supports_standalone_web_search=false' \
+  "$@"

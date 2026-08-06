@@ -1,0 +1,11 @@
+[Unit]
+Description=Run CuadraBot reconciliation every ten minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/10:00 UTC
+AccuracySec=15s
+Persistent=true
+Unit=cuadrabot-reconcile.service
+
+[Install]
+WantedBy=timers.target

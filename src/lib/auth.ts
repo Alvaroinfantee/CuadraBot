@@ -1,74 +1,71 @@
-import NextAuth from "next-auth";
-import type { NextAuthConfig } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import "server-only"
 
-export const authConfig: NextAuthConfig = {
-    adapter: PrismaAdapter(prisma),
-    session: { strategy: "jwt" },
-    trustHost: true,
-    pages: {
-        signIn: "/iniciar-sesion",
-        newUser: "/dashboard",
-    },
-    providers: [
-        ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-            ? [Google({
-                clientId: process.env.GOOGLE_CLIENT_ID,
-                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-                allowDangerousEmailAccountLinking: true,
-            })]
-            : []),
-        Credentials({
-            name: "credentials",
-            credentials: {
-                email: { label: "Email", type: "email" },
-                password: { label: "Contraseña", type: "password" },
-            },
-            async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) return null;
+import { cache } from "react"
+import { redirect } from "next/navigation"
+import { createSupabaseServerClient } from "@/lib/supabase/server"
 
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email as string },
-                });
+export type CurrentUser = {
+  id: string
+  email: string | null
+}
 
-                if (!user || !user.hashedPassword) return null;
+export const getCurrentUser = cache(async () => {
+  const supabase = await createSupabaseServerClient()
+  const { data, error } = await supabase.auth.getClaims()
 
-                const isPasswordValid = await bcrypt.compare(
-                    credentials.password as string,
-                    user.hashedPassword
-                );
+  if (error || !data?.claims?.sub) return null
 
-                if (!isPasswordValid) return null;
+  return {
+    id: data.claims.sub,
+    email:
+      typeof data.claims.email === "string" ? data.claims.email : null,
+  } satisfies CurrentUser
+})
 
-                return {
-                    id: user.id,
-                    email: user.email,
-                    name: user.name,
-                    role: user.role,
-                };
-            },
-        }),
-    ],
-    callbacks: {
-        async jwt({ token, user }) {
-            if (user) {
-                token.role = (user as { role: string }).role;
-                token.id = user.id;
-            }
-            return token;
-        },
-        async session({ session, token }) {
-            if (session.user) {
-                session.user.role = token.role as string;
-                session.user.id = token.id as string;
-            }
-            return session;
-        },
-    },
-};
+export const getCurrentProfile = cache(async () => {
+  const user = await getCurrentUser()
+  if (!user) return null
 
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase
+    .from("profiles")
+    .select(
+      "id,email,full_name,role,status,company_name,country_code,region,city,timezone,stripe_customer_id,free_sample_used_at,last_seen_at"
+    )
+    .eq("id", user.id)
+    .maybeSingle()
+
+  return data
+})
+
+export const getActiveUser = cache(async () => {
+  const [user, profile] = await Promise.all([
+    getCurrentUser(),
+    getCurrentProfile(),
+  ])
+  return user && profile?.status === "active" ? user : null
+})
+
+export async function requireUser(next = "/dashboard") {
+  const user = await getActiveUser()
+
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent(next)}`)
+  }
+
+  return user
+}
+
+export async function requireAdmin() {
+  const profile = await getCurrentProfile()
+
+  if (!profile) {
+    redirect("/login?next=/admin")
+  }
+
+  if (profile.role !== "admin" || profile.status !== "active") {
+    redirect("/dashboard?error=Admin%20access%20is%20required.")
+  }
+
+  return profile
+}
