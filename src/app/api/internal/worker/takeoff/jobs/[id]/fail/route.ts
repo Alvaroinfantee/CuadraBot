@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { getClaimedTakeoff } from "@/lib/internal-worker"
 import { persistAndAuditTakeoffProcessorUsage } from "@/lib/internal-takeoff-processor-usage"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 import { takeoffFailureSchema } from "@/lib/takeoff-schemas"
 
 type Context = { params: Promise<{ id: string }> }
@@ -10,7 +14,17 @@ export async function POST(request: Request, context: Context) {
   const contextResult = await getClaimedTakeoff(request, id)
   if (contextResult instanceof Response) return contextResult
   const { job, supabase } = contextResult
-  const body = await request.json().catch(() => null)
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.workerResultJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return NextResponse.json(
+      { error: "Failure payload is too large." },
+      { status: 413 }
+    )
+  }
+  const body = bodyResult.ok ? bodyResult.value : null
   const parsed = takeoffFailureSchema.safeParse(body)
 
   if (!parsed.success) {

@@ -2,6 +2,7 @@
 
 import {
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
@@ -41,7 +42,12 @@ import {
   type Locale,
 } from "@/lib/i18n"
 import { buttonVariants } from "@/components/ui/button"
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
+import {
+  createSignedResumableUploadTask,
+  ResumableUploadCancelledError,
+  type ResumableUploadTask,
+  type SignedResumableUploadGrant,
+} from "@/lib/supabase/resumable-upload"
 import type { TakeoffPricingTier } from "@/lib/takeoff-pricing"
 import {
   selectableTakeoffTrades,
@@ -57,6 +63,10 @@ type Quote = {
   description: string
   selfServe: boolean
   pageCount: number
+}
+
+type DraftUpload = SignedResumableUploadGrant & {
+  jobId: string
 }
 
 export function NewTakeoffForm({
@@ -81,9 +91,12 @@ export function NewTakeoffForm({
   const [samplePage, setSamplePage] = useState(1)
   const [file, setFile] = useState<File | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
+  const [draftUpload, setDraftUpload] = useState<DraftUpload | null>(null)
+  const [uploadComplete, setUploadComplete] = useState(false)
   const [quote, setQuote] = useState<Quote | null>(null)
   const [progress, setProgress] = useState(0)
   const [busy, setBusy] = useState(false)
+  const activeUploadTask = useRef<ResumableUploadTask | null>(null)
   const canPrepare =
     projectName.trim().length >= 2 && trades.length > 0 && Boolean(file)
   const insufficient = Boolean(
@@ -120,8 +133,7 @@ export function NewTakeoffForm({
   )
 
   function toggleTrade(trade: SelectableTakeoffTrade) {
-    setQuote(null)
-    setJobId(null)
+    resetPreparedDraft()
     setTrades((current) =>
       current.includes(trade)
         ? current.filter((value) => value !== trade)
@@ -138,11 +150,24 @@ export function NewTakeoffForm({
     ) {
       toast.error(copy.invalidPdf)
       event.target.value = ""
+      setFile(null)
+      resetPreparedDraft()
       return
     }
     setFile(nextFile)
+    resetPreparedDraft()
+  }
+
+  function resetPreparedDraft() {
     setQuote(null)
     setJobId(null)
+    setDraftUpload(null)
+    setUploadComplete(false)
+    setProgress(0)
+  }
+
+  async function cancelUpload() {
+    await activeUploadTask.current?.cancel()
   }
 
   async function prepareQuote(event: FormEvent<HTMLFormElement>) {
@@ -152,46 +177,60 @@ export function NewTakeoffForm({
     setBusy(true)
     setProgress(5)
     try {
-      const draftResponse = await fetch("/api/takeoff/jobs", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          projectName,
-          mode,
-          trades,
-          notes,
-          samplePage: mode === "sample" ? samplePage : undefined,
-          filename: file.name,
-          mimeType: file.type || "application/pdf",
-          sizeBytes: file.size,
-        }),
-      })
-      const draft = await draftResponse.json()
-      if (!draftResponse.ok) {
-        throw new Error(
-          localizeCustomerError(draft.error, locale, copy.createError)
-        )
+      let currentDraft = draftUpload
+      if (!currentDraft) {
+        const draftResponse = await fetch("/api/takeoff/jobs", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            projectName,
+            mode,
+            trades,
+            notes,
+            samplePage: mode === "sample" ? samplePage : undefined,
+            filename: file.name,
+            mimeType: file.type || "application/pdf",
+            sizeBytes: file.size,
+          }),
+        })
+        const draft = await draftResponse.json()
+        if (!draftResponse.ok) {
+          throw new Error(
+            localizeCustomerError(draft.error, locale, copy.createError)
+          )
+        }
+
+        currentDraft = {
+          jobId: draft.job.id,
+          endpoint: draft.upload.endpoint,
+          bucket: draft.upload.bucket,
+          path: draft.upload.path,
+          token: draft.upload.token,
+        }
+        setJobId(currentDraft.jobId)
+        setDraftUpload(currentDraft)
       }
 
-      setJobId(draft.job.id)
       setProgress(20)
-      const supabase = createSupabaseBrowserClient()
-      const { error: uploadError } = await supabase.storage
-        .from(draft.upload.bucket)
-        .uploadToSignedUrl(draft.upload.path, draft.upload.token, file, {
-          contentType: "application/pdf",
-          upsert: false,
+      if (!uploadComplete) {
+        const uploadTask = createSignedResumableUploadTask({
+          file,
+          grant: currentDraft,
+          onProgress(bytesUploaded, bytesTotal) {
+            const uploadedFraction =
+              bytesTotal > 0 ? bytesUploaded / bytesTotal : 0
+            setProgress(20 + Math.round(uploadedFraction * 55))
+          },
         })
-
-      if (uploadError) {
-        throw new Error(
-          localizeCustomerError(uploadError.message, locale, copy.verifyError)
-        )
+        activeUploadTask.current = uploadTask
+        await uploadTask.start()
+        activeUploadTask.current = null
+        setUploadComplete(true)
       }
 
       setProgress(75)
       const quoteResponse = await fetch(
-        `/api/takeoff/jobs/${draft.job.id}/submit`,
+        `/api/takeoff/jobs/${currentDraft.jobId}/submit`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -209,12 +248,22 @@ export function NewTakeoffForm({
       }
 
       setQuote(prepared.quote)
+      setJobId(currentDraft.jobId)
       setProgress(100)
       toast.success(copy.verifiedToast)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : copy.genericError)
+      if (error instanceof ResumableUploadCancelledError) {
+        toast.info(copy.uploadCancelled)
+      } else {
+        toast.error(
+          error instanceof Error
+            ? localizeCustomerError(error.message, locale, copy.verifyError)
+            : copy.genericError,
+        )
+      }
       setProgress(0)
     } finally {
+      activeUploadTask.current = null
       setBusy(false)
     }
   }
@@ -269,10 +318,10 @@ export function NewTakeoffForm({
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
+                disabled={busy}
                 onClick={() => {
                   setMode("standard")
-                  setQuote(null)
-                  setJobId(null)
+                  resetPreparedDraft()
                 }}
                 className={cn(
                   "border p-4 text-left",
@@ -288,11 +337,10 @@ export function NewTakeoffForm({
               </button>
               <button
                 type="button"
-                disabled={!sampleAvailable}
+                disabled={busy || !sampleAvailable}
                 onClick={() => {
                   setMode("sample")
-                  setQuote(null)
-                  setJobId(null)
+                  resetPreparedDraft()
                 }}
                 className={cn(
                   "border p-4 text-left disabled:cursor-not-allowed disabled:opacity-50",
@@ -320,10 +368,10 @@ export function NewTakeoffForm({
                 value={projectName}
                 onChange={(event) => {
                   setProjectName(event.target.value)
-                  setQuote(null)
-                  setJobId(null)
+                  resetPreparedDraft()
                 }}
                 placeholder={copy.projectPlaceholder}
+                disabled={busy}
                 required
               />
             </div>
@@ -349,7 +397,10 @@ export function NewTakeoffForm({
                         type="checkbox"
                         className="mt-0.5"
                         checked={selected}
-                        disabled={mode === "sample" && !selected && trades.length >= 1}
+                        disabled={
+                          busy ||
+                          (mode === "sample" && !selected && trades.length >= 1)
+                        }
                         onChange={() => toggleTrade(trade)}
                       />
                       <span>{localizedTradeLabels[locale][trade]}</span>
@@ -396,6 +447,7 @@ export function NewTakeoffForm({
                 type="file"
                 accept="application/pdf,.pdf"
                 className="sr-only"
+                disabled={busy}
                 onChange={chooseFile}
               />
             </div>
@@ -409,9 +461,11 @@ export function NewTakeoffForm({
                   min={1}
                   max={250}
                   value={samplePage}
-                  onChange={(event) =>
+                  disabled={busy}
+                  onChange={(event) => {
                     setSamplePage(Math.max(1, Number(event.target.value)))
-                  }
+                    resetPreparedDraft()
+                  }}
                 />
                 <p className="text-xs text-muted-foreground">
                   {copy.samplePageBody}
@@ -423,14 +477,32 @@ export function NewTakeoffForm({
               <Label htmlFor="notes">{copy.instructions}</Label>
               <Textarea
                 id="notes"
-                rows={5}
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
+              rows={5}
+              value={notes}
+              disabled={busy}
+              onChange={(event) => {
+                setNotes(event.target.value)
+                resetPreparedDraft()
+              }}
                 placeholder={copy.instructionsPlaceholder}
               />
             </div>
 
-            {busy ? <Progress value={progress} /> : null}
+            {busy ? (
+              <div className="space-y-3">
+                <Progress value={progress} />
+                {activeUploadTask.current ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={cancelUpload}
+                  >
+                    {copy.cancelUpload}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
 
             <Button
               type="submit"

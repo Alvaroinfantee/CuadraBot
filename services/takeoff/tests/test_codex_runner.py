@@ -261,8 +261,8 @@ def test_usage_cost_uses_cross_runtime_half_up_rounding(tmp_path: Path) -> None:
 
     usage = collect_codex_usage(events_path, model="gpt-5.6-terra")
 
-    assert usage["estimated_cost_usd"] == 0.00000313
-    assert usage["estimated_cost_usd_all_input_uncached"] == 0.0000025
+    assert usage["estimated_cost_usd"] == 0.0000025
+    assert usage["estimated_cost_usd_all_input_uncached"] == 0.000002
 
 
 def test_usage_parser_omits_estimate_for_unpriced_model(

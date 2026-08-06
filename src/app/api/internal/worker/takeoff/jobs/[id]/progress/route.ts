@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { getClaimedTakeoff } from "@/lib/internal-worker"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 import { takeoffProgressSchema } from "@/lib/takeoff-schemas"
 
 type Context = { params: Promise<{ id: string }> }
@@ -10,7 +14,17 @@ export async function POST(request: Request, context: Context) {
   if (contextResult instanceof Response) return contextResult
   const { job, supabase } = contextResult
 
-  const body = await request.json().catch(() => null)
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.workerStatusJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return NextResponse.json(
+      { error: "Progress payload is too large." },
+      { status: 413 }
+    )
+  }
+  const body = bodyResult.ok ? bodyResult.value : null
   const parsed = takeoffProgressSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(

@@ -4,6 +4,10 @@ import { takeoffResultBucket } from "@/lib/config"
 import { jsonError } from "@/lib/http"
 import { getClaimedTakeoff } from "@/lib/internal-worker"
 import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
+import {
   maxTakeoffArtifactBytes,
   parseTakeoffArtifactDescriptors,
   takeoffArtifactRole,
@@ -58,12 +62,16 @@ export async function POST(request: Request, context: Context) {
     )
   }
 
-  const declaredLength = Number(request.headers.get("content-length"))
-  if (Number.isFinite(declaredLength) && declaredLength > 64 * 1024) {
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.workerResultJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
     return jsonError("Artifact descriptor payload is too large.", 413)
   }
-
-  const body = (await request.json().catch(() => null)) as ArtifactRequest | null
+  const body = bodyResult.ok
+    ? (bodyResult.value as ArtifactRequest | null)
+    : null
   if (!body || !["prepare", "finalize"].includes(String(body.action))) {
     return jsonError("Artifact action must be prepare or finalize.", 422)
   }

@@ -15,6 +15,8 @@ import { workerConfig } from "./config"
 import { downloadVerifiedFile, safeFilename } from "./files"
 import {
   assertTakeoffServiceReady,
+  cleanupTakeoffJob,
+  executorBudgetClassForJob,
   runTakeoff,
   TakeoffServiceError,
 } from "./takeoff"
@@ -55,6 +57,7 @@ async function processOnce() {
   const outputDir = path.join(jobDir, "output")
   let stage = "claimed"
   let processorUsage: unknown = null
+  let microserviceJobId: string | null = null
 
   try {
     await fs.mkdir(inputDir, { recursive: true })
@@ -83,7 +86,11 @@ async function processOnce() {
     })
 
     stage = "takeoff_processing"
+    const budgetClass = executorBudgetClassForJob(job)
     const result = await runTakeoff({
+      sourceJobId: job.id,
+      userId: job.user_id,
+      budgetClass,
       sourcePdf,
       outputDir,
       workflowKind: input.job.workflow_kind,
@@ -93,6 +100,7 @@ async function processOnce() {
       freeSample: input.job.free_sample === true,
       onProgress: (progress) => {
         stage = progress.stage
+        microserviceJobId = progress.microserviceJobId
         return updateJobProgress(job.id, claimToken, progress).then(
           () => undefined
         )
@@ -142,11 +150,21 @@ async function processOnce() {
     await reportFailure(job.id, claimToken, failure, processorUsage)
     return true
   } finally {
+    let cleanupError: unknown = null
+    if (microserviceJobId) {
+      try {
+        await cleanupTakeoffJob(microserviceJobId)
+      } catch (error) {
+        cleanupError = error
+        console.error(`[${job.id}] CRITICAL: executor cleanup failed`, error)
+      }
+    }
     if (!workerConfig.keepLocalJobFiles) {
       await removeLocalJobDirectory(jobDir).catch((error) => {
         console.error(`[${job.id}] failed to clean local files`, error)
       })
     }
+    if (cleanupError) throw cleanupError
   }
 }
 

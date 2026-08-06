@@ -166,6 +166,8 @@ const englishDashboardCopy = {
     instructionsPlaceholder:
       "Legend sheet or page, codes to include, demolition or alternates to exclude, areas, levels, and naming rules...",
     verifying: "Verifying the plan set",
+    cancelUpload: "Cancel upload",
+    uploadCancelled: "Upload paused. Submit again to resume it.",
     uploadQuote: "Upload and get fixed quote",
     fixedQuote: "Fixed quote",
     credits: "credits",
@@ -446,6 +448,9 @@ const spanishDashboardCopy = {
     instructionsPlaceholder:
       "Hoja o página de la leyenda, códigos que incluir, demoliciones o alternativas que excluir, zonas, niveles y reglas de nombres...",
     verifying: "Verificando los planos",
+    cancelUpload: "Cancelar carga",
+    uploadCancelled:
+      "Carga pausada. Envíala de nuevo para reanudarla.",
     uploadQuote: "Cargar y obtener presupuesto fijo",
     fixedQuote: "Presupuesto fijo",
     credits: "créditos",

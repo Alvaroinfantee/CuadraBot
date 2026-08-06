@@ -17,17 +17,17 @@ const canonicalTakeoffPricing = {
   },
   "gpt-5.6-terra": {
     pricingAsOf: "2026-08-06",
-    input: 2.5,
-    cached_input: 0.25,
-    cache_write: 3.125,
-    output: 15,
+    input: 2,
+    cached_input: 0.2,
+    cache_write: 2.5,
+    output: 12,
   },
   "gpt-5.6-luna": {
     pricingAsOf: "2026-08-06",
-    input: 1,
-    cached_input: 0.1,
-    cache_write: 1.25,
-    output: 6,
+    input: 0.2,
+    cached_input: 0.02,
+    cache_write: 0.25,
+    output: 1.2,
   },
 } as const
 

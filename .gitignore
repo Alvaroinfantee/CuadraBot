@@ -34,6 +34,8 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.worker.example
+/deploy/config/*.env
+!/deploy/config/*.env.example
 
 # vercel
 .vercel

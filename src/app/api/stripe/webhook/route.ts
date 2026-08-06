@@ -11,6 +11,10 @@ import {
   getStripeWebhookSecret,
   StripeConfigurationError,
 } from "@/lib/stripe"
+import {
+  readRequestBytesWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -109,7 +113,22 @@ export async function POST(request: Request) {
     )
   }
 
-  const rawBody = await request.text()
+  const rawBodyResult = await readRequestBytesWithLimit(
+    request,
+    requestBodyLimits.stripeWebhook
+  )
+  if (!rawBodyResult.ok) {
+    return NextResponse.json(
+      {
+        error:
+          rawBodyResult.reason === "too_large"
+            ? "Stripe webhook payload is too large."
+            : "Invalid Stripe webhook payload.",
+      },
+      { status: rawBodyResult.reason === "too_large" ? 413 : 400 }
+    )
+  }
+  const rawBody = rawBodyResult.value
   let stripe: Stripe
   let event: Stripe.Event
 

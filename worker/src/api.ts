@@ -16,6 +16,10 @@ export const TAKEOFF_WORKER_ENDPOINTS = {
 
 export type WorkerJob = {
   id: string
+  user_id: string
+  scope?: string | null
+  quoted_credits?: number
+  free_sample?: boolean
   status: string
   created_at?: string
   claimed_by?: string | null

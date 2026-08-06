@@ -3,7 +3,14 @@ export const takeoffUploadBucket =
   process.env.TAKEOFF_UPLOAD_BUCKET ?? "takeoff-uploads"
 export const takeoffResultBucket =
   process.env.TAKEOFF_RESULT_BUCKET ?? "takeoff-results"
-export const maxUploadMb = Number(process.env.MAX_UPLOAD_MB ?? "100")
+const launchUploadCeilingMb = 25
+const configuredUploadMb = Number(
+  process.env.MAX_UPLOAD_MB ?? launchUploadCeilingMb
+)
+export const maxUploadMb =
+  Number.isSafeInteger(configuredUploadMb) && configuredUploadMb > 0
+    ? Math.min(configuredUploadMb, launchUploadCeilingMb)
+    : launchUploadCeilingMb
 export const maxUploadBytes = maxUploadMb * 1024 * 1024
 export const maxPlanPages = Number(process.env.MAX_PLAN_PAGES ?? "250")
 export const ownerRequestEmail =

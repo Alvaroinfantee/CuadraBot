@@ -15,6 +15,10 @@ import {
 } from "@/lib/config"
 import { getActiveUser, type CurrentUser } from "@/lib/auth"
 import { isLocale, type Locale } from "@/lib/i18n"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import {
   getStripe,
@@ -105,7 +109,20 @@ export async function POST(request: Request) {
     )
   }
 
-  const body = await request.json().catch(() => null)
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.billingJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return NextResponse.json(
+      {
+        error: "Billing request payload is too large.",
+        code: "payload_too_large",
+      },
+      { status: 413 }
+    )
+  }
+  const body = bodyResult.ok ? bodyResult.value : null
   const sku =
     body &&
     typeof body === "object" &&

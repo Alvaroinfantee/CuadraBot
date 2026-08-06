@@ -69,6 +69,9 @@ export class TakeoffServiceError extends Error {
 }
 
 type RunTakeoffOptions = {
+  sourceJobId: string
+  userId: string
+  budgetClass: ExecutorBudgetClass
   sourcePdf: string
   outputDir: string
   workflowKind: "legend_fixture_takeoff_v1"
@@ -77,6 +80,46 @@ type RunTakeoffOptions = {
   customerInstructions: string
   freeSample: boolean
   onProgress: (event: TakeoffProgressEvent) => Promise<void>
+}
+
+export type ExecutorBudgetClass =
+  | "free_sample"
+  | "first_verified"
+  | "essential"
+  | "professional"
+  | "multi_trade"
+  | "large_set"
+
+const TRUSTED_TIER_CREDITS: Record<ExecutorBudgetClass, number> = {
+  free_sample: 0,
+  first_verified: 49,
+  essential: 99,
+  professional: 179,
+  multi_trade: 299,
+  large_set: 499,
+}
+
+export function executorBudgetClassForJob(job: {
+  scope?: unknown
+  quoted_credits?: unknown
+  free_sample?: unknown
+}): ExecutorBudgetClass {
+  const scope = job.scope
+  if (
+    typeof scope !== "string" ||
+    !Object.hasOwn(TRUSTED_TIER_CREDITS, scope) ||
+    !Number.isSafeInteger(job.quoted_credits) ||
+    job.quoted_credits !== TRUSTED_TIER_CREDITS[scope as ExecutorBudgetClass] ||
+    typeof job.free_sample !== "boolean" ||
+    job.free_sample !== (scope === "free_sample")
+  ) {
+    throw new TakeoffServiceError(
+      "Application returned inconsistent trusted pricing fields",
+      "service_protocol",
+      false
+    )
+  }
+  return scope as ExecutorBudgetClass
 }
 
 export async function assertTakeoffServiceReady() {
@@ -94,6 +137,9 @@ export async function assertTakeoffServiceReady() {
 }
 
 export async function runTakeoff({
+  sourceJobId,
+  userId,
+  budgetClass,
   sourcePdf,
   outputDir,
   workflowKind,
@@ -112,6 +158,9 @@ export async function runTakeoff({
   }
   await assertTakeoffServiceReady()
   const submission = await submitTakeoff({
+    sourceJobId,
+    userId,
+    budgetClass,
     sourcePdf,
     workflowKind,
     analysisProfile,
@@ -166,6 +215,9 @@ export function withProcessorUsage(
 }
 
 async function submitTakeoff({
+  sourceJobId,
+  userId,
+  budgetClass,
   sourcePdf,
   workflowKind,
   analysisProfile,
@@ -173,6 +225,9 @@ async function submitTakeoff({
   customerInstructions,
   freeSample,
 }: {
+  sourceJobId: string
+  userId: string
+  budgetClass: ExecutorBudgetClass
   sourcePdf: string
   workflowKind: "legend_fixture_takeoff_v1"
   analysisProfile: TakeoffAnalysisProfile
@@ -180,6 +235,16 @@ async function submitTakeoff({
   customerInstructions: string
   freeSample: boolean
 }): Promise<TakeoffSubmission> {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sourceJobId) ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
+  ) {
+    throw new TakeoffServiceError(
+      "Application returned an invalid job or user identity",
+      "service_protocol",
+      false
+    )
+  }
   if (!requestedScopes.length || new Set(requestedScopes).size !== requestedScopes.length) {
     throw new TakeoffServiceError(
       "Application returned an invalid trusted takeoff scope",
@@ -210,10 +275,49 @@ async function submitTakeoff({
     method: "POST",
     headers: {
       authorization: `Bearer ${workerConfig.takeoffServiceToken}`,
-      "x-codex-api-key": workerConfig.codexApiKey,
+      "x-cuadrabot-job-id": sourceJobId,
+      "x-cuadrabot-user-id": userId,
+      "x-cuadrabot-budget-class": budgetClass,
     },
     body: form,
   })
+}
+
+export async function cleanupTakeoffJob(microserviceJobId: string) {
+  if (!/^[a-f0-9]{32}$/.test(microserviceJobId)) {
+    throw new TakeoffServiceError(
+      "Refusing to clean an invalid processor job identifier",
+      "takeoff_cleanup",
+      false
+    )
+  }
+  let lastError: unknown
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const url = new URL(
+        `/v1/jobs/${microserviceJobId}`,
+        `${workerConfig.takeoffServiceUrl}/`
+      )
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: takeoffServiceHeaders(),
+        signal: AbortSignal.timeout(workerConfig.apiTimeoutMs),
+      })
+      if (response.status === 204 || response.status === 404) return
+      const detail = await response.text().catch(() => "")
+      throw new Error(
+        `Executor cleanup returned ${response.status}: ${detail.slice(0, 500)}`
+      )
+    } catch (error) {
+      lastError = error
+      if (attempt < 3) await sleep(attempt * 500)
+    }
+  }
+  throw new TakeoffServiceError(
+    lastError instanceof Error ? lastError.message : "Executor cleanup failed",
+    "takeoff_cleanup",
+    true
+  )
 }
 
 async function waitForTakeoff(

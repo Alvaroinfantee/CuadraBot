@@ -1,0 +1,11 @@
+[Unit]
+Description=Run CuadraBot source archive presence daily
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 UTC
+AccuracySec=30s
+Persistent=true
+Unit=cuadrabot-archive-integrity.service
+
+[Install]
+WantedBy=timers.target

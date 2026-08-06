@@ -2,9 +2,14 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getAppFeatures } from "@/lib/app-settings"
 import { jsonError } from "@/lib/http"
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth"
-import { takeoffUploadBucket } from "@/lib/config"
+import { getRequiredEnv, takeoffUploadBucket } from "@/lib/config"
 import { consumeTakeoffRateLimit } from "@/lib/request-rate-limit"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { getSupabaseResumableUploadEndpoint } from "@/lib/supabase/storage-endpoint"
 import { takeoffDraftSchema } from "@/lib/takeoff-schemas"
 import { buildTakeoffInstructions } from "@/lib/takeoff-instructions"
 import { takeoffAnalysisProfile } from "@/lib/takeoff-workflow"
@@ -29,7 +34,14 @@ export async function POST(request: NextRequest) {
     return jsonError(features.maintenanceMessage, 503)
   }
 
-  const body = await request.json().catch(() => null)
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.takeoffDraftJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return jsonError("Takeoff request payload is too large.", 413)
+  }
+  const body = bodyResult.ok ? bodyResult.value : null
   const parsed = takeoffDraftSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
@@ -184,6 +196,9 @@ export async function POST(request: NextRequest) {
         bucket: takeoffUploadBucket,
         path: storagePath,
         token: signed.token,
+        endpoint: getSupabaseResumableUploadEndpoint(
+          getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL")
+        ),
       },
     },
     { status: 201 }

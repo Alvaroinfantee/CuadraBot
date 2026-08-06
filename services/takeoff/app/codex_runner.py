@@ -38,16 +38,16 @@ OPENAI_RATES_USD_PER_MILLION = {
         "output": Decimal("30"),
     },
     "gpt-5.6-terra": {
-        "input": Decimal("2.5"),
-        "cached_input": Decimal("0.25"),
-        "cache_write": Decimal("3.125"),
-        "output": Decimal("15"),
+        "input": Decimal("2"),
+        "cached_input": Decimal("0.2"),
+        "cache_write": Decimal("2.5"),
+        "output": Decimal("12"),
     },
     "gpt-5.6-luna": {
-        "input": Decimal("1"),
-        "cached_input": Decimal("0.1"),
-        "cache_write": Decimal("1.25"),
-        "output": Decimal("6"),
+        "input": Decimal("0.2"),
+        "cached_input": Decimal("0.02"),
+        "cache_write": Decimal("0.25"),
+        "output": Decimal("1.2"),
     },
 }
 if set(OPENAI_RATES_USD_PER_MILLION) != set(SUPPORTED_TAKEOFF_MODELS):

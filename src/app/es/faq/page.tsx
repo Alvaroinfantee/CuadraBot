@@ -27,7 +27,7 @@ const sections = [
       ],
       [
         "¿Qué archivos de planos funcionan mejor?",
-        "Utiliza un PDF legible, sin contraseña, de hasta 100 MB y 250 páginas, con la leyenda o cuadro aplicable. Los recuentos de elementos no necesitan escala; los recorridos medidos de cables o canalizaciones requieren una ruta visible y una escala utilizable indicada.",
+        "Utiliza un PDF legible, sin contraseña, de hasta 25 MB y 250 páginas, con la leyenda o cuadro aplicable. Los recuentos de elementos no necesitan escala; los recorridos medidos de cables o canalizaciones requieren una ruta visible y una escala utilizable indicada.",
       ],
       [
         "¿Cuadrabot cuenta los símbolos de la propia leyenda?",

@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server"
 import { isLocale, localeCookieName } from "@/lib/i18n"
 import { jsonError } from "@/lib/http"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null)
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.localeJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return jsonError("Locale request payload is too large.", 413)
+  }
+  const body = bodyResult.ok ? bodyResult.value : null
   const locale =
     body && typeof body === "object"
       ? (body as Record<string, unknown>).locale

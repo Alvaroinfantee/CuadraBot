@@ -2,6 +2,10 @@ import { NextResponse } from "next/server"
 import { getActiveUser } from "@/lib/auth"
 import { getSiteUrl } from "@/lib/config"
 import { isLocale, type Locale } from "@/lib/i18n"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import {
   getStripe,
@@ -13,14 +17,6 @@ export const runtime = "nodejs"
 
 export async function POST(request: Request) {
   let user: Awaited<ReturnType<typeof getActiveUser>>
-  const body = await request.json().catch(() => null)
-  const locale: Locale =
-    body &&
-    typeof body === "object" &&
-    "locale" in body &&
-    isLocale(body.locale)
-      ? body.locale
-      : "en"
 
   try {
     user = await getActiveUser()
@@ -45,6 +41,28 @@ export async function POST(request: Request) {
       { status: 401 }
     )
   }
+
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.billingJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return NextResponse.json(
+      {
+        error: "Billing request payload is too large.",
+        code: "payload_too_large",
+      },
+      { status: 413 }
+    )
+  }
+  const body = bodyResult.ok ? bodyResult.value : null
+  const locale: Locale =
+    body &&
+    typeof body === "object" &&
+    "locale" in body &&
+    isLocale(body.locale)
+      ? body.locale
+      : "en"
 
   try {
     const supabase = createSupabaseAdminClient()

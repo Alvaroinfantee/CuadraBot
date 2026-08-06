@@ -22,7 +22,7 @@ const sections = [
     title: "Service and scope",
     questions: [
       ["What does Cuadrabot count?", "The self-serve workflow covers electrical and lighting fixtures, supported cable or conduit runs, and other installed devices defined by a readable legend or schedule."],
-      ["What plan files work best?", "Use a readable, non-password-protected PDF up to 100MB and 250 pages with the applicable legend or schedule. Pure fixture counts do not require scale; measured cable or conduit runs require both a visible route and a stated usable scale."],
+      ["What plan files work best?", "Use a readable, non-password-protected PDF up to 25MB and 250 pages with the applicable legend or schedule. Pure fixture counts do not require scale; measured cable or conduit runs require both a visible route and a stated usable scale."],
       ["Does Cuadrabot count symbols inside the legend?", "No. The legend is used as the item catalog. Legend samples, schedule rows, key plans, and repeated reference views are excluded from installed-placement totals."],
       ["What happens when a code or route is ambiguous?", "Unreadable, conflicting, missing, or unresolved codes and routes are reported as limitations rather than guessed. Your team decides how to resolve them against the complete contract documents."],
       ["Can Cuadrabot measure cable or conduit runs?", "Only when the route is visibly drawn, the applicable legend is readable, and the sheet states a usable scale. Schematic links or symbols without defensible route geometry are not converted into lengths by assumption."],

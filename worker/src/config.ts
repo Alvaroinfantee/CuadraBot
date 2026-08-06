@@ -77,7 +77,6 @@ export const workerConfig = Object.freeze({
   workerId: process.env.WORKER_ID?.trim() || "takeoff-worker-01",
   takeoffServiceUrl: requiredUrl("TAKEOFF_SERVICE_URL"),
   takeoffServiceToken: required("TAKEOFF_SERVICE_API_TOKEN"),
-  codexApiKey: required("CODEX_API_KEY"),
   codexModel: optionalTakeoffModel(),
   localJobsDir: path.resolve(
     process.env.LOCAL_JOBS_DIR ?? "cuadrabot-takeoff-worker-jobs"

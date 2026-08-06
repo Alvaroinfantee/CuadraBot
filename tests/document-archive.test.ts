@@ -263,7 +263,7 @@ test("verification archives original bytes before preparing a free-sample copy",
     ),
     "utf8"
   )
-  const originalHash = submitRoute.indexOf("const originalSha256")
+  const originalHash = submitRoute.indexOf("verifyPdfStream(download.body")
   const register = submitRoute.indexOf('"register_verified_document_archive"')
   const sampleUpload = submitRoute.indexOf(".upload(verifiedStoragePath")
   const finalize = submitRoute.indexOf('"finalize_takeoff_verification"')
@@ -272,6 +272,7 @@ test("verification archives original bytes before preparing a free-sample copy",
   assert.ok(register > originalHash)
   assert.ok(sampleUpload > register)
   assert.ok(finalize > sampleUpload)
+  assert.match(submitRoute, /p_sha256: verified\.originalSha256/)
   assert.doesNotMatch(submitRoute, /\.remove\(\[originalStoragePath\]\)/)
   assert.match(
     submitRoute,

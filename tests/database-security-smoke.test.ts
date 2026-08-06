@@ -13,6 +13,8 @@ const customerId = "11111111-1111-4111-8111-111111111111"
 const otherCustomerId = "22222222-2222-4222-8222-222222222222"
 const adminId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 const secondAdminId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+const bootstrapUserId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+const throttledBootstrapUserId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
 const historicalJobId = "33333333-3333-4333-8333-333333333333"
 const historicalFileId = "44444444-4444-4444-8444-444444444444"
 const compatibleBackfillJobId = "17171717-1717-4717-8717-171717171717"
@@ -31,6 +33,7 @@ async function createSupabaseDatabase() {
     create table auth.users (
       id uuid primary key,
       email text,
+      email_confirmed_at timestamptz default now(),
       raw_user_meta_data jsonb not null default '{}'::jsonb
     );
     create function auth.uid()
@@ -73,7 +76,9 @@ async function createSupabaseDatabase() {
           ('${customerId}', 'customer@example.test', '{"full_name":"Customer"}'),
           ('${otherCustomerId}', 'other@example.test', '{"full_name":"Other"}'),
           ('${adminId}', 'admin@example.test', '{"full_name":"Admin"}'),
-          ('${secondAdminId}', 'approver@example.test', '{"full_name":"Approver"}');
+          ('${secondAdminId}', 'approver@example.test', '{"full_name":"Approver"}'),
+          ('${bootstrapUserId}', 'bootstrap@example.test', '{"full_name":"Bootstrap"}'),
+          ('${throttledBootstrapUserId}', 'throttle@example.test', '{"full_name":"Throttle"}');
 
         update public.profiles
         set role = 'admin'
@@ -178,6 +183,193 @@ test("archive migration enforces tenant access, billing capacity, and deletion c
   const db = await createSupabaseDatabase()
 
   try {
+    const bootstrapRegistry = await db.query<{
+      grant_rls: boolean
+      attempt_rls: boolean
+      customer_grant_select: boolean
+      service_grant_select: boolean
+      customer_redeem_execute: boolean
+      service_redeem_execute: boolean
+    }>(`
+      select
+        grant_table.relrowsecurity as grant_rls,
+        attempt_table.relrowsecurity as attempt_rls,
+        has_table_privilege(
+          'authenticated',
+          'private.admin_bootstrap_grants',
+          'select'
+        ) as customer_grant_select,
+        has_table_privilege(
+          'service_role',
+          'private.admin_bootstrap_grants',
+          'select'
+        ) as service_grant_select,
+        has_function_privilege(
+          'authenticated',
+          'public.redeem_admin_bootstrap(uuid,text,text)',
+          'execute'
+        ) as customer_redeem_execute,
+        has_function_privilege(
+          'service_role',
+          'public.redeem_admin_bootstrap(uuid,text,text)',
+          'execute'
+        ) as service_redeem_execute
+      from pg_class as grant_table
+      join pg_namespace as grant_schema
+        on grant_schema.oid = grant_table.relnamespace
+      cross join pg_class as attempt_table
+      join pg_namespace as attempt_schema
+        on attempt_schema.oid = attempt_table.relnamespace
+      where grant_schema.nspname = 'private'
+        and grant_table.relname = 'admin_bootstrap_grants'
+        and attempt_schema.nspname = 'private'
+        and attempt_table.relname = 'admin_bootstrap_attempts';
+    `)
+
+    assert.deepEqual(bootstrapRegistry.rows, [
+      {
+        grant_rls: true,
+        attempt_rls: true,
+        customer_grant_select: false,
+        service_grant_select: true,
+        customer_redeem_execute: false,
+        service_redeem_execute: true,
+      },
+    ])
+
+    await db.exec(`
+      insert into private.admin_bootstrap_grants (
+        email,
+        key_digest,
+        expires_at
+      )
+      values
+        (
+          'other@example.test',
+          decode(repeat('11', 32), 'hex'),
+          now() + interval '1 hour'
+        ),
+        (
+          'bootstrap@example.test',
+          decode(repeat('22', 32), 'hex'),
+          now() + interval '1 hour'
+        ),
+        (
+          'admin@example.test',
+          decode(repeat('33', 32), 'hex'),
+          now() + interval '1 hour'
+        ),
+        (
+          'throttle@example.test',
+          decode(repeat('44', 32), 'hex'),
+          now() + interval '1 hour'
+        );
+    `)
+
+    const wrongEmail = await db.query<{
+      result: { redeemed: boolean; throttled: boolean }
+    }>(`
+      select public.redeem_admin_bootstrap(
+        '${bootstrapUserId}',
+        repeat('11', 32),
+        repeat('aa', 32)
+      ) as result;
+    `)
+    assert.equal(wrongEmail.rows[0]?.result.redeemed, false)
+    assert.equal(wrongEmail.rows[0]?.result.throttled, false)
+
+    const redeemed = await db.query<{
+      result: { redeemed: boolean; throttled: boolean }
+    }>(`
+      select public.redeem_admin_bootstrap(
+        '${bootstrapUserId}',
+        repeat('22', 32),
+        repeat('aa', 32)
+      ) as result;
+    `)
+    assert.equal(redeemed.rows[0]?.result.redeemed, true)
+
+    const replay = await db.query<{
+      result: { redeemed: boolean; throttled: boolean }
+    }>(`
+      select public.redeem_admin_bootstrap(
+        '${bootstrapUserId}',
+        repeat('22', 32),
+        repeat('aa', 32)
+      ) as result;
+    `)
+    assert.equal(replay.rows[0]?.result.redeemed, false)
+
+    const existingAdminRedemption = await db.query<{
+      result: { redeemed: boolean; throttled: boolean }
+    }>(`
+      select public.redeem_admin_bootstrap(
+        '${adminId}',
+        repeat('33', 32),
+        repeat('bb', 32)
+      ) as result;
+    `)
+    assert.equal(existingAdminRedemption.rows[0]?.result.redeemed, true)
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const failed = await db.query<{
+        result: { redeemed: boolean; throttled: boolean }
+      }>(`
+        select public.redeem_admin_bootstrap(
+          '${throttledBootstrapUserId}',
+          repeat('55', 32),
+          repeat('cc', 32)
+        ) as result;
+      `)
+      assert.equal(failed.rows[0]?.result.throttled, false)
+    }
+    const throttled = await db.query<{
+      result: { redeemed: boolean; throttled: boolean }
+    }>(`
+      select public.redeem_admin_bootstrap(
+        '${throttledBootstrapUserId}',
+        repeat('44', 32),
+        repeat('cc', 32)
+      ) as result;
+    `)
+    assert.equal(throttled.rows[0]?.result.redeemed, false)
+    assert.equal(throttled.rows[0]?.result.throttled, true)
+
+    const bootstrapState = await db.query<{
+      role: string
+      used: boolean
+      successful_attempts: number
+      audit_events: number
+    }>(`
+      select
+        profile.role,
+        grant_row.used_at is not null as used,
+        (
+          select count(*)::integer
+          from private.admin_bootstrap_attempts as attempt
+          where attempt.user_id = '${bootstrapUserId}'
+            and attempt.outcome = 'redeemed'
+        ) as successful_attempts,
+        (
+          select count(*)::integer
+          from public.admin_audit_log as audit
+          where audit.actor_user_id = '${bootstrapUserId}'
+            and audit.action = 'admin_bootstrap_redeemed'
+        ) as audit_events
+      from public.profiles as profile
+      join private.admin_bootstrap_grants as grant_row
+        on grant_row.email = 'bootstrap@example.test'
+      where profile.id = '${bootstrapUserId}';
+    `)
+    assert.deepEqual(bootstrapState.rows, [
+      {
+        role: "admin",
+        used: true,
+        successful_attempts: 1,
+        audit_events: 1,
+      },
+    ])
+
     const registry = await db.query<{
       rls_enabled: boolean
       customer_table_select: boolean

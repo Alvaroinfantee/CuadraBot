@@ -1,11 +1,17 @@
-import { createHash } from "node:crypto"
 import { NextResponse } from "next/server"
-import { PDFDocument } from "pdf-lib"
 import { getAppFeatures } from "@/lib/app-settings"
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth"
 import { jsonError } from "@/lib/http"
 import { maxPlanPages, maxUploadBytes } from "@/lib/config"
+import {
+  PdfVerificationError,
+  verifyPdfStream,
+} from "@/lib/pdf-verification"
 import { consumeTakeoffRateLimit } from "@/lib/request-rate-limit"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 import { getTakeoffPrice } from "@/lib/takeoff-pricing"
 import { takeoffSubmitSchema } from "@/lib/takeoff-schemas"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
@@ -22,6 +28,7 @@ type PreparedJob = {
 }
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 export async function POST(request: Request, context: Context) {
   const { id } = await context.params
@@ -38,7 +45,14 @@ export async function POST(request: Request, context: Context) {
   if (features.maintenance) {
     return jsonError(features.maintenanceMessage, 503)
   }
-  const body = await request.json().catch(() => ({}))
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.takeoffSubmitJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return jsonError("Takeoff submission payload is too large.", 413)
+  }
+  const body = bodyResult.ok ? bodyResult.value : {}
   const parsed = takeoffSubmitSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
@@ -102,85 +116,6 @@ export async function POST(request: Request, context: Context) {
   if (fileError) return jsonError(fileError.message, 500)
   if (!sourceFile) return jsonError("The plan upload is missing.", 409)
 
-  const { data: download, error: downloadError } = await supabase.storage
-    .from(sourceFile.bucket)
-    .download(sourceFile.storage_path)
-  if (downloadError || !download) {
-    return jsonError(
-      downloadError?.message ?? "The uploaded plan could not be verified.",
-      409
-    )
-  }
-  if (download.size > maxUploadBytes) {
-    return jsonError("The uploaded plan exceeds the file limit.", 413)
-  }
-
-  let bytes: Uint8Array<ArrayBufferLike> = new Uint8Array(
-    await download.arrayBuffer()
-  )
-  if (!isPdf(bytes)) return jsonError("The uploaded object is not a PDF.", 422)
-
-  let pdf: PDFDocument
-  try {
-    pdf = await PDFDocument.load(bytes, { ignoreEncryption: false })
-  } catch {
-    return jsonError("The PDF is invalid, encrypted, or password protected.", 422)
-  }
-
-  const originalPageCount = pdf.getPageCount()
-  if (originalPageCount < 1 || originalPageCount > maxPlanPages) {
-    return jsonError(
-      `Plan sets must contain between 1 and ${maxPlanPages} pages.`,
-      422
-    )
-  }
-
-  const samplePage =
-    job.free_sample ? parsed.data.samplePage ?? job.sample_page ?? 1 : null
-  if (samplePage && samplePage > originalPageCount) {
-    return jsonError(
-      `Sample page ${samplePage} is outside this ${originalPageCount}-page PDF.`,
-      422
-    )
-  }
-
-  const originalStoragePath = sourceFile.storage_path
-  const originalSizeBytes = bytes.byteLength
-  const originalSha256 = createHash("sha256").update(bytes).digest("hex")
-  let verifiedStoragePath = originalStoragePath
-  let effectivePageCount = originalPageCount
-  if (job.free_sample && samplePage) {
-    const samplePdf = await PDFDocument.create()
-    const [page] = await samplePdf.copyPages(pdf, [samplePage - 1])
-    samplePdf.addPage(page)
-    bytes = await samplePdf.save()
-    effectivePageCount = 1
-  }
-
-  const { count: paidCount } = await supabase
-    .from("takeoff_jobs")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("free_sample", false)
-    .eq("status", "completed")
-
-  const price = getTakeoffPrice({
-    mode: job.free_sample ? "sample" : "standard",
-    pageCount: effectivePageCount,
-    trades: job.trades as TakeoffTrade[],
-    freeSampleAvailable: !profile.free_sample_used_at,
-    firstPaidAvailable: (paidCount ?? 0) === 0,
-  })
-
-  if (job.free_sample && price.tier !== "free_sample") {
-    return jsonError("The free sample for this workspace is no longer available.", 409)
-  }
-
-  const sha256 = createHash("sha256").update(bytes).digest("hex")
-  const dueAt = price.turnaroundHours
-    ? new Date(Date.now() + price.turnaroundHours * 60 * 60 * 1000).toISOString()
-    : null
-
   const { data: verification, error: verificationError } = await supabase.rpc(
     "begin_takeoff_verification",
     {
@@ -190,107 +125,208 @@ export async function POST(request: Request, context: Context) {
   )
   const verificationToken = verification?.verification_token
   if (verificationError || typeof verificationToken !== "string") {
+    if (verificationError?.message.includes("verification capacity is busy")) {
+      const response = jsonError(
+        "Plan verification is busy. Try again shortly.",
+        503
+      )
+      response.headers.set("Retry-After", "30")
+      return response
+    }
     return jsonError(
       verificationError?.message ?? "Could not claim plan verification.",
       409
     )
   }
 
-  const { error: archiveError } = await supabase.rpc(
-    "register_verified_document_archive",
-    {
-      p_job_id: job.id,
-      p_user_id: user.id,
-      p_verification_token: verificationToken,
-      p_file_id: sourceFile.id,
-      p_size_bytes: originalSizeBytes,
-      p_sha256: originalSha256,
-      p_page_count: originalPageCount,
-    }
-  )
-  if (archiveError) {
-    await releaseVerification(supabase, job.id, user.id, verificationToken)
-    if (archiveError.message.toLowerCase().includes("archive capacity")) {
-      await supabase.from("admin_alerts").insert({
-        severity: "warning",
-        category: "data",
-        title: "Customer source archive reached capacity",
-        message:
-          "A verified plan could not enter durable source storage because this account reached its archive byte or document limit.",
-        status: "open",
-        dedupe_key: `document-archive-capacity:${user.id}`,
-        entity_type: "profile",
-        entity_id: user.id,
-        user_id: user.id,
-        job_id: job.id,
-        metadata: {
-          requested_size_bytes: originalSizeBytes,
-          requested_page_count: originalPageCount,
-        },
-      })
-    }
-    return jsonError(
-      archiveError.message || "Could not securely archive the source plan.",
-      409
-    )
-  }
-
-  if (job.free_sample) {
-    verifiedStoragePath = `${user.id}/${job.id}/sample.pdf`
-    const { error: sampleUploadError } = await supabase.storage
+  try {
+    const { data: signedDownload, error: downloadError } = await supabase.storage
       .from(sourceFile.bucket)
-      .upload(verifiedStoragePath, Buffer.from(bytes), {
-        contentType: "application/pdf",
-        upsert: true,
-      })
-    if (sampleUploadError) {
-      await releaseVerification(
-        supabase,
-        job.id,
-        user.id,
-        verificationToken
+      .createSignedUrl(sourceFile.storage_path, 180)
+    if (downloadError || !signedDownload?.signedUrl) {
+      return jsonError(
+        downloadError?.message ?? "The uploaded plan could not be verified.",
+        409
       )
-      return jsonError(sampleUploadError.message, 500)
     }
-  }
 
-  const { data: readyJob, error: finalizeError } = await supabase.rpc(
-    "finalize_takeoff_verification",
-    {
-      p_job_id: job.id,
-      p_user_id: user.id,
-      p_verification_token: verificationToken,
-      p_file_id: sourceFile.id,
-      p_storage_path: verifiedStoragePath,
-      p_size_bytes: bytes.byteLength,
-      p_sha256: sha256,
-      p_original_page_count: originalPageCount,
-      p_page_count: effectivePageCount,
-      p_sample_page: samplePage,
-      p_scope: price.tier,
-      p_quoted_credits: price.credits,
-      p_due_at: dueAt,
-      p_result_summary: {
-        original_page_count: originalPageCount,
-        verified_page_count: effectivePageCount,
-        pricing_tier: price.tier,
-        source_archive_sha256: originalSha256,
-      },
+    let download: Response
+    try {
+      download = await fetch(signedDownload.signedUrl, {
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(120_000),
+      })
+    } catch {
+      return jsonError("The uploaded plan could not be downloaded.", 409)
     }
-  )
+    if (!download.ok || !download.body) {
+      return jsonError("The uploaded plan could not be downloaded.", 409)
+    }
+    const declaredLength = Number(download.headers.get("content-length"))
+    if (Number.isFinite(declaredLength) && declaredLength > maxUploadBytes) {
+      return jsonError("The uploaded plan exceeds the file limit.", 413)
+    }
 
-  if (finalizeError || !readyJob) {
-    await releaseVerification(supabase, job.id, user.id, verificationToken)
-    return jsonError(
-      finalizeError?.message ?? "Could not finalize plan verification.",
-      409
+    const samplePage =
+      job.free_sample ? parsed.data.samplePage ?? job.sample_page ?? 1 : null
+    let verified: Awaited<ReturnType<typeof verifyPdfStream>>
+    try {
+      verified = await verifyPdfStream(download.body, {
+        maxBytes: maxUploadBytes,
+        maxPages: maxPlanPages,
+        samplePage,
+      })
+    } catch (error) {
+      return pdfVerificationErrorResponse(error)
+    }
+
+    const originalStoragePath = sourceFile.storage_path
+    let verifiedStoragePath = originalStoragePath
+    const effectivePageCount = job.free_sample ? 1 : verified.originalPageCount
+
+    const { count: paidCount } = await supabase
+      .from("takeoff_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("free_sample", false)
+      .eq("status", "completed")
+
+    const price = getTakeoffPrice({
+      mode: job.free_sample ? "sample" : "standard",
+      pageCount: effectivePageCount,
+      trades: job.trades as TakeoffTrade[],
+      freeSampleAvailable: !profile.free_sample_used_at,
+      firstPaidAvailable: (paidCount ?? 0) === 0,
+    })
+
+    if (job.free_sample && price.tier !== "free_sample") {
+      return jsonError(
+        "The free sample for this workspace is no longer available.",
+        409
+      )
+    }
+
+    const dueAt = price.turnaroundHours
+      ? new Date(
+          Date.now() + price.turnaroundHours * 60 * 60 * 1000
+        ).toISOString()
+      : null
+
+    const { error: archiveError } = await supabase.rpc(
+      "register_verified_document_archive",
+      {
+        p_job_id: job.id,
+        p_user_id: user.id,
+        p_verification_token: verificationToken,
+        p_file_id: sourceFile.id,
+        p_size_bytes: verified.originalSizeBytes,
+        p_sha256: verified.originalSha256,
+        p_page_count: verified.originalPageCount,
+      }
     )
-  }
+    if (archiveError) {
+      if (archiveError.message.toLowerCase().includes("archive capacity")) {
+        await supabase.from("admin_alerts").insert({
+          severity: "warning",
+          category: "data",
+          title: "Customer source archive reached capacity",
+          message:
+            "A verified plan could not enter durable source storage because this account reached its archive byte or document limit.",
+          status: "open",
+          dedupe_key: `document-archive-capacity:${user.id}`,
+          entity_type: "profile",
+          entity_id: user.id,
+          user_id: user.id,
+          job_id: job.id,
+          metadata: {
+            requested_size_bytes: verified.originalSizeBytes,
+            requested_page_count: verified.originalPageCount,
+          },
+        })
+      }
+      return jsonError(
+        archiveError.message || "Could not securely archive the source plan.",
+        409
+      )
+    }
 
-  return NextResponse.json({
-    job: { id: readyJob.id, status: readyJob.status },
-    quote: { ...price, pageCount: effectivePageCount },
-  })
+    if (job.free_sample) {
+      if (!verified.sampleBytes || samplePage === null) {
+        return jsonError("The sample PDF could not be isolated.", 422)
+      }
+      verifiedStoragePath = `${user.id}/${job.id}/sample.pdf`
+      const { error: sampleUploadError } = await supabase.storage
+        .from(sourceFile.bucket)
+        .upload(verifiedStoragePath, verified.sampleBytes, {
+          contentType: "application/pdf",
+          upsert: true,
+        })
+      if (sampleUploadError) {
+        return jsonError(sampleUploadError.message, 500)
+      }
+    }
+
+    const { data: readyJob, error: finalizeError } = await supabase.rpc(
+      "finalize_takeoff_verification",
+      {
+        p_job_id: job.id,
+        p_user_id: user.id,
+        p_verification_token: verificationToken,
+        p_file_id: sourceFile.id,
+        p_storage_path: verifiedStoragePath,
+        p_size_bytes: verified.verifiedSizeBytes,
+        p_sha256: verified.verifiedSha256,
+        p_original_page_count: verified.originalPageCount,
+        p_page_count: effectivePageCount,
+        p_sample_page: samplePage,
+        p_scope: price.tier,
+        p_quoted_credits: price.credits,
+        p_due_at: dueAt,
+        p_result_summary: {
+          original_page_count: verified.originalPageCount,
+          verified_page_count: effectivePageCount,
+          pricing_tier: price.tier,
+          source_archive_sha256: verified.originalSha256,
+        },
+      }
+    )
+
+    if (finalizeError || !readyJob) {
+      return jsonError(
+        finalizeError?.message ?? "Could not finalize plan verification.",
+        409
+      )
+    }
+
+    return NextResponse.json({
+      job: { id: readyJob.id, status: readyJob.status },
+      quote: { ...price, pageCount: effectivePageCount },
+    })
+  } finally {
+    await releaseVerification(
+      supabase,
+      job.id,
+      user.id,
+      verificationToken
+    ).catch(() => undefined)
+  }
+}
+
+function pdfVerificationErrorResponse(error: unknown) {
+  if (!(error instanceof PdfVerificationError)) {
+    return jsonError("The uploaded plan could not be verified.", 409)
+  }
+  if (error.code === "too_large") return jsonError(error.message, 413)
+  if (error.code === "timeout") {
+    const response = jsonError(
+      "Plan verification timed out. Try a simplified PDF or contact support.",
+      422
+    )
+    response.headers.set("Retry-After", "30")
+    return response
+  }
+  return jsonError(error.message, 422)
 }
 
 async function releaseVerification(
@@ -367,11 +403,4 @@ async function confirmPreparedJob(
   return NextResponse.json({
     job: { id: job.id, status: "queued" },
   })
-}
-
-function isPdf(bytes: Uint8Array) {
-  return (
-    bytes.byteLength >= 5 &&
-    String.fromCharCode(...bytes.slice(0, 5)) === "%PDF-"
-  )
 }

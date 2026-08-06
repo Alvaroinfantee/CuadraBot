@@ -2,6 +2,10 @@ import { NextResponse } from "next/server"
 import { getClaimedTakeoff } from "@/lib/internal-worker"
 import { jsonError } from "@/lib/http"
 import { persistAndAuditTakeoffProcessorUsage } from "@/lib/internal-takeoff-processor-usage"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 
 type Context = { params: Promise<{ id: string }> }
 
@@ -13,7 +17,20 @@ export async function POST(request: Request, context: Context) {
   ])
   if (contextResult instanceof Response) return contextResult
   const { job, supabase } = contextResult
-  const body = await request.json().catch(() => null)
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.workerResultJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return jsonError("Completion payload is too large.", 413)
+  }
+  const body =
+    bodyResult.ok &&
+    bodyResult.value &&
+    typeof bodyResult.value === "object" &&
+    !Array.isArray(bodyResult.value)
+      ? (bodyResult.value as Record<string, unknown>)
+      : null
 
   if (
     !body ||

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { jsonError } from "@/lib/http"
+import {
+  readRequestJsonWithLimit,
+  requestBodyLimits,
+} from "@/lib/request-body"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import { requireWorker } from "@/lib/worker-auth"
 
@@ -10,8 +14,21 @@ export async function POST(request: Request) {
   const worker = requireWorker(request)
   if (!worker) return jsonError("Unauthorized worker request.", 401)
 
-  const body = await request.json().catch(() => null)
-  if (!body || typeof body !== "object") {
+  const bodyResult = await readRequestJsonWithLimit(
+    request,
+    requestBodyLimits.workerStatusJson
+  )
+  if (!bodyResult.ok && bodyResult.reason === "too_large") {
+    return jsonError("Worker health payload is too large.", 413)
+  }
+  const body =
+    bodyResult.ok &&
+    bodyResult.value &&
+    typeof bodyResult.value === "object" &&
+    !Array.isArray(bodyResult.value)
+      ? (bodyResult.value as Record<string, unknown>)
+      : null
+  if (!body) {
     return jsonError("Invalid worker health report.", 422)
   }
 
@@ -21,6 +38,7 @@ export async function POST(request: Request) {
   if (
     !workerStatus ||
     !processorStatus ||
+    typeof ttlSeconds !== "number" ||
     !Number.isSafeInteger(ttlSeconds) ||
     ttlSeconds < 60 ||
     ttlSeconds > 900

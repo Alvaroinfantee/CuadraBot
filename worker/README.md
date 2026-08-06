@@ -12,7 +12,9 @@ The worker:
 2. atomically claims it with its worker ID;
 3. downloads the source PDF from a short-lived signed URL;
 4. verifies the required SHA-256 digest and `%PDF-` signature;
-5. submits it to the private takeoff service with a server-owned Codex key;
+5. submits it to the loopback execution broker with the trusted job and user
+   identities; the broker creates an isolated processor and a short-lived,
+   model-scoped egress token;
    the job's fixed, versioned drawing-analysis profile is verified and sent as
    a separate trusted field;
 6. mirrors processing progress into CuadraBot;
@@ -40,9 +42,8 @@ Copy `.env.worker.example` to `.env.worker` and replace every secret:
 CUADRABOT_API_URL=http://localhost:3000
 WORKER_SHARED_SECRET=replace-with-the-app-worker-secret
 WORKER_ID=takeoff-worker-01
-TAKEOFF_SERVICE_URL=http://127.0.0.1:8000
+TAKEOFF_SERVICE_URL=http://127.0.0.1:8090
 TAKEOFF_SERVICE_API_TOKEN=replace-with-the-private-service-secret
-CODEX_API_KEY=replace-with-the-server-owned-openai-key
 LOCAL_JOBS_DIR=cuadrabot-takeoff-worker-jobs
 ```
 
@@ -103,6 +104,12 @@ carried separately and cannot select an analysis profile or expand that
 trusted scope. The application, not this process, is authoritative for
 ownership, job transitions, storage rows, credit ledgers, and retries.
 
+The claimed database job must also return a server-owned `scope`,
+`quoted_credits`, and `free_sample`. The worker requires the exact pricing
+mapping (0/49/99/179/299/499 credits for free sample through large set) and
+fails closed on any mismatch before sending the resulting executor budget
+class to the loopback broker.
+
 While the takeoff service is active, the worker refreshes job progress at
 least once per `WORKER_HEARTBEAT_INTERVAL_MS`. The application should treat
 that update as the claim heartbeat and reconcile truly stale claims after an
@@ -116,15 +123,8 @@ deadline before post-processing finishes. The checked-in local default is
 
 ## Production isolation gate
 
-This worker's direct `CODEX_API_KEY` plus long-lived processor configuration is
-for local integration and controlled single-tenant staging. Before processing
-unrelated live customers, point the same private-service contract at a trusted
-execution broker that launches one job per disposable container or VM with a
-unique non-root identity, PID/mount namespace, encrypted job-only volume, no
-sibling-job mounts, restricted egress, and CPU/memory/process limits.
-
-The broker must inject a single-use or narrowly scoped model credential for the
-job, keep it out of model-invoked tools, revoke it after completion, and
-destroy the runtime. The in-process permission profile is defense in depth and
-does not replace this OS-level boundary. See the processor's
-`Mandatory production isolation gate` section for the complete requirement.
+For public processing, `TAKEOFF_SERVICE_URL` must point to the loopback broker
+in `executor/`, not a long-lived processor. The worker does not receive the
+OpenAI master key. After every completed or failed attempt it calls the broker's
+idempotent `DELETE /v1/jobs/{id}` cleanup route; a cleanup failure is raised to
+the worker health loop instead of being silently ignored.

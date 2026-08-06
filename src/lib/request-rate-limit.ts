@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto"
+import { isIP } from "node:net"
 import type { createSupabaseAdminClient } from "@/lib/supabase/admin"
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>
@@ -63,16 +64,38 @@ export async function consumeTakeoffRateLimit(options: {
   }
 }
 
-export function getRequestIp(request: Request) {
-  const platformForwarded = request.headers.get("x-vercel-forwarded-for")
-  const standardForwarded = request.headers.get("x-forwarded-for")
-  const direct =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-real-ip")
+export function getRequestIp(
+  request: Request,
+  environment = process.env.NODE_ENV
+) {
+  const digitalOceanAddress = normalizedIp(
+    request.headers.get("do-connecting-ip")
+  )
 
-  const candidate = platformForwarded ?? standardForwarded ?? direct ?? "unknown"
-  const first = candidate.split(",")[0]?.trim()
-  return (first || "unknown").slice(0, 200)
+  // DigitalOcean App Platform overwrites do-connecting-ip at ingress. Its
+  // x-forwarded-for value is the ingress server, while arbitrary forwarding
+  // headers are not trusted customer identity. Production therefore fails
+  // closed into one "unknown" bucket when the authenticated header is absent.
+  if (environment === "production") {
+    return digitalOceanAddress ?? "unknown"
+  }
+
+  const developmentFallbacks = [
+    request.headers.get("cf-connecting-ip"),
+    request.headers.get("x-real-ip"),
+    request.headers.get("x-vercel-forwarded-for"),
+    request.headers.get("x-forwarded-for"),
+  ]
+  return (
+    digitalOceanAddress ??
+    developmentFallbacks.map(normalizedIp).find(Boolean) ??
+    "unknown"
+  )
+}
+
+function normalizedIp(value: string | null) {
+  const candidate = value?.split(",")[0]?.trim()
+  return candidate && isIP(candidate) !== 0 ? candidate : null
 }
 
 export function digestRequestIp(ip: string, secret: string) {
