@@ -60,6 +60,12 @@ export type ServiceHealthRow = {
   missing: boolean
 }
 
+export const takeoffProcessorUsageHealthCheck = {
+  serviceName: "cuadrabot-cost-accounting",
+  checkName: "processor-usage",
+  label: "Processor usage accounting",
+} as const
+
 export const requiredServiceChecks = [
   {
     serviceName: "cuadrabot-worker",
@@ -86,6 +92,7 @@ export const requiredServiceChecks = [
     checkName: "source-integrity",
     label: "Source-plan archive integrity",
   },
+  takeoffProcessorUsageHealthCheck,
 ] as const
 
 const metricKeys = [

@@ -16,6 +16,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import {
+  summarizeTakeoffProcessorUsage,
+  type TakeoffProcessorUsageRow,
+} from "@/lib/takeoff-processor-usage"
 import { tradeLabels } from "@/lib/takeoff-types"
 
 export const metadata = { title: "Admin takeoff detail" }
@@ -27,7 +31,14 @@ export default async function AdminJobDetailPage({
 }) {
   const { id } = await params
   const supabase = createSupabaseAdminClient()
-  const [jobResult, profileResult, filesResult, eventsResult, archiveResult] =
+  const [
+    jobResult,
+    profileResult,
+    filesResult,
+    eventsResult,
+    archiveResult,
+    processorUsageResult,
+  ] =
     await Promise.all([
     supabase.from("takeoff_jobs").select("*").eq("id", id).maybeSingle(),
     supabase
@@ -61,6 +72,11 @@ export default async function AdminJobDetailPage({
       )
       .eq("job_id", id)
       .maybeSingle(),
+    supabase
+      .from("takeoff_processor_usage")
+      .select("*")
+      .eq("job_id", id)
+      .order("created_at"),
   ])
   const job = jobResult.data
   if (!job) notFound()
@@ -68,6 +84,9 @@ export default async function AdminJobDetailPage({
   const files = filesResult.data ?? []
   const events = eventsResult.data ?? []
   const archive = archiveResult.data
+  const processorUsage = (processorUsageResult.data ?? []) as
+    TakeoffProcessorUsageRow[]
+  const economics = summarizeTakeoffProcessorUsage(processorUsage)
   const metrics =
     job.result_summary &&
     typeof job.result_summary === "object" &&
@@ -157,6 +176,64 @@ export default async function AdminJobDetailPage({
                   )
                   })}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Job economics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Metric
+                  label="Client credits quoted"
+                  value={formatNumber(job.quoted_credits ?? 0)}
+                />
+                <Metric
+                  label="Client credits charged"
+                  value={formatNumber(job.consumed_credits ?? 0)}
+                />
+                <Metric
+                  label="Estimated OpenAI API cost"
+                  value={formatEstimatedCost(economics)}
+                />
+                <Metric
+                  label="Estimated API cost (all input uncached)"
+                  value={formatAllInputUncachedCost(economics)}
+                  detail="Hypothetical: every input token billed at the uncached rate."
+                />
+                <Metric
+                  label="Measured attempts"
+                  value={formatNumber(economics.attemptCount)}
+                />
+                <Metric
+                  label="Input tokens"
+                  value={formatNumber(economics.inputTokens)}
+                  detail={`${formatNumber(economics.cachedInputTokens)} cached · ${formatNumber(economics.cacheWriteTokens)} cache write`}
+                />
+                <Metric
+                  label="Output tokens"
+                  value={formatNumber(economics.outputTokens)}
+                  detail={`${formatNumber(economics.reasoningOutputTokens)} reasoning`}
+                />
+                <Metric
+                  label="Model"
+                  value={economics.models.join(", ") || "Awaiting usage"}
+                />
+                <Metric
+                  label="Pricing snapshot"
+                  value={economics.pricingDates.at(-1) ?? "Awaiting usage"}
+                />
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                The marked-up PDF is generated locally and adds no OpenAI token
+                charge. API figures use the saved per-job pricing snapshot and
+                are estimates; OpenAI invoices, compute, storage, and egress are
+                authoritative and separate. A range means request-level
+                long-context pricing may apply. The all-input-uncached figure
+                is a hypothetical comparison and does not replace the saved
+                estimate based on the reported cache categories.
+              </p>
             </CardContent>
           </Card>
 
@@ -303,6 +380,61 @@ function Info({ label, value }: { label: string; value: string }) {
       <span className="max-w-[60%] text-right font-medium">{value}</span>
     </div>
   )
+}
+
+function Metric({
+  label,
+  value,
+  detail,
+}: {
+  label: string
+  value: string
+  detail?: string
+}) {
+  return (
+    <div className="border p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-2 text-xl font-semibold">{value}</p>
+      {detail ? (
+        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+      ) : null}
+    </div>
+  )
+}
+
+function formatEstimatedCost(
+  economics: ReturnType<typeof summarizeTakeoffProcessorUsage>
+) {
+  if (!economics.attemptCount) return "Awaiting usage"
+  const base = formatUsd(economics.estimatedCostUsd)
+  return economics.hasLongContextRange
+    ? `${base}–${formatUsd(economics.estimatedCostUsdUpperBound)}`
+    : base
+}
+
+function formatAllInputUncachedCost(
+  economics: ReturnType<typeof summarizeTakeoffProcessorUsage>
+) {
+  if (!economics.attemptCount) return "Awaiting usage"
+  const base = formatUsd(economics.estimatedCostUsdAllInputUncached)
+  return economics.hasLongContextRange
+    ? `${base}–${formatUsd(
+        economics.estimatedCostUsdAllInputUncachedUpperBound
+      )}`
+    : base
+}
+
+function formatUsd(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 6,
+  }).format(value)
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-US").format(value)
 }
 
 function formatDate(value: string) {

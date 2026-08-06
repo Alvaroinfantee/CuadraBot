@@ -1,4 +1,5 @@
 import { openAsBlob } from "node:fs"
+import type { TakeoffAnalysisProfile } from "../../src/lib/takeoff-workflow"
 import type { LocalTakeoffArtifact } from "./takeoff"
 import { workerConfig } from "./config"
 
@@ -25,6 +26,7 @@ export type WorkerInputJob = WorkerJob & {
   source_sha256: string
   original_filename: string
   workflow_kind: "legend_fixture_takeoff_v1"
+  analysis_profile: TakeoffAnalysisProfile
   requested_scopes: Array<"fixture_counts" | "cable_runs">
   customer_instructions: string
   page_count: number | null
@@ -366,6 +368,7 @@ export async function completeJob(
   jobId: string,
   claimToken: string,
   metrics: Record<string, unknown>,
+  processorUsage: unknown,
   artifacts: unknown
 ) {
   return apiJson<{ job: WorkerJob }>(
@@ -373,7 +376,7 @@ export async function completeJob(
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ metrics, artifacts }),
+      body: JSON.stringify({ metrics, processorUsage, artifacts }),
     },
     workerConfig.apiTimeoutMs,
     claimToken
@@ -383,14 +386,15 @@ export async function completeJob(
 export async function failJob(
   jobId: string,
   claimToken: string,
-  failure: WorkerFailure
+  failure: WorkerFailure,
+  processorUsage: unknown
 ) {
   return apiJson<{ job: WorkerJob }>(
     TAKEOFF_WORKER_ENDPOINTS.fail(jobId),
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(failure),
+      body: JSON.stringify({ ...failure, processorUsage }),
     },
     workerConfig.apiTimeoutMs,
     claimToken

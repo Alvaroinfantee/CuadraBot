@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getClaimedTakeoff } from "@/lib/internal-worker"
 import { jsonError } from "@/lib/http"
+import { persistAndAuditTakeoffProcessorUsage } from "@/lib/internal-takeoff-processor-usage"
 
 type Context = { params: Promise<{ id: string }> }
 
@@ -14,19 +15,36 @@ export async function POST(request: Request, context: Context) {
   const { job, supabase } = contextResult
   const body = await request.json().catch(() => null)
 
+  if (
+    !body ||
+    !body.metrics ||
+    typeof body.metrics !== "object" ||
+    Array.isArray(body.metrics) ||
+    !Array.isArray(body.artifacts)
+  ) {
+    return jsonError("Invalid completion payload.", 422)
+  }
+
+  // Usage is internal operational telemetry. A storage/schema failure must
+  // never turn already-verified customer artifacts into another paid model
+  // run; completion remains authoritative and usage can be reconciled later.
+  await persistAndAuditTakeoffProcessorUsage({
+    supabase,
+    jobId: job.id,
+    userId: job.user_id,
+    claimToken: contextResult.worker.claimToken,
+    workerId: contextResult.worker.workerId,
+    processorJobId: job.processor_job_id,
+    value: body.processorUsage,
+    usageRequired: true,
+    terminalAction: "complete",
+  })
+
   if (job.status === "completed") {
     return NextResponse.json({ job })
   }
   if (job.status !== "processing") {
     return jsonError("Only a processing takeoff can be completed.", 409)
-  }
-
-  if (
-    !body ||
-    typeof body.metrics !== "object" ||
-    !Array.isArray(body.artifacts)
-  ) {
-    return jsonError("Invalid completion payload.", 422)
   }
 
   const { data: updated, error } = await supabase.rpc(

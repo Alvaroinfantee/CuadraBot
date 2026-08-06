@@ -9,6 +9,7 @@ from pypdf import PdfReader, PdfWriter
 from pypdf.annotations import FreeText, PolyLine, Rectangle, Text
 from pypdf.generic import (
     ArrayObject,
+    BooleanObject,
     DictionaryObject,
     FloatObject,
     NameObject,
@@ -31,6 +32,77 @@ PALETTE = (
     "4D4D4D",
     "66A61E",
 )
+TAKEOFF_MARKER_KEY = "/CuadraBotTakeoff"
+
+
+def _is_takeoff_marker(annotation: object) -> bool:
+    marker_flag = annotation.get(TAKEOFF_MARKER_KEY)
+    return getattr(marker_flag, "value", marker_flag) is True
+
+
+def _has_takeoff_markers(reader: PdfReader) -> bool:
+    for page in reader.pages:
+        annotations = page.get("/Annots")
+        if annotations is None:
+            continue
+        for reference in annotations:
+            annotation = (
+                reference.get_object()
+                if hasattr(reference, "get_object")
+                else reference
+            )
+            if _is_takeoff_marker(annotation):
+                return True
+    return False
+
+
+def _reference_key(reference: object) -> tuple[int, int] | None:
+    idnum = getattr(reference, "idnum", None)
+    generation = getattr(reference, "generation", None)
+    if isinstance(idnum, int) and isinstance(generation, int):
+        return idnum, generation
+    return None
+
+
+def _remove_existing_takeoff_markers(
+    writer: PdfWriter,
+    *,
+    preserve_references: set[tuple[int, int]] | None = None,
+) -> int:
+    """Remove prior CuadraBot markers without disturbing source annotations."""
+    removed = 0
+    preserved = preserve_references or set()
+    for page in writer.pages:
+        annotations = page.get("/Annots")
+        if annotations is None:
+            continue
+        resolved_annotations = (
+            annotations.get_object()
+            if hasattr(annotations, "get_object")
+            else annotations
+        )
+        retained = ArrayObject()
+        for reference in resolved_annotations:
+            if _reference_key(reference) in preserved:
+                retained.append(reference)
+                continue
+            annotation = (
+                reference.get_object()
+                if hasattr(reference, "get_object")
+                else reference
+            )
+            if _is_takeoff_marker(annotation):
+                removed += 1
+                continue
+            retained.append(reference)
+        if isinstance(resolved_annotations, ArrayObject):
+            resolved_annotations.clear()
+            resolved_annotations.extend(retained)
+        elif retained:
+            page[NameObject("/Annots")] = retained
+        else:
+            del page[NameObject("/Annots")]
+    return removed
 
 
 def _hex_to_pdf_color(value: str) -> ArrayObject:
@@ -48,9 +120,21 @@ def color_for_code(code: str) -> str:
     return PALETTE[int.from_bytes(digest[:2], "big") % len(PALETTE)]
 
 
+def _visible_page_box(page: object) -> tuple[float, float, float, float]:
+    box = page.cropbox
+    left = float(box.left)
+    bottom = float(box.bottom)
+    right = float(box.right)
+    top = float(box.top)
+    if right <= left or top <= bottom:
+        raise ValueError("PDF page has an invalid visible crop box")
+    return left, bottom, right, top
+
+
 def displayed_size(page: object) -> tuple[float, float]:
-    width = float(page.mediabox.width)
-    height = float(page.mediabox.height)
+    left, bottom, right, top = _visible_page_box(page)
+    width = right - left
+    height = top - bottom
     rotation = int(page.rotation or 0) % 360
     return (height, width) if rotation in {90, 270} else (width, height)
 
@@ -58,18 +142,17 @@ def displayed_size(page: object) -> tuple[float, float]:
 def display_top_left_to_pdf(
     page: object, x: float, y: float
 ) -> tuple[float, float]:
-    """Map displayed-page top-left points to unrotated PDF coordinates."""
-    width = float(page.mediabox.width)
-    height = float(page.mediabox.height)
+    """Map visible CropBox top-left points to unrotated PDF coordinates."""
+    left, bottom, right, top = _visible_page_box(page)
     rotation = int(page.rotation or 0) % 360
     if rotation == 0:
-        return x, height - y
+        return left + x, top - y
     if rotation == 90:
-        return y, x
+        return left + y, bottom + x
     if rotation == 180:
-        return width - x, y
+        return right - x, bottom + y
     if rotation == 270:
-        return width - y, height - x
+        return right - y, top - x
     raise ValueError(f"Unsupported page rotation {rotation}")
 
 
@@ -152,6 +235,7 @@ def _style_rectangle(
     annotation[NameObject("/C")] = _hex_to_pdf_color(color)
     annotation[NameObject("/CA")] = FloatObject(0.88)
     annotation[NameObject("/NM")] = TextStringObject(asset.unit_id)
+    annotation[NameObject(TAKEOFF_MARKER_KEY)] = BooleanObject(True)
     annotation[NameObject("/F")] = NumberObject(4)
     annotation[NameObject("/BS")] = DictionaryObject(
         {
@@ -175,6 +259,7 @@ def _style_polyline(
     annotation[NameObject("/IC")] = _hex_to_pdf_color(color)
     annotation[NameObject("/CA")] = FloatObject(0.9)
     annotation[NameObject("/NM")] = TextStringObject(asset.unit_id)
+    annotation[NameObject(TAKEOFF_MARKER_KEY)] = BooleanObject(True)
     annotation[NameObject("/F")] = NumberObject(4)
     annotation[NameObject("/BS")] = DictionaryObject(
         {
@@ -210,7 +295,12 @@ def annotate_pdf(
             continue
         by_page.setdefault(asset.page, []).append(asset)
 
-    writer = PdfWriter(str(source_pdf), incremental=True, strict=False)
+    if _has_takeoff_markers(reader):
+        writer = PdfWriter()
+        writer.clone_document_from_reader(reader)
+    else:
+        writer = PdfWriter(str(source_pdf), incremental=True, strict=False)
+    new_marker_references: set[tuple[int, int]] = set()
     annotated = 0
     for page_number in range(1, page_count + 1):
         page_assets = by_page.get(page_number, [])
@@ -284,7 +374,7 @@ def annotate_pdf(
                         for point in path
                     ]
                 )
-                writer.add_annotation(
+                inserted = writer.add_annotation(
                     page_number - 1,
                     _style_polyline(
                         annotation,
@@ -292,6 +382,10 @@ def annotate_pdf(
                         color_for_code(asset.code),
                     ),
                 )
+                reference_key = _reference_key(inserted.indirect_reference)
+                if reference_key is None:
+                    raise ValueError("Inserted takeoff annotation has no reference")
+                new_marker_references.add(reference_key)
                 annotated += 1
                 continue
 
@@ -329,14 +423,22 @@ def annotate_pdf(
                 rect=_pdf_rect(page, clipped),
                 title_bar=asset.unit_id,
             )
-            writer.add_annotation(
+            inserted = writer.add_annotation(
                 page_number - 1,
                 _style_rectangle(
                     annotation, asset, color_for_code(asset.code)
                 ),
             )
+            reference_key = _reference_key(inserted.indirect_reference)
+            if reference_key is None:
+                raise ValueError("Inserted takeoff annotation has no reference")
+            new_marker_references.add(reference_key)
             annotated += 1
 
+    _remove_existing_takeoff_markers(
+        writer,
+        preserve_references=new_marker_references,
+    )
     writer.write(str(output_pdf))
     return AnnotationSummary(
         source_pdf=str(source_pdf),

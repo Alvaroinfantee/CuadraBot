@@ -1,6 +1,10 @@
 import { openAsBlob } from "node:fs"
 import fs from "node:fs/promises"
 import path from "node:path"
+import {
+  isTakeoffAnalysisProfile,
+  type TakeoffAnalysisProfile,
+} from "../../src/lib/takeoff-workflow"
 import { workerConfig } from "./config"
 import { downloadVerifiedFile } from "./files"
 
@@ -27,6 +31,7 @@ type TakeoffJobRecord = {
   artifacts: Record<string, TakeoffArtifact>
   error: string | null
   metrics: Record<string, unknown>
+  processor_usage?: unknown
 }
 
 export type LocalTakeoffArtifact = {
@@ -47,12 +52,19 @@ export type TakeoffProgressEvent = {
 export class TakeoffServiceError extends Error {
   readonly stage: string
   readonly retryable: boolean
+  readonly processorUsage: unknown
 
-  constructor(message: string, stage: string, retryable: boolean) {
+  constructor(
+    message: string,
+    stage: string,
+    retryable: boolean,
+    processorUsage: unknown = null
+  ) {
     super(message)
     this.name = "TakeoffServiceError"
     this.stage = stage
     this.retryable = retryable
+    this.processorUsage = processorUsage
   }
 }
 
@@ -60,6 +72,7 @@ type RunTakeoffOptions = {
   sourcePdf: string
   outputDir: string
   workflowKind: "legend_fixture_takeoff_v1"
+  analysisProfile: TakeoffAnalysisProfile
   requestedScopes: Array<"fixture_counts" | "cable_runs">
   customerInstructions: string
   freeSample: boolean
@@ -84,15 +97,24 @@ export async function runTakeoff({
   sourcePdf,
   outputDir,
   workflowKind,
+  analysisProfile,
   requestedScopes,
   customerInstructions,
   freeSample,
   onProgress,
 }: RunTakeoffOptions) {
+  if (!isTakeoffAnalysisProfile(analysisProfile)) {
+    throw new TakeoffServiceError(
+      "Application returned an unsupported trusted analysis profile",
+      "service_protocol",
+      false
+    )
+  }
   await assertTakeoffServiceReady()
   const submission = await submitTakeoff({
     sourcePdf,
     workflowKind,
+    analysisProfile,
     requestedScopes,
     customerInstructions,
     freeSample,
@@ -106,23 +128,54 @@ export async function runTakeoff({
   })
 
   const job = await waitForTakeoff(submission, onProgress)
-  const artifacts = await downloadArtifacts(job, outputDir)
-  return {
-    microserviceJobId: submission.job_id,
-    metrics: job.metrics,
-    artifacts,
+  const processorUsage = job.processor_usage ?? null
+  try {
+    const artifacts = await downloadArtifacts(job, outputDir)
+    return {
+      microserviceJobId: submission.job_id,
+      metrics: job.metrics,
+      processorUsage,
+      artifacts,
+    }
+  } catch (error) {
+    throw withProcessorUsage(error, processorUsage, "artifact_download")
   }
+}
+
+export function withProcessorUsage(
+  error: unknown,
+  processorUsage: unknown,
+  fallbackStage: string
+) {
+  if (error instanceof TakeoffServiceError) {
+    return new TakeoffServiceError(
+      error.message,
+      error.stage,
+      error.retryable,
+      error.processorUsage ?? processorUsage
+    )
+  }
+
+  return new TakeoffServiceError(
+    error instanceof Error ? error.message : String(error),
+    fallbackStage,
+    error instanceof TypeError ||
+      (error instanceof Error && error.name === "TimeoutError"),
+    processorUsage
+  )
 }
 
 async function submitTakeoff({
   sourcePdf,
   workflowKind,
+  analysisProfile,
   requestedScopes,
   customerInstructions,
   freeSample,
 }: {
   sourcePdf: string
   workflowKind: "legend_fixture_takeoff_v1"
+  analysisProfile: TakeoffAnalysisProfile
   requestedScopes: Array<"fixture_counts" | "cable_runs">
   customerInstructions: string
   freeSample: boolean
@@ -138,6 +191,7 @@ async function submitTakeoff({
   const source = await openAsBlob(sourcePdf, { type: "application/pdf" })
   form.append("drawings_pdf", source, path.basename(sourcePdf))
   form.append("workflowKind", workflowKind)
+  form.append("analysisProfile", analysisProfile)
   for (const scope of requestedScopes) {
     form.append("requestedScopes", scope)
   }
@@ -177,6 +231,18 @@ async function waitForTakeoff(
     const state = `${job.status}:${job.stage}:${job.progress}`
     const now = Date.now()
 
+    if (job.status === "completed") {
+      return job
+    }
+    if (job.status === "failed") {
+      throw new TakeoffServiceError(
+        job.error || "The takeoff service reported a failed job",
+        job.stage || "takeoff_failed",
+        false,
+        job.processor_usage ?? null
+      )
+    }
+
     if (
       state !== lastState ||
       now - lastReportAt >= workerConfig.heartbeatIntervalMs
@@ -189,17 +255,6 @@ async function waitForTakeoff(
         message: `Takeoff service: ${job.stage}.`,
         microserviceJobId: submission.job_id,
       })
-    }
-
-    if (job.status === "completed") {
-      return job
-    }
-    if (job.status === "failed") {
-      throw new TakeoffServiceError(
-        job.error || "The takeoff service reported a failed job",
-        job.stage || "takeoff_failed",
-        false
-      )
     }
     await sleep(workerConfig.takeoffPollIntervalMs)
   }

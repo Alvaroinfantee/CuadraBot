@@ -3,13 +3,21 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { describe, it } from "node:test"
 import {
+  isTakeoffAnalysisProfile,
   requestedScopesForTrades,
+  takeoffAnalysisProfile,
   takeoffWorkflowKind,
 } from "../src/lib/takeoff-workflow"
 
 describe("trusted takeoff workflow mapping", () => {
   it("maps selectable legend scopes to the processor contract", () => {
     assert.equal(takeoffWorkflowKind, "legend_fixture_takeoff_v1")
+    assert.equal(
+      takeoffAnalysisProfile,
+      "analyze-building-drawings@2026-08-06"
+    )
+    assert.equal(isTakeoffAnalysisProfile(takeoffAnalysisProfile), true)
+    assert.equal(isTakeoffAnalysisProfile("analyze-building-drawings@latest"), false)
     assert.deepEqual(
       requestedScopesForTrades([
         "fixture_device_counts",
@@ -49,9 +57,24 @@ describe("trusted takeoff workflow mapping", () => {
   })
 
   it("keeps trusted workflow scope separate from customer instructions", () => {
+    const creationRoute = read("src/app/api/takeoff/jobs/route.ts")
     const inputRoute = read("src/app/api/internal/worker/takeoff/jobs/[id]/input/route.ts")
+    const workerIndex = read("worker/src/index.ts")
     const workerSubmission = read("worker/src/takeoff.ts")
+    const workerConfig = read("worker/src/config.ts")
+    const processorUsageMigration = read(
+      "supabase/migrations/20260806120000_takeoff_processor_usage.sql"
+    )
 
+    assert.match(
+      creationRoute,
+      /processor_version:\s*takeoffAnalysisProfile/
+    )
+    assert.match(
+      inputRoute,
+      /job\.processor_version\s*!==\s*takeoffAnalysisProfile/
+    )
+    assert.match(inputRoute, /analysis_profile:\s*takeoffAnalysisProfile/)
     assert.match(inputRoute, /requestedScopesForTrades\(job\.trades\)/)
     assert.match(inputRoute, /workflow_kind:\s*takeoffWorkflowKind/)
     assert.match(inputRoute, /requested_scopes:\s*requestedScopes/)
@@ -61,7 +84,19 @@ describe("trusted takeoff workflow mapping", () => {
     )
     assert.doesNotMatch(inputRoute, /job\.instructions/)
 
+    assert.match(
+      workerIndex,
+      /analysisProfile:\s*input\.job\.analysis_profile/
+    )
+    assert.match(
+      workerSubmission,
+      /isTakeoffAnalysisProfile\(analysisProfile\)/
+    )
     assert.match(workerSubmission, /form\.append\("workflowKind", workflowKind\)/)
+    assert.match(
+      workerSubmission,
+      /form\.append\("analysisProfile", analysisProfile\)/
+    )
     assert.match(
       workerSubmission,
       /form\.append\("requestedScopes", scope\)/
@@ -70,6 +105,28 @@ describe("trusted takeoff workflow mapping", () => {
       workerSubmission,
       /form\.append\(\s*"instructions",\s*customerInstructions/
     )
+    assert.match(
+      workerConfig,
+      /minimumTakeoffJobTimeoutMs\s*=\s*7\s*\*\s*60\s*\*\s*60\s*\*\s*1_000/
+    )
+    assert.match(
+      workerConfig,
+      /value\s*<\s*minimumTakeoffJobTimeoutMs/
+    )
+
+    const profileBackfill = processorUsageMigration.match(
+      /update public\.takeoff_jobs[\s\S]*?trades\s*<@[\s\S]*?;/
+    )
+    assert.ok(profileBackfill)
+    assert.match(profileBackfill[0], /processor_version is null/)
+    assert.match(
+      profileBackfill[0],
+      /processor_version\s*=\s*'analyze-building-drawings@2026-08-06'/
+    )
+    assert.match(profileBackfill[0], /'fixture_device_counts'/)
+    assert.match(profileBackfill[0], /'cable_conduit_runs'/)
+    assert.doesNotMatch(profileBackfill[0], /'processing'/)
+    assert.doesNotMatch(profileBackfill[0], /'flooring_finishes'/)
   })
 })
 

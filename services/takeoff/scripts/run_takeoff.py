@@ -13,6 +13,7 @@ import httpx
 import uvicorn
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_ANALYSIS_PROFILE = "analyze-building-drawings@2026-08-06"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -75,6 +76,7 @@ def submit(args: argparse.Namespace) -> None:
             data={
                 "instructions": args.instructions,
                 "model": args.model,
+                "analysisProfile": args.analysis_profile,
             },
             headers=headers,
             timeout=None,
@@ -169,6 +171,11 @@ def parser() -> argparse.ArgumentParser:
         ),
     )
     submit_parser.add_argument("--model", default="gpt-5.6-sol")
+    submit_parser.add_argument(
+        "--analysis-profile",
+        default=DEFAULT_ANALYSIS_PROFILE,
+        choices=[DEFAULT_ANALYSIS_PROFILE],
+    )
     submit_parser.add_argument("--key-env", default="CODEX_API_KEY")
     submit_parser.add_argument(
         "--service-token-env", default="TAKEOFF_SERVICE_API_TOKEN"

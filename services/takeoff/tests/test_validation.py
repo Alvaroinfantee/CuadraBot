@@ -3,13 +3,16 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import zipfile
 from pathlib import Path
 
 import pytest
 from openpyxl import Workbook, load_workbook
 from openpyxl.workbook.defined_name import DefinedName
-from pypdf import PdfWriter
+from pypdf import PdfReader, PdfWriter
+from pypdf.errors import PdfReadError
+from pypdf.generic import NameObject
 
 from app.config import Settings
 from app.models import JobRecord, JobStatus, TakeoffDocument
@@ -28,6 +31,25 @@ def make_source_pdf(path: Path) -> str:
     writer = PdfWriter()
     writer.add_blank_page(width=200, height=100)
     writer.write(str(path))
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def make_duplicate_page_mode_pdf(path: Path) -> str:
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=100)
+    writer.root_object.update(
+        {
+            NameObject("/PageMode"): NameObject("/UseNone"),
+            NameObject("/PageMope"): NameObject("/UseNone"),
+        }
+    )
+    writer.write(str(path))
+    payload = path.read_bytes()
+    placeholder = b"/PageMope /UseNone"
+    assert payload.count(placeholder) == 1
+    path.write_bytes(
+        payload.replace(placeholder, b"/PageMode /UseNone", 1)
+    )
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -268,6 +290,39 @@ def rewrite_workbook_definition_as_utf16(path: Path) -> None:
     replacement.replace(path)
 
 
+def remove_worksheet_dimensions(path: Path) -> None:
+    replacement = path.with_name("dimensionless-takeoff.xlsx")
+    with zipfile.ZipFile(path, "r") as source, zipfile.ZipFile(
+        replacement, "w"
+    ) as destination:
+        for entry in source.infolist():
+            payload = source.read(entry)
+            if entry.filename.startswith(
+                "xl/worksheets/"
+            ) and entry.filename.endswith(".xml"):
+                xml = payload.decode("utf-8")
+                xml = re.sub(r"<dimension\b[^>]*/>", "", xml, flags=re.I)
+                payload = xml.encode("utf-8")
+            destination.writestr(entry, payload)
+    replacement.replace(path)
+    with zipfile.ZipFile(path, "r") as archive:
+        worksheet_parts = [
+            entry
+            for entry in archive.namelist()
+            if entry.startswith("xl/worksheets/") and entry.endswith(".xml")
+        ]
+        assert worksheet_parts
+        assert all(
+            re.search(
+                rb"<(?:\w+:)?dimension\b",
+                archive.read(entry),
+                flags=re.I,
+            )
+            is None
+            for entry in worksheet_parts
+        )
+
+
 def test_takeoff_and_workbook_reconcile(tmp_path: Path) -> None:
     inputs = tmp_path / "inputs"
     artifacts = tmp_path / "artifacts"
@@ -290,6 +345,32 @@ def test_takeoff_and_workbook_reconcile(tmp_path: Path) -> None:
         workbook_path, takeoff=document, artifacts_dir=artifacts
     )
     assert pages == 1
+
+
+def test_takeoff_validation_accepts_duplicate_page_mode(
+    tmp_path: Path,
+) -> None:
+    inputs = tmp_path / "inputs"
+    artifacts = tmp_path / "artifacts"
+    inputs.mkdir()
+    artifacts.mkdir()
+    drawings = inputs / "drawings.pdf"
+    payload = takeoff_payload(make_duplicate_page_mode_pdf(drawings))
+    takeoff_path = artifacts / "takeoff.json"
+    takeoff_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(PdfReadError, match=r"key /PageMode"):
+        len(PdfReader(str(drawings), strict=True).pages)
+
+    document, pages = validate_takeoff_artifact(
+        takeoff_path,
+        drawings_path=drawings,
+        artifacts_dir=artifacts,
+        inputs_dir=inputs,
+    )
+
+    assert pages == 1
+    assert len(document.assets) == 1
 
 
 def test_unresolved_symbols_are_explicit_and_excluded_from_totals(
@@ -784,6 +865,50 @@ def test_workbook_rejects_corrupt_container(tmp_path: Path) -> None:
     workbook_path = artifacts / "takeoff.xlsx"
     workbook_path.write_bytes(b"PK corrupt")
     with pytest.raises(ArtifactValidationError):
+        validate_workbook_artifact(
+            workbook_path, takeoff=document, artifacts_dir=artifacts
+        )
+
+
+def test_workbook_cell_limit_survives_missing_dimensions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    payload = takeoff_payload("a" * 64)
+    document = TakeoffDocument.model_validate(payload)
+    workbook_path = artifacts / "takeoff.xlsx"
+    make_workbook(workbook_path, payload)
+    remove_worksheet_dimensions(workbook_path)
+    monkeypatch.setattr("app.validation.MAX_WORKBOOK_CELLS", 39)
+
+    with pytest.raises(
+        ArtifactValidationError,
+        match="cell inspection limit",
+    ):
+        validate_workbook_artifact(
+            workbook_path, takeoff=document, artifacts_dir=artifacts
+        )
+
+
+def test_workbook_row_limit_survives_missing_dimensions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    payload = takeoff_payload("a" * 64)
+    document = TakeoffDocument.model_validate(payload)
+    workbook_path = artifacts / "takeoff.xlsx"
+    make_workbook(workbook_path, payload)
+    remove_worksheet_dimensions(workbook_path)
+    monkeypatch.setattr("app.validation.MAX_WORKBOOK_ROWS", 1)
+
+    with pytest.raises(
+        ArtifactValidationError,
+        match="worksheet bounds",
+    ):
         validate_workbook_artifact(
             workbook_path, takeoff=document, artifacts_dir=artifacts
         )

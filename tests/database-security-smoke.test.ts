@@ -15,7 +15,9 @@ const adminId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 const secondAdminId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 const historicalJobId = "33333333-3333-4333-8333-333333333333"
 const historicalFileId = "44444444-4444-4444-8444-444444444444"
+const compatibleBackfillJobId = "17171717-1717-4717-8717-171717171717"
 const archiveMigration = "20260729183933_secure_document_archive.sql"
+const processorUsageMigration = "20260806120000_takeoff_processor_usage.sql"
 
 async function createSupabaseDatabase() {
   const db = new PGlite({ extensions: { pgcrypto } })
@@ -133,6 +135,29 @@ async function createSupabaseDatabase() {
       `)
     }
 
+    if (file === processorUsageMigration) {
+      await db.exec(`
+        insert into public.takeoff_jobs (
+          id,
+          user_id,
+          project_name,
+          trades,
+          status,
+          input_file_count,
+          input_page_count
+        )
+        values (
+          '${compatibleBackfillJobId}',
+          '${otherCustomerId}',
+          'Compatible profile backfill',
+          array['fixture_device_counts', 'cable_conduit_runs']::text[],
+          'needs_review',
+          1,
+          2
+        );
+      `)
+    }
+
     await db.exec(await readFile(`${migrationsDirectory}/${file}`, "utf8"))
   }
 
@@ -213,6 +238,158 @@ test("archive migration enforces tenant access, billing capacity, and deletion c
       service_direct_update: false,
       upload_read_policy_removed: true,
     })
+
+    const processorUsageRegistry = await db.query<{
+      rls_enabled: boolean
+      customer_select: boolean
+      customer_insert: boolean
+      service_select: boolean
+      service_insert: boolean
+      customer_policy_count: number
+    }>(`
+      select
+        c.relrowsecurity as rls_enabled,
+        has_table_privilege(
+          'authenticated',
+          'public.takeoff_processor_usage',
+          'select'
+        ) as customer_select,
+        has_table_privilege(
+          'authenticated',
+          'public.takeoff_processor_usage',
+          'insert'
+        ) as customer_insert,
+        has_table_privilege(
+          'service_role',
+          'public.takeoff_processor_usage',
+          'select'
+        ) as service_select,
+        has_table_privilege(
+          'service_role',
+          'public.takeoff_processor_usage',
+          'insert'
+        ) as service_insert,
+        (
+          select count(*)::int
+          from pg_policies
+          where schemaname = 'public'
+            and tablename = 'takeoff_processor_usage'
+            and roles::text like '%authenticated%'
+        ) as customer_policy_count
+      from pg_class as c
+      join pg_namespace as n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relname = 'takeoff_processor_usage';
+    `)
+
+    assert.deepEqual(processorUsageRegistry.rows[0], {
+      rls_enabled: true,
+      customer_select: false,
+      customer_insert: false,
+      service_select: true,
+      service_insert: true,
+      customer_policy_count: 0,
+    })
+
+    const profileBackfill = await db.query<{
+      id: string
+      processor_version: string | null
+    }>(`
+      select id, processor_version
+      from public.takeoff_jobs
+      where id in ('${compatibleBackfillJobId}', '${historicalJobId}')
+      order by id;
+    `)
+    const profilesByJob = new Map(
+      profileBackfill.rows.map((row) => [row.id, row.processor_version])
+    )
+    assert.equal(
+      profilesByJob.get(compatibleBackfillJobId),
+      "analyze-building-drawings@2026-08-06"
+    )
+    assert.equal(profilesByJob.get(historicalJobId), null)
+
+    const processorUsageClaim = "16161616-1616-4616-8616-161616161616"
+    await db.exec(`
+      insert into public.takeoff_processor_usage (
+        job_id,
+        claim_token,
+        worker_id,
+        schema_version,
+        provider,
+        model,
+        pricing_as_of,
+        currency,
+        usage_turns,
+        input_tokens,
+        uncached_input_tokens,
+        cached_input_tokens,
+        cache_write_tokens,
+        output_tokens,
+        reasoning_output_tokens,
+        estimated_cost_usd,
+        estimated_cost_usd_upper_bound,
+        estimated_cost_usd_all_input_uncached,
+        estimated_cost_usd_all_input_uncached_upper_bound,
+        long_context_pricing_may_apply,
+        rate_snapshot_usd_per_million
+      )
+      values (
+        '${historicalJobId}',
+        '${processorUsageClaim}',
+        'worker-smoke',
+        1,
+        'openai',
+        'gpt-5.6-sol',
+        '2026-08-06',
+        'USD',
+        1,
+        100000,
+        70000,
+        20000,
+        10000,
+        5000,
+        1000,
+        0.5725,
+        null,
+        0.65,
+        null,
+        false,
+        '{"input":5,"cached_input":0.5,"cache_write":6.25,"output":30}'::jsonb
+      );
+    `)
+    const storedProcessorUsage = await db.query<{
+      all_input_uncached_cost: number
+      all_input_uncached_upper_is_null: boolean
+    }>(`
+      select
+        estimated_cost_usd_all_input_uncached::float8 as all_input_uncached_cost,
+        estimated_cost_usd_all_input_uncached_upper_bound is null as all_input_uncached_upper_is_null
+      from public.takeoff_processor_usage
+      where claim_token = '${processorUsageClaim}';
+    `)
+    assert.deepEqual(storedProcessorUsage.rows, [
+      {
+        all_input_uncached_cost: 0.65,
+        all_input_uncached_upper_is_null: true,
+      },
+    ])
+    await expectRejected(() =>
+      db.exec(`
+        update public.takeoff_processor_usage
+        set
+          long_context_pricing_may_apply = true,
+          estimated_cost_usd_upper_bound = 1.25
+        where claim_token = '${processorUsageClaim}';
+      `)
+    )
+
+    const resultBucket = await db.query<{ file_size_limit: number }>(`
+      select file_size_limit
+      from storage.buckets
+      where id = 'takeoff-results';
+    `)
+    assert.deepEqual(resultBucket.rows, [{ file_size_limit: 262_144_000 }])
 
     const backfill = await db.query<{
       status: string

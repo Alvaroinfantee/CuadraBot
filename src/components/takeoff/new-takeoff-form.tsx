@@ -12,6 +12,7 @@ import {
   ArrowRightIcon,
   CheckCircle2Icon,
   CoinsIcon,
+  FileSpreadsheetIcon,
   FileTextIcon,
   FileUpIcon,
   Loader2Icon,
@@ -497,6 +498,37 @@ export function NewTakeoffForm({
                       {copy.deliveryTarget}
                     </span>
                     <span className="font-medium">{copy.inHours}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {copy.includedDeliverables}
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {[
+                      {
+                        icon: FileTextIcon,
+                        title: copy.annotatedPdfIncluded,
+                        body: copy.annotatedPdfIncludedBody,
+                      },
+                      {
+                        icon: FileSpreadsheetIcon,
+                        title: copy.workbookIncluded,
+                        body: copy.workbookIncludedBody,
+                      },
+                    ].map(({ icon: Icon, title, body }) => (
+                      <div key={title} className="flex items-start gap-3">
+                        <span className="grid size-8 shrink-0 place-items-center bg-blue-50 text-primary">
+                          <Icon className="size-4" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium">{title}</p>
+                          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                            {body}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <p className="text-sm leading-6 text-muted-foreground">

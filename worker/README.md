@@ -13,6 +13,8 @@ The worker:
 3. downloads the source PDF from a short-lived signed URL;
 4. verifies the required SHA-256 digest and `%PDF-` signature;
 5. submits it to the private takeoff service with a server-owned Codex key;
+   the job's fixed, versioned drawing-analysis profile is verified and sent as
+   a separate trusted field;
 6. mirrors processing progress into CuadraBot;
 7. verifies every returned artifact by size and SHA-256;
 8. asks CuadraBot for path-bound Supabase upload capabilities, streams each
@@ -24,8 +26,11 @@ The worker:
     Health page.
 
 On any processing failure, the worker calls the failure endpoint with
-`{ stage, message, retryable }`. The application endpoint owns the
-transactional release of reserved credits.
+`{ stage, message, retryable, processorUsage }`. The application endpoint owns
+the transactional release of reserved credits. Completion and failure remain
+authoritative even if operational usage storage is unavailable; the app raises
+an admin alert and degrades the required cost-accounting health check for later
+reconciliation.
 
 ## Environment
 
@@ -73,8 +78,8 @@ Endpoints are centralized in `src/api.ts`:
 | `GET` | `/api/internal/worker/takeoff/jobs/:id/input` | `{ job, signedUrl }` |
 | `POST` | `/api/internal/worker/takeoff/jobs/:id/progress` | `{ stage, progress, message?, microserviceJobId? }` |
 | `POST` | `/api/internal/worker/takeoff/jobs/:id/artifacts` | JSON `{ action: "prepare" \| "finalize", microserviceJobId, artifacts: [{ filename, mediaType, bytes, sha256 }] }`; prepare returns signed direct-upload destinations and finalize verifies/registers them |
-| `POST` | `/api/internal/worker/takeoff/jobs/:id/complete` | `{ metrics, artifacts }` |
-| `POST` | `/api/internal/worker/takeoff/jobs/:id/fail` | `{ stage, message, retryable }` |
+| `POST` | `/api/internal/worker/takeoff/jobs/:id/complete` | `{ metrics, processorUsage, artifacts }` |
+| `POST` | `/api/internal/worker/takeoff/jobs/:id/fail` | `{ stage, message, retryable, processorUsage }` |
 
 The input `job` must include:
 
@@ -82,15 +87,21 @@ The input `job` must include:
 - `source_sha256`
 - `original_filename`
 - `workflow_kind` (`legend_fixture_takeoff_v1`)
+- `analysis_profile` (`analyze-building-drawings@2026-08-06`)
 - `requested_scopes` (`fixture_counts`, `cable_runs`, or both)
 - `customer_instructions`
 - `page_count`
 - `free_sample` (server-owned; never inferred from customer instructions)
 
-The application derives `workflow_kind` and `requested_scopes` from the
-validated database job. Customer notes are carried separately and cannot
-expand that trusted scope. The application, not this process, is authoritative
-for ownership, job transitions, storage rows, credit ledgers, and retries.
+The application persists the fixed `analysis_profile` in
+`takeoff_jobs.processor_version` when the job is created. It rejects a missing
+or different value before issuing a source download URL. The worker verifies
+the same allowlisted value again and forwards it to the processor as the
+multipart field `analysisProfile`. The application derives `workflow_kind`
+and `requested_scopes` from the validated database job. Customer notes are
+carried separately and cannot select an analysis profile or expand that
+trusted scope. The application, not this process, is authoritative for
+ownership, job transitions, storage rows, credit ledgers, and retries.
 
 While the takeoff service is active, the worker refreshes job progress at
 least once per `WORKER_HEARTBEAT_INTERVAL_MS`. The application should treat
@@ -98,6 +109,10 @@ that update as the claim heartbeat and reconcile truly stale claims after an
 operator-defined timeout. Independently, the worker reports its poll loop and
 the processor `/readyz` result on the same interval. These reports expire
 automatically; a stopped worker or unreachable processor cannot remain green.
+`TAKEOFF_JOB_TIMEOUT_MS` must be at least seven hours so the worker cannot
+abandon a valid 30-minute indexing stage plus the processor's six-hour Codex
+deadline before post-processing finishes. The checked-in local default is
+7 hours 15 minutes.
 
 ## Production isolation gate
 

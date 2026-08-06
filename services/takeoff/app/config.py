@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from .models import SUPPORTED_TAKEOFF_MODELS
+
 
 DEVELOPMENT_ENVIRONMENTS = frozenset({"dev", "development", "test"})
 DEFAULT_UPLOAD_LIMIT_BYTES = 250 * 1024**2
@@ -43,6 +45,11 @@ class Settings:
         return self.environment in DEVELOPMENT_ENVIRONMENTS
 
     def validate_runtime(self) -> None:
+        if self.default_model not in SUPPORTED_TAKEOFF_MODELS:
+            raise RuntimeError(
+                "TAKEOFF_CODEX_MODEL must be one of the models with a "
+                "versioned takeoff pricing snapshot"
+            )
         if not self.allows_unauthenticated_requests and not self.service_api_token:
             raise RuntimeError(
                 "TAKEOFF_SERVICE_API_TOKEN is required unless TAKEOFF_ENV is "
@@ -60,7 +67,7 @@ class Settings:
             codex_bin=os.environ.get("CODEX_BIN", "codex"),
             default_model=os.environ.get(
                 "TAKEOFF_CODEX_MODEL", "gpt-5.6-sol"
-            ),
+            ).strip().lower(),
             max_upload_bytes=_positive_int_env(
                 "TAKEOFF_MAX_UPLOAD_BYTES", DEFAULT_UPLOAD_LIMIT_BYTES
             ),

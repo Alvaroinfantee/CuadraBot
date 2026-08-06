@@ -7,6 +7,7 @@ import { consumeTakeoffRateLimit } from "@/lib/request-rate-limit"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import { takeoffDraftSchema } from "@/lib/takeoff-schemas"
 import { buildTakeoffInstructions } from "@/lib/takeoff-instructions"
+import { takeoffAnalysisProfile } from "@/lib/takeoff-workflow"
 
 export const dynamic = "force-dynamic"
 
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
         parsed.data.mode === "sample" ? parsed.data.samplePage ?? 1 : null,
       status: "awaiting_upload",
       priority: "standard",
+      processor_version: takeoffAnalysisProfile,
       discipline: parsed.data.trades.join(","),
       customer_notes: parsed.data.notes || null,
       instructions: buildTakeoffInstructions({

@@ -5,6 +5,7 @@ import {
   parseAdminAnalyticsAggregate,
   requiredServiceChecks,
   summarizeServiceHealth,
+  takeoffProcessorUsageHealthCheck,
 } from "../src/lib/admin-analytics"
 
 const metricNames = [
@@ -92,6 +93,16 @@ test("missing required health reporters are explicit unhealthy checks", () => {
   assert.equal(rows.length, requiredServiceChecks.length)
   assert.equal(summary.missing, requiredServiceChecks.length)
   assert.equal(summary.healthy, 0)
+})
+
+test("processor usage accounting is a required health reporter", () => {
+  assert.ok(
+    requiredServiceChecks.some(
+      (check) =>
+        check.serviceName === takeoffProcessorUsageHealthCheck.serviceName &&
+        check.checkName === takeoffProcessorUsageHealthCheck.checkName
+    )
+  )
 })
 
 test("expired healthy reports are stale, not healthy", () => {

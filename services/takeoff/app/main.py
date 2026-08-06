@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import hmac
+import importlib
 import os
-import re
 import shutil
 import uuid
 from contextlib import asynccontextmanager
@@ -22,11 +22,14 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 from .codex_runner import normalize_customer_instructions
 from .config import SETTINGS, Settings
+from .drawing_skill import DrawingSkillError, validate_skill_bundle
 from .models import (
+    AnalysisProfile,
     JobRecord,
     JobSubmission,
     JobStatus,
     RequestedScope,
+    SUPPORTED_TAKEOFF_MODELS,
     WorkflowKind,
 )
 from .pipeline import PipelineManager, sha256_file
@@ -39,7 +42,13 @@ from .validation import (
 )
 
 
-MODEL_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
+def drawing_runtime_dependencies_ready() -> bool:
+    try:
+        importlib.import_module("pdfplumber")
+        importlib.import_module("PIL.Image")
+    except (ImportError, OSError):
+        return False
+    return True
 
 
 async def save_upload(
@@ -112,7 +121,7 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
 
     app = FastAPI(
         title="Drawing Takeoff Microservice",
-        version="1.0.0",
+        version="1.1.0",
         description=(
             "Codex-powered construction drawing takeoff with Excel and "
             "annotated-PDF audit artifacts."
@@ -151,7 +160,20 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
             else Path(settings.codex_bin).is_file()
             and os.access(settings.codex_bin, os.X_OK)
         )
-        ready = data_ready and codex_ready
+        poppler_ready = shutil.which("pdftoppm") is not None
+        drawing_python_ready = drawing_runtime_dependencies_ready()
+        try:
+            validate_skill_bundle()
+            drawing_skill_ready = True
+        except (DrawingSkillError, OSError):
+            drawing_skill_ready = False
+        ready = (
+            data_ready
+            and codex_ready
+            and poppler_ready
+            and drawing_python_ready
+            and drawing_skill_ready
+        )
         return JSONResponse(
             status_code=200 if ready else 503,
             content={
@@ -159,6 +181,13 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
                 "checks": {
                     "data_dir": "ok" if data_ready else "unavailable",
                     "codex": "ok" if codex_ready else "unavailable",
+                    "pdftoppm": "ok" if poppler_ready else "unavailable",
+                    "drawing_python": (
+                        "ok" if drawing_python_ready else "unavailable"
+                    ),
+                    "drawing_skill": (
+                        "ok" if drawing_skill_ready else "unavailable"
+                    ),
                 },
             },
         )
@@ -175,6 +204,10 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
         takeoff_json: Annotated[UploadFile | None, File()] = None,
         workbook_result: Annotated[UploadFile | None, File()] = None,
         instructions: Annotated[str, Form()] = "",
+        analysis_profile: Annotated[
+            AnalysisProfile,
+            Form(alias="analysisProfile"),
+        ] = AnalysisProfile.analyze_building_drawings_v1,
         workflow_kind: Annotated[
             WorkflowKind,
             Form(alias="workflowKind"),
@@ -191,9 +224,12 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
         authorization: Annotated[str | None, Header()] = None,
     ) -> JobSubmission:
         require_service_token(authorization)
-        selected_model = model or settings.default_model
-        if not MODEL_RE.fullmatch(selected_model):
-            raise HTTPException(status_code=400, detail="Invalid model name")
+        selected_model = (model or settings.default_model).strip().lower()
+        if selected_model not in SUPPORTED_TAKEOFF_MODELS:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported model for takeoff cost accounting",
+            )
         try:
             normalized_instructions = normalize_customer_instructions(
                 instructions,
@@ -226,6 +262,7 @@ def create_app(settings: Settings = SETTINGS) -> FastAPI:
             id=job_id,
             status=JobStatus.queued,
             model=selected_model,
+            analysis_profile=analysis_profile,
             workflow_kind=workflow_kind,
             requested_scopes=selected_scopes,
             customer_instructions=normalized_instructions,

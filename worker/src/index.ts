@@ -54,6 +54,7 @@ async function processOnce() {
   const inputDir = path.join(jobDir, "input")
   const outputDir = path.join(jobDir, "output")
   let stage = "claimed"
+  let processorUsage: unknown = null
 
   try {
     await fs.mkdir(inputDir, { recursive: true })
@@ -86,6 +87,7 @@ async function processOnce() {
       sourcePdf,
       outputDir,
       workflowKind: input.job.workflow_kind,
+      analysisProfile: input.job.analysis_profile,
       requestedScopes: input.job.requested_scopes,
       customerInstructions: input.job.customer_instructions,
       freeSample: input.job.free_sample === true,
@@ -96,6 +98,7 @@ async function processOnce() {
         )
       },
     })
+    processorUsage = result.processorUsage
 
     stage = "artifact_upload"
     await updateJobProgress(job.id, claimToken, {
@@ -118,7 +121,13 @@ async function processOnce() {
       message: "Takeoff artifacts uploaded; completing self-serve delivery.",
       microserviceJobId: result.microserviceJobId,
     })
-    await completeJob(job.id, claimToken, result.metrics, uploaded.artifacts)
+    await completeJob(
+      job.id,
+      claimToken,
+      result.metrics,
+      result.processorUsage,
+      uploaded.artifacts
+    )
 
     console.log(
       `[${job.id}] takeoff complete; ${result.artifacts.length} artifact(s) delivered`
@@ -126,8 +135,11 @@ async function processOnce() {
     return true
   } catch (error) {
     const failure = classifyFailure(error, stage)
+    if (error instanceof TakeoffServiceError && error.processorUsage) {
+      processorUsage = error.processorUsage
+    }
     console.error(`[${job.id}] ${failure.stage} failed: ${failure.message}`)
-    await reportFailure(job.id, claimToken, failure)
+    await reportFailure(job.id, claimToken, failure, processorUsage)
     return true
   } finally {
     if (!workerConfig.keepLocalJobFiles) {
@@ -141,11 +153,12 @@ async function processOnce() {
 async function reportFailure(
   jobId: string,
   claimToken: string,
-  failure: { stage: string; message: string; retryable: boolean }
+  failure: { stage: string; message: string; retryable: boolean },
+  processorUsage: unknown
 ) {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      await failJob(jobId, claimToken, failure)
+      await failJob(jobId, claimToken, failure, processorUsage)
       return
     } catch (error) {
       console.error(

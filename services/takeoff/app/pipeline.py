@@ -11,12 +11,21 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .annotations import annotate_pdf
-from .codex_runner import run_codex
+from .codex_runner import collect_codex_usage, run_codex
 from .config import Settings
+from .drawing_skill import (
+    DrawingIndexAlignment,
+    DrawingIndexValidation,
+    DrawingSkillIndex,
+    prepare_drawing_index,
+    validate_drawing_index,
+    validate_takeoff_index_alignment,
+)
 from .models import (
     ArtifactInfo,
     JobRecord,
     JobStatus,
+    ProcessorUsage,
     RequestedScope,
     utc_now,
 )
@@ -33,6 +42,7 @@ from .validation import (
     validate_workbook_artifact,
     validate_xlsx_container,
 )
+from .workbook import build_takeoff_workbook
 
 
 MEDIA_TYPES = {
@@ -77,6 +87,91 @@ def write_private_diagnostic(path: Path, content: str) -> None:
     )
     with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
         handle.write(content)
+
+
+def _drawing_index_metrics(
+    validation: DrawingIndexValidation,
+) -> dict[str, object]:
+    return {
+        "validator_exit_code": validation.validator_exit_code,
+        "sources": validation.source_count,
+        "pages": validation.page_count,
+        "visually_reviewed_pages": validation.visually_reviewed_pages,
+        "text_reviewed_pages": validation.text_reviewed_pages,
+        "pending_pages": validation.pending_pages,
+        "image_only_pages": validation.image_only_pages,
+        "unknown_revision_pages": validation.unknown_revision_pages,
+        "objects": validation.object_count,
+        "facts": validation.fact_count,
+        "evidence": validation.evidence_count,
+        "low_confidence_facts": validation.low_confidence_facts,
+        "unverified_facts": validation.unverified_facts,
+        "open_references": validation.open_references,
+        "open_conflicts": validation.open_conflicts,
+        "warning_count": len(validation.warnings),
+    }
+
+
+def _require_completed_drawing_index(
+    validation: DrawingIndexValidation,
+    *,
+    mapped_assets: int,
+) -> None:
+    if validation.pending_pages or validation.text_reviewed_pages:
+        raise ValueError(
+            "The drawing skill did not visually review every source page"
+        )
+    if validation.visually_reviewed_pages != validation.page_count:
+        raise ValueError(
+            "The drawing skill page-review totals do not reconcile"
+        )
+    if mapped_assets and not all(
+        (
+            validation.object_count,
+            validation.fact_count,
+            validation.evidence_count,
+        )
+    ):
+        raise ValueError(
+            "The drawing skill index has mapped takeoff assets without "
+            "object, fact, and evidence records"
+        )
+
+
+def _record_drawing_skill_provenance(
+    methodology_path: Path,
+    *,
+    artifacts_dir: Path,
+    profile: str,
+    drawing_index: DrawingSkillIndex,
+    validation: DrawingIndexValidation,
+    alignment: DrawingIndexAlignment,
+) -> None:
+    raw = validate_json_artifact(methodology_path, artifacts_dir)
+    if not isinstance(raw, dict):
+        raise ValueError("methodology.json must contain a JSON object")
+    raw["analysis_skill"] = {
+        "profile": profile,
+        "name": "analyze-building-drawings",
+        "skill_sha256": drawing_index.skill_sha256,
+        "source_sha256": drawing_index.source_sha256,
+        "preprocessing": {"dpi": 180, "ocr": "auto"},
+        "index_validation": {
+            **_drawing_index_metrics(validation),
+            "warnings": list(validation.warnings),
+        },
+        "takeoff_alignment": {
+            "legend_objects": alignment.legend_objects,
+            "asset_objects": alignment.asset_objects,
+            "quantity_facts": alignment.quantity_facts,
+            "instance_relationships": alignment.instance_relationships,
+        },
+    }
+    prepare_owned_output(methodology_path, artifacts_dir)
+    methodology_path.write_text(
+        json.dumps(raw, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 class PipelineManager:
@@ -155,6 +250,10 @@ class PipelineManager:
                 ):
                     recovered += 1
                 continue
+            processor_usage = record.processor_usage or self._usage_from_events(
+                job_dir,
+                model=record.model,
+            )
             self.store.update(
                 record.id,
                 status=JobStatus.failed,
@@ -167,9 +266,33 @@ class PipelineManager:
                 ),
                 error_code="processor_restarted",
                 retriable=True,
+                processor_usage=processor_usage,
             )
             failed += 1
         return {"recovered": recovered, "failed": failed}
+
+    @staticmethod
+    def _usage_from_events(
+        job_dir: Path,
+        *,
+        model: str,
+    ) -> ProcessorUsage | None:
+        metrics = collect_codex_usage(
+            job_dir / "work" / "codex-events.jsonl",
+            model=model,
+        )
+        return PipelineManager._validated_usage(metrics)
+
+    @staticmethod
+    def _validated_usage(
+        metrics: dict[str, object],
+    ) -> ProcessorUsage | None:
+        if not metrics:
+            return None
+        try:
+            return ProcessorUsage.model_validate(metrics)
+        except ValueError:
+            return None
 
     def _artifact(self, job_id: str, path: Path) -> ArtifactInfo:
         artifacts_dir = self.store.job_dir(job_id) / "artifacts"
@@ -204,15 +327,20 @@ class PipelineManager:
         job_dir = self.store.job_dir(job_id)
         inputs_dir = job_dir / "inputs"
         artifacts_dir = job_dir / "artifacts"
+        processor_usage: ProcessorUsage | None = None
+        drawing_index: DrawingSkillIndex | None = None
+        drawing_index_validation: DrawingIndexValidation | None = None
+        drawing_index_alignment: DrawingIndexAlignment | None = None
         try:
             record = self.store.update(
                 job_id,
                 status=JobStatus.running,
                 started_at=utc_now(),
-                stage="codex_analysis"
+                stage="drawing_indexing"
                 if replay_takeoff is None
                 else "replay_validation",
                 progress=10,
+                processor_usage=None,
             )
             drawings = inputs_dir / "drawings.pdf"
             takeoff_path = artifacts_dir / "takeoff.json"
@@ -224,6 +352,7 @@ class PipelineManager:
                 max_bytes=MAX_PDF_BYTES,
                 magic=b"%PDF-",
             )
+            source_hash = sha256_file(drawings)
             for input_workbook in (
                 inputs_dir / "template.xlsx",
                 inputs_dir / "prices.xlsx",
@@ -267,7 +396,19 @@ class PipelineManager:
                     raise ValueError(
                         "X-Codex-API-Key is required for a Codex analysis job"
                     )
-                run_codex(
+                drawing_index = prepare_drawing_index(
+                    job_dir=job_dir,
+                    drawings_path=drawings,
+                    expected_sha256=source_hash,
+                    dpi=180,
+                    ocr="auto",
+                )
+                self.store.update(
+                    job_id,
+                    stage="codex_analysis",
+                    progress=25,
+                )
+                codex_outcome = run_codex(
                     codex_bin=self.settings.codex_bin,
                     job_dir=job_dir,
                     api_key=codex_api_key,
@@ -275,8 +416,15 @@ class PipelineManager:
                     instructions=record.customer_instructions,
                     has_template=(inputs_dir / "template.xlsx").exists(),
                     has_prices=(inputs_dir / "prices.xlsx").exists(),
+                    analysis_profile=record.analysis_profile,
+                    analysis_skill_dir=drawing_index.skill_dir,
+                    drawing_index_dir=drawing_index.index_dir,
+                    analysis_skill_sha256=drawing_index.skill_sha256,
                     workflow_kind=record.workflow_kind,
                     requested_scopes=record.requested_scopes,
+                )
+                processor_usage = self._validated_usage(
+                    codex_outcome.metrics
                 )
 
             self.store.update(
@@ -290,10 +438,29 @@ class PipelineManager:
                 artifacts_dir=artifacts_dir,
                 inputs_dir=inputs_dir,
             )
-            source_hash = sha256_file(drawings)
             if takeoff.source.sha256 != source_hash:
                 raise ValueError(
                     "takeoff.json source SHA-256 does not match the uploaded PDF"
+                )
+            if drawing_index is not None:
+                drawing_index_validation = validate_drawing_index(
+                    drawing_index
+                )
+                _require_completed_drawing_index(
+                    drawing_index_validation,
+                    mapped_assets=len(takeoff.assets),
+                )
+                drawing_index_alignment = validate_takeoff_index_alignment(
+                    drawing_index,
+                    takeoff,
+                )
+                _record_drawing_skill_provenance(
+                    methodology_path,
+                    artifacts_dir=artifacts_dir,
+                    profile=record.analysis_profile.value,
+                    drawing_index=drawing_index,
+                    validation=drawing_index_validation,
+                    alignment=drawing_index_alignment,
                 )
             if (
                 any(
@@ -318,6 +485,13 @@ class PipelineManager:
                     "takeoff.json contains linear runs outside the trusted "
                     "requested scopes"
                 )
+            use_canonical_workbook = (
+                not (inputs_dir / "template.xlsx").exists()
+                and replay_workbook is None
+            )
+            if use_canonical_workbook:
+                prepare_owned_output(workbook_path, artifacts_dir)
+                build_takeoff_workbook(takeoff, workbook_path)
             if replay_takeoff is None or workbook_path.exists():
                 validate_workbook_artifact(
                     workbook_path,
@@ -364,6 +538,9 @@ class PipelineManager:
                 annotated_path,
                 artifacts_dir=artifacts_dir,
                 expected_pages=actual_pages,
+                expected_annotation_ids={
+                    asset.unit_id for asset in takeoff.assets
+                },
             )
             validate_json_artifact(audit_path, artifacts_dir)
 
@@ -419,6 +596,24 @@ class PipelineManager:
                     else 100.0
                 ),
             }
+            if (
+                drawing_index is not None
+                and drawing_index_validation is not None
+                and drawing_index_alignment is not None
+            ):
+                metrics["analysis_profile"] = record.analysis_profile.value
+                metrics["analysis_skill_sha256"] = drawing_index.skill_sha256
+                metrics["drawing_index"] = _drawing_index_metrics(
+                    drawing_index_validation
+                )
+                metrics["drawing_index_alignment"] = {
+                    "legend_objects": drawing_index_alignment.legend_objects,
+                    "asset_objects": drawing_index_alignment.asset_objects,
+                    "quantity_facts": drawing_index_alignment.quantity_facts,
+                    "instance_relationships": (
+                        drawing_index_alignment.instance_relationships
+                    ),
+                }
             self.store.update(
                 job_id,
                 status=JobStatus.completed,
@@ -427,6 +622,9 @@ class PipelineManager:
                 progress=100,
                 artifacts=artifact_map,
                 metrics=metrics,
+                processor_usage=(
+                    processor_usage if replay_takeoff is None else None
+                ),
                 error=None,
                 error_code=None,
                 retriable=False,
@@ -439,6 +637,12 @@ class PipelineManager:
                     codex_api_key, "[REDACTED]"
                 )
             write_private_diagnostic(error_path, diagnostic)
+            if replay_takeoff is None and processor_usage is None:
+                failed_record = self.store.load(job_id)
+                processor_usage = self._usage_from_events(
+                    job_dir,
+                    model=failed_record.model,
+                )
             self.store.update(
                 job_id,
                 status=JobStatus.failed,
@@ -450,4 +654,5 @@ class PipelineManager:
                 ),
                 error_code="processing_failed",
                 retriable=True,
+                processor_usage=processor_usage,
             )

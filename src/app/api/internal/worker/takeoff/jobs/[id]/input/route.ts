@@ -3,6 +3,7 @@ import { getClaimedTakeoff } from "@/lib/internal-worker"
 import { jsonError } from "@/lib/http"
 import {
   requestedScopesForTrades,
+  takeoffAnalysisProfile,
   takeoffWorkflowKind,
 } from "@/lib/takeoff-workflow"
 
@@ -13,6 +14,10 @@ export async function GET(request: Request, context: Context) {
   const contextResult = await getClaimedTakeoff(request, id)
   if (contextResult instanceof Response) return contextResult
   const { job, supabase } = contextResult
+
+  if (job.processor_version !== takeoffAnalysisProfile) {
+    return jsonError("The takeoff has an unsupported analysis profile.", 409)
+  }
 
   const { data: source, error } = await supabase
     .from("takeoff_files")
@@ -48,6 +53,7 @@ export async function GET(request: Request, context: Context) {
       source_sha256: source.sha256,
       original_filename: source.original_filename,
       workflow_kind: takeoffWorkflowKind,
+      analysis_profile: takeoffAnalysisProfile,
       requested_scopes: requestedScopes,
       customer_instructions: job.customer_notes ?? "",
       page_count: job.input_page_count,

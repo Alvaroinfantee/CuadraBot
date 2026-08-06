@@ -73,9 +73,15 @@ const englishDashboardCopy = {
     currentStage: "Current stage",
     deliverables: "Deliverables",
     verifiedOutput: "Verified output",
+    annotatedBlueprintTitle: "Annotated blueprint PDF",
+    annotatedBlueprintBody:
+      "Counted fixtures and measured runs are marked on the drawing so you can review where each quantity came from.",
+    countWorkbookTitle: "Excel count workbook",
+    countWorkbookBody:
+      "Quantities organized by legend code, sheet, and area for estimating and review.",
     processingTitle: "Processing is still in progress",
     processingBody:
-      "The marked PDF, Excel quantities by legend code, source evidence, and methodology will appear here when processing completes.",
+      "The annotated blueprint PDF and Excel count workbook will appear here when processing completes.",
     legendSummary: "Legend reconciliation",
     legendEntries: "Legend entries",
     mappedPlacements: "Counted placements",
@@ -83,7 +89,7 @@ const englishDashboardCopy = {
     unresolvedSymbols: "Unresolved symbols",
     legendCoverage: "Mapped coverage",
     legendCoverageBody:
-      "Coverage compares mapped items with explicitly unresolved symbols. Review unresolved items in the delivered source-evidence JSON and limitations before using quantities.",
+      "Coverage compares mapped items with explicitly unresolved symbols. Review unresolved items and limitations before using quantities.",
     scope: "Scope",
     trades: "Takeoff categories",
     instructions: "Instructions",
@@ -167,6 +173,13 @@ const englishDashboardCopy = {
     availableCredits: "Available",
     deliveryTarget: "Delivery target",
     inHours: "In hours",
+    includedDeliverables: "Included with this quote",
+    annotatedPdfIncluded: "Annotated blueprint PDF",
+    annotatedPdfIncludedBody:
+      "The source drawing with every counted fixture and measured run marked for review.",
+    workbookIncluded: "Excel count workbook",
+    workbookIncludedBody:
+      "The verified quantities organized by legend code, sheet, and area.",
     moreCreditsTitle: "More credits required",
     addCreditsStart: "Add",
     addCreditsEnd: "credits to confirm this takeoff.",
@@ -338,9 +351,15 @@ const spanishDashboardCopy = {
     currentStage: "Etapa actual",
     deliverables: "Entregables",
     verifiedOutput: "Resultado verificado",
+    annotatedBlueprintTitle: "PDF del plano anotado",
+    annotatedBlueprintBody:
+      "Los equipos contados y los recorridos medidos aparecen marcados en el plano para que puedas revisar el origen de cada cantidad.",
+    countWorkbookTitle: "Recuento en Excel",
+    countWorkbookBody:
+      "Cantidades organizadas por código de leyenda, hoja y zona para presupuestar y revisar.",
     processingTitle: "El procesamiento sigue en curso",
     processingBody:
-      "El PDF marcado, las cantidades en Excel por código de leyenda, la evidencia de origen y la metodología aparecerán aquí cuando termine el procesamiento.",
+      "El PDF del plano anotado y el recuento en Excel aparecerán aquí cuando termine el procesamiento.",
     legendSummary: "Conciliación con la leyenda",
     legendEntries: "Entradas de leyenda",
     mappedPlacements: "Ubicaciones contadas",
@@ -348,7 +367,7 @@ const spanishDashboardCopy = {
     unresolvedSymbols: "Símbolos sin resolver",
     legendCoverage: "Cobertura relacionada",
     legendCoverageBody:
-      "La cobertura compara los elementos relacionados con los símbolos marcados como no resueltos. Revisa estos elementos en el JSON de evidencia y las limitaciones entregadas antes de usar las cantidades.",
+      "La cobertura compara los elementos relacionados con los símbolos marcados como no resueltos. Revisa los elementos no resueltos y las limitaciones antes de usar las cantidades.",
     scope: "Alcance",
     trades: "Categorías de medición",
     instructions: "Instrucciones",
@@ -434,6 +453,13 @@ const spanishDashboardCopy = {
     availableCredits: "Disponibles",
     deliveryTarget: "Objetivo de entrega",
     inHours: "En cuestión de horas",
+    includedDeliverables: "Incluido en este presupuesto",
+    annotatedPdfIncluded: "PDF del plano anotado",
+    annotatedPdfIncludedBody:
+      "El plano original con cada equipo contado y recorrido medido marcado para su revisión.",
+    workbookIncluded: "Recuento en Excel",
+    workbookIncludedBody:
+      "Las cantidades verificadas organizadas por código de leyenda, hoja y zona.",
     moreCreditsTitle: "Se necesitan más créditos",
     addCreditsStart: "Añade",
     addCreditsEnd: "créditos para confirmar esta medición.",

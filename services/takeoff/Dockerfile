@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY schemas ./schemas
 COPY scripts ./scripts
+COPY skills ./skills
 
 RUN useradd --create-home --uid 10001 takeoff \
     && mkdir -p /data \

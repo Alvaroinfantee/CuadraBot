@@ -11,8 +11,9 @@ This service turns a construction drawing PDF into:
 - a source-grounded quantity takeoff with one stable ID per placement;
 - a source-backed legend register that every included fixture or measured run
   must reference;
-- an Excel workbook with the supplied template fields, filters, areas, codes,
-  pricing provenance, precomputed values, confidence, and validation notes;
+- a deterministic ORTEGA-format Excel takeoff package with placement records,
+  sheet and asset registers, code/area/floor rollups, QA notes, static estimating
+  fields, and a hidden machine-audit sheet;
 - an annotated copy of the original PDF, with a visible colored marker at every
   recorded placement and a clickable comment containing the full unit ID,
   code, item, sheet, area, method, and confidence;
@@ -36,14 +37,24 @@ POST /v1/jobs
     |
     +-- immutable input staging + SHA-256
     |
+    +-- verified analyze-building-drawings bundle staged read-only per job
+    |      |
+    |      +-- 180-DPI page assets, extracted text, manifest, and SQLite index
+    |      +-- complete visual page review and index validation
+    |
     +-- job-scoped codex exec workspace and permission profile
     |      |
     |      +-- complete sheet register and deduplication
     |      +-- legend extraction and source-bbox registration
     |      +-- mapped fixture counting and cable/conduit centerline measurement
-    |      +-- template-aligned workbook and DOP price matching
+    |      +-- source-grounded takeoff JSON and optional DOP price matching
     |
     +-- takeoff.json schema and reconciliation checks
+    |      |
+    |      +-- canonical legend.<legend_entry_id> index objects
+    |      +-- canonical asset.<unit_id> facts, evidence, and relationships
+    |
+    +-- deterministic 19-tab ORTEGA-format workbook + hidden Takeoff audit
     |
     +-- deterministic PDF annotation from recorded coordinates
     |
@@ -51,8 +62,9 @@ POST /v1/jobs
 ```
 
 The annotation pass is deterministic and does not ask the model to redraw the
-plans. Coordinates use displayed PDF points with the origin at the top-left,
-then the service transforms them back through each PDF page's rotation.
+plans. Coordinates use visible CropBox PDF points with the origin at the
+top-left, then the service transforms them back through each PDF page's crop
+offset, non-zero PDF origin, and rotation.
 
 ## Local setup
 
@@ -62,6 +74,13 @@ Prerequisites:
 - the Codex CLI on `PATH`;
 - Poppler/Tesseract or equivalent tools for drawing rasterization and OCR;
 - enough local disk space for the source PDF, rasterized pages, and outputs.
+
+The self-serve product accepts up to 250 plan pages. Preprocessing retains a
+separate 5,000-page structural-validation ceiling for malformed or internally
+replayed PDFs; that number is not a supported processed-set size. At 180 DPI,
+the cumulative render preflight is capped at 8 billion pixels (enough for 250
+standard 24 x 36 inch sheets), with additional 100-million-pixel per-page,
+2 GB index, free-disk, and process-time bounds.
 
 ```bash
 cd drawing_takeoff_microservice
@@ -106,15 +125,26 @@ curl -X POST http://127.0.0.1:8000/v1/jobs \
   -F "template_xlsx=@/path/to/takeoff_template.xlsx" \
   -F "price_database_xlsx=@/path/to/dop_prices.xlsx" \
   -F "model=gpt-5.6-sol" \
+  -F "analysisProfile=analyze-building-drawings@2026-08-06" \
   -F "workflowKind=legend_fixture_takeoff_v1" \
   -F "requestedScopes=fixture_counts" \
   -F "requestedScopes=cable_runs" \
   -F "instructions=Include new-work electrical plans; exclude demolition."
 ```
 
-`workflowKind` and repeated `requestedScopes` values are server-owned fields
-supplied by the trusted CuadraBot worker. The processor validates the supported
-workflow and scope values and passes them to the analysis policy separately.
+`analysisProfile`, `workflowKind`, and repeated `requestedScopes` values are
+server-owned fields supplied by the trusted CuadraBot worker. The processor
+accepts only the pinned `analyze-building-drawings@2026-08-06` profile, verifies
+the vendored bundle byte-for-byte, and stages it at
+`.agents/skills/analyze-building-drawings` in the isolated job workspace. It
+prepares `work/drawing-index` before `codex exec`, explicitly invokes the skill,
+then rejects the result unless every takeoff legend and placement aligns to a
+visually checked, exact-page/sheet, geometry-bbox evidence record and fact, and
+each placement's `instance-of` relationship uses that same quantity evidence.
+Customer uploads can never select or replace a skill bundle or path.
+
+The processor validates the supported workflow and scope values and passes them
+to the analysis policy separately.
 `instructions` remains normalized customer scope text inside the explicit
 untrusted JSON boundary; it cannot add a scope or change the output contract.
 
@@ -203,10 +233,19 @@ and low confidence. They are deliberately excluded from `assets`, summaries,
 workbook quantity rows, annotations, and pricing. Any asset geometry that
 overlaps a registered legend exemplar is also rejected.
 
-`coordinate_space` is always `pdf_display_points_top_left`. This keeps the
-geometry independent of the PDF's internal page rotation.
+`coordinate_space` is always `pdf_display_points_top_left`, relative to the
+visible CropBox. This keeps geometry independent of internal CropBox offsets,
+non-zero PDF origins, and page rotation.
 
-Every generated workbook also contains a `Takeoff` machine-audit sheet with
+The normal CuadraBot workflow writes the 19 visible ORTEGA-format sheets in a
+fixed order: `Resumen Takeoff`, placement and asset registers, the drawing
+register, building placeholders, code/floor/area summaries, quantity analysis,
+QA and dashboard tabs, equipment/cable placeholders or supported measurements,
+and deliverable status. The service owns this formatting step after
+`takeoff.json` passes validation, so model output cannot change the customer
+workbook layout. Formula results are stored as static values.
+
+Every generated workbook also contains a hidden `Takeoff` machine-audit sheet with
 one row per mapped `unit_id` and these required headers: `unit_id`,
 `legend_entry_id`, `measurement_kind`, `code`, `description`, `page`, `sheet`,
 `area_code`, `area`, `level`, `method`, `confidence`, `quantity`, `unit`,
@@ -246,7 +285,9 @@ counts by code.
   filesystem root denied, Codex's minimal tool paths read-only, only the
   current job workspace writable, temporary roots denied, tool network off,
   login shells off, and a none-inherited shell environment with only
-  `PATH`, `HOME`, and locale values. The generated policy is retained in the
+  `PATH`, `HOME`, locale values, and non-secret operating-system runtime
+  variables required for Windows process and DNS initialization. The
+  generated policy is retained in the
   private job work directory for audit.
 - Customer `instructions` are normalized, length-limited, JSON-quoted, and
   presented to the model only as untrusted takeoff scope data. They cannot

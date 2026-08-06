@@ -29,6 +29,7 @@ import {
 import { getRequestLocale } from "@/lib/i18n-server"
 import { localizedTradeLabels } from "@/lib/i18n"
 import { isIncludedCorrectionWindowOpen } from "@/lib/project-file-retention"
+import { isCustomerTakeoffDeliverableFilename } from "@/lib/takeoff-artifacts"
 import { cn } from "@/lib/utils"
 
 export async function generateMetadata() {
@@ -50,7 +51,17 @@ export default async function JobDetailPage({
   if (!job) notFound()
 
   const copy = dashboardCopy[locale].detail
-  const results = files.filter((file) => file.file_role !== "input")
+  const results = files
+    .filter(
+      (file) =>
+        file.file_role !== "input" &&
+        isCustomerTakeoffDeliverableFilename(file.original_filename)
+    )
+    .sort(
+      (left, right) =>
+        Number(left.original_filename === "takeoff.xlsx") -
+        Number(right.original_filename === "takeoff.xlsx")
+    )
   const legendMetrics = readLegendMetrics(job.result_summary)
 
   return (
@@ -142,27 +153,37 @@ export default async function JobDetailPage({
                 <div className="grid gap-3 sm:grid-cols-2">
                   {results.map((file) => {
                     const spreadsheet =
-                      file.mime_type?.includes("spreadsheet") ||
-                      file.original_filename.endsWith(".xlsx")
+                      file.original_filename === "takeoff.xlsx"
                     const Icon = spreadsheet
                       ? FileSpreadsheetIcon
                       : FileTextIcon
+                    const title = spreadsheet
+                      ? copy.countWorkbookTitle
+                      : copy.annotatedBlueprintTitle
+                    const description = spreadsheet
+                      ? copy.countWorkbookBody
+                      : copy.annotatedBlueprintBody
                     return (
                       <Link
                         key={file.id}
                         href={`/api/takeoff/jobs/${job.id}/download?file=${encodeURIComponent(file.id)}`}
-                        className="flex items-center gap-3 border p-4 hover:border-primary"
+                        className="group flex items-start gap-4 border p-5 transition-colors hover:border-primary"
                       >
-                        <Icon className="size-5 text-primary" />
+                        <span className="grid size-10 shrink-0 place-items-center bg-blue-50 text-primary">
+                          <Icon className="size-5" />
+                        </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {file.original_filename}
+                          <p className="text-sm font-semibold">
+                            {title}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            {description}
+                          </p>
+                          <p className="mt-3 text-xs font-medium text-emerald-700">
                             {copy.verifiedOutput}
                           </p>
                         </div>
-                        <DownloadIcon className="size-4 text-muted-foreground" />
+                        <DownloadIcon className="mt-1 size-4 text-muted-foreground transition-colors group-hover:text-primary" />
                       </Link>
                     )
                   })}

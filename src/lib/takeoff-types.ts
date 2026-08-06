@@ -64,6 +64,7 @@ export type TakeoffJob = {
   claimed_by: string | null
   claim_token: string | null
   processor_job_id: string | null
+  processor_version: string | null
   failure_code: string | null
   failure_message: string | null
   result_summary: Record<string, unknown>

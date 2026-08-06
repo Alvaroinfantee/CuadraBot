@@ -12,8 +12,9 @@ from xml.etree import ElementTree
 
 from openpyxl import load_workbook
 from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 
-from .annotations import displayed_size
+from .annotations import TAKEOFF_MARKER_KEY, displayed_size
 from .models import BoundingBox, Point, TakeoffAsset, TakeoffDocument
 
 
@@ -57,10 +58,32 @@ SUMMARY_TOTAL_KEYS = (
 )
 LINEAR_QUANTITY_REL_TOLERANCE = 1e-4
 LINEAR_QUANTITY_ABS_TOLERANCE = 1e-3
+_DUPLICATE_VIEWER_PREFERENCE_ERROR = re.compile(
+    r"^Multiple definitions in dictionary at byte 0x[0-9a-fA-F]+ "
+    r"for key /(?:PageMode|PageLayout)$"
+)
 
 
 class ArtifactValidationError(ValueError):
     pass
+
+
+def _read_pdf_with_viewer_preference_fallback(
+    path: Path,
+) -> tuple[PdfReader, int]:
+    """Read strictly, tolerating only duplicate viewer-preference keys."""
+    try:
+        reader = PdfReader(str(path), strict=True)
+        return reader, len(reader.pages)
+    except PdfReadError as exc:
+        if _DUPLICATE_VIEWER_PREFERENCE_ERROR.fullmatch(str(exc)) is None:
+            raise
+
+    # AutoCAD and similar producers can emit duplicate catalog viewer hints.
+    # They do not affect page content or takeoff geometry, so retry only this
+    # exact compatibility case while retaining every downstream validation.
+    reader = PdfReader(str(path), strict=False)
+    return reader, len(reader.pages)
 
 
 def _xml_local_name(name: Any) -> str:
@@ -397,8 +420,9 @@ def validate_takeoff_artifact(
             "takeoff.json does not satisfy the output schema"
         ) from exc
 
-    reader = PdfReader(str(drawings_path), strict=True)
-    actual_pages = len(reader.pages)
+    reader, actual_pages = _read_pdf_with_viewer_preference_fallback(
+        drawings_path
+    )
     if takeoff.source.page_count != actual_pages:
         raise ArtifactValidationError(
             "takeoff.json page_count does not match the uploaded PDF"
@@ -806,12 +830,34 @@ def validate_workbook_artifact(
                 raise ArtifactValidationError(
                     "takeoff.xlsx exceeds worksheet bounds"
                 )
-            total_cells += max_row * max_column
-            if total_cells > MAX_WORKBOOK_CELLS:
+            worksheet_cells = max_row * max_column
+            if total_cells + worksheet_cells > MAX_WORKBOOK_CELLS:
                 raise ArtifactValidationError(
                     "takeoff.xlsx exceeds the cell inspection limit"
                 )
-            for row in worksheet.iter_rows():
+            # OOXML worksheet dimensions are optional. In read-only mode,
+            # openpyxl leaves max_row/max_column unset when they are omitted,
+            # so enforce the same limits against the streamed cells as well.
+            observed_max_column = 0
+            for observed_row, row in enumerate(
+                worksheet.iter_rows(), start=1
+            ):
+                observed_max_column = max(observed_max_column, len(row))
+                if (
+                    observed_row > MAX_WORKBOOK_ROWS
+                    or observed_max_column > 16_384
+                ):
+                    raise ArtifactValidationError(
+                        "takeoff.xlsx exceeds worksheet bounds"
+                    )
+                worksheet_cells = max(
+                    worksheet_cells,
+                    observed_row * observed_max_column,
+                )
+                if total_cells + worksheet_cells > MAX_WORKBOOK_CELLS:
+                    raise ArtifactValidationError(
+                        "takeoff.xlsx exceeds the cell inspection limit"
+                    )
                 for cell in row:
                     value = cell.value
                     if isinstance(value, str) and len(value) > MAX_CELL_TEXT:
@@ -831,6 +877,7 @@ def validate_workbook_artifact(
                             "takeoff.xlsx contains a formula; formulas are not "
                             "permitted"
                         )
+            total_cells += worksheet_cells
 
         headers, rows = _audit_rows(workbook)
         expected = {asset.unit_id: asset for asset in takeoff.assets}
@@ -1002,6 +1049,7 @@ def validate_pdf_artifact(
     *,
     artifacts_dir: Path,
     expected_pages: int,
+    expected_annotation_ids: set[str],
 ) -> None:
     regular = require_regular_file(
         path,
@@ -1010,7 +1058,7 @@ def validate_pdf_artifact(
         magic=b"%PDF-",
     )
     try:
-        pages = len(PdfReader(str(regular), strict=True).pages)
+        reader, pages = _read_pdf_with_viewer_preference_fallback(regular)
     except Exception as exc:
         raise ArtifactValidationError(
             f"{path.name} is not a parseable PDF"
@@ -1018,4 +1066,53 @@ def validate_pdf_artifact(
     if pages != expected_pages:
         raise ArtifactValidationError(
             f"{path.name} page count does not match the source"
+        )
+
+    marker_subtypes = {"/Square", "/PolyLine"}
+    annotation_ids: set[str] = set()
+    try:
+        for page in reader.pages:
+            for reference in page.get("/Annots", []):
+                annotation = reference.get_object()
+                marker_flag = annotation.get(TAKEOFF_MARKER_KEY)
+                if getattr(marker_flag, "value", False) is not True:
+                    continue
+                if str(annotation.get("/Subtype", "")) not in marker_subtypes:
+                    raise ArtifactValidationError(
+                        f"{path.name} contains an invalid takeoff marker type"
+                    )
+                raw_annotation_id = annotation.get("/NM")
+                if raw_annotation_id is None:
+                    raise ArtifactValidationError(
+                        f"{path.name} contains a takeoff marker without an ID"
+                    )
+                annotation_id = str(raw_annotation_id)
+                if not annotation_id.strip():
+                    raise ArtifactValidationError(
+                        f"{path.name} contains a takeoff marker with a blank ID"
+                    )
+                if annotation_id in annotation_ids:
+                    raise ArtifactValidationError(
+                        f"{path.name} contains duplicate takeoff marker ID "
+                        f"{annotation_id!r}"
+                    )
+                annotation_ids.add(annotation_id)
+    except ArtifactValidationError:
+        raise
+    except Exception as exc:
+        raise ArtifactValidationError(
+            f"{path.name} contains malformed annotation data"
+        ) from exc
+
+    missing = expected_annotation_ids - annotation_ids
+    unexpected = annotation_ids - expected_annotation_ids
+    if missing or unexpected:
+        details: list[str] = []
+        if missing:
+            details.append(f"{len(missing)} missing")
+        if unexpected:
+            details.append(f"{len(unexpected)} unexpected")
+        raise ArtifactValidationError(
+            f"{path.name} takeoff marker IDs do not match the validated "
+            f"assets ({', '.join(details)})"
         )

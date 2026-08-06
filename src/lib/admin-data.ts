@@ -5,6 +5,7 @@ import {
   normalizeRequiredServiceHealth,
   parseAdminAnalyticsAggregate,
   summarizeServiceHealth,
+  takeoffProcessorUsageHealthCheck,
   type AdminAnalyticsAggregate,
   type ServiceHealthRow,
 } from "@/lib/admin-analytics"
@@ -239,6 +240,21 @@ function buildAdminSnapshot(input: {
   const { metrics } = aggregate
   const health = summarizeServiceHealth(input.health, aggregate.asOf)
   const healthIssues = health.missing + health.stale + health.unhealthy
+  const processorUsageHealth = input.health.find(
+    (row) =>
+      row.service_name === takeoffProcessorUsageHealthCheck.serviceName &&
+      row.check_name === takeoffProcessorUsageHealthCheck.checkName
+  )
+  const processorUsageHealthCurrent = Boolean(
+    processorUsageHealth &&
+      !processorUsageHealth.missing &&
+      processorUsageHealth.expires_at &&
+      new Date(processorUsageHealth.expires_at).getTime() >
+        new Date(aggregate.asOf).getTime()
+  )
+  const processorUsageReady = Boolean(
+    processorUsageHealthCurrent && processorUsageHealth?.status === "healthy"
+  )
 
   const readiness = [
     {
@@ -274,10 +290,16 @@ function buildAdminSnapshot(input: {
         : "No failed or stale Stripe events.",
     },
     {
-      level: "warning",
+      level: processorUsageReady ? "ok" : "warning",
       title: "Unit economics",
-      detail:
-        "Processor cost ingestion is not configured, so contribution margin is unavailable.",
+      detail: processorUsageReady
+        ? "Per-attempt OpenAI usage, reported-category cost estimates, and hypothetical all-input-uncached estimates are recorded for admin review."
+        : processorUsageHealth?.missing
+          ? "Processor usage accounting has not recorded a verified health result yet."
+          : !processorUsageHealthCurrent
+            ? "The processor usage accounting health result is missing or stale."
+            : processorUsageHealth?.message ??
+              "One or more processor attempts need API cost reconciliation.",
     },
     {
       level: metrics.missingCountry ? "warning" : "ok",

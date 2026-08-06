@@ -1,4 +1,8 @@
-export const maxTakeoffArtifactBytes = 100 * 1024 * 1024
+const mebibyte = 1024 * 1024
+
+// The download/upload route uses this as an absolute streaming safety cap.
+// Descriptor validation below applies the tighter format-specific limits.
+export const maxTakeoffArtifactBytes = 250 * mebibyte
 
 export const takeoffArtifactMediaTypes = {
   "takeoff.json": "application/json",
@@ -11,6 +15,33 @@ export const takeoffArtifactMediaTypes = {
 
 export type TakeoffArtifactFilename =
   keyof typeof takeoffArtifactMediaTypes
+
+export const maxTakeoffArtifactBytesByFilename: Record<
+  TakeoffArtifactFilename,
+  number
+> = {
+  "takeoff.json": 50 * mebibyte,
+  "takeoff.xlsx": 100 * mebibyte,
+  "methodology.json": 50 * mebibyte,
+  "annotated_drawings.pdf": 250 * mebibyte,
+  "annotation_audit.json": 50 * mebibyte,
+}
+
+export const customerTakeoffDeliverableFilenames = [
+  "annotated_drawings.pdf",
+  "takeoff.xlsx",
+] as const satisfies readonly TakeoffArtifactFilename[]
+
+export type CustomerTakeoffDeliverableFilename =
+  (typeof customerTakeoffDeliverableFilenames)[number]
+
+export function isCustomerTakeoffDeliverableFilename(
+  value: string
+): value is CustomerTakeoffDeliverableFilename {
+  return customerTakeoffDeliverableFilenames.some(
+    (filename) => filename === value
+  )
+}
 
 export type TakeoffArtifactDescriptor = {
   filename: TakeoffArtifactFilename
@@ -74,7 +105,10 @@ export function parseTakeoffArtifactDescriptors(
     if (
       !Number.isSafeInteger(descriptor.bytes) ||
       Number(descriptor.bytes) < 1 ||
-      Number(descriptor.bytes) > maxTakeoffArtifactBytes
+      Number(descriptor.bytes) >
+        maxTakeoffArtifactBytesByFilename[
+          filename as TakeoffArtifactFilename
+        ]
     ) {
       return {
         success: false,

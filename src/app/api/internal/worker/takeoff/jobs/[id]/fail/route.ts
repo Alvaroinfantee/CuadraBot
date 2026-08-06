@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getClaimedTakeoff } from "@/lib/internal-worker"
+import { persistAndAuditTakeoffProcessorUsage } from "@/lib/internal-takeoff-processor-usage"
 import { takeoffFailureSchema } from "@/lib/takeoff-schemas"
 
 type Context = { params: Promise<{ id: string }> }
@@ -18,6 +19,23 @@ export async function POST(request: Request, context: Context) {
       { status: 422 }
     )
   }
+
+  // Failure settlement must still release/reconcile credits if usage storage
+  // is temporarily unavailable. Valid usage is recorded first when possible.
+  await persistAndAuditTakeoffProcessorUsage({
+    supabase,
+    jobId: job.id,
+    userId: job.user_id,
+    claimToken: contextResult.worker.claimToken,
+    workerId: contextResult.worker.workerId,
+    processorJobId: job.processor_job_id,
+    value:
+      body && typeof body === "object" && "processorUsage" in body
+        ? body.processorUsage
+        : null,
+    usageRequired: false,
+    terminalAction: "fail",
+  })
 
   const { data: updated, error } = await supabase
     .rpc("fail_takeoff_job", {

@@ -1,5 +1,16 @@
 export const takeoffWorkflowKind = "legend_fixture_takeoff_v1" as const
 
+export const takeoffAnalysisProfile =
+  "analyze-building-drawings@2026-08-06" as const
+
+export type TakeoffAnalysisProfile = typeof takeoffAnalysisProfile
+
+export function isTakeoffAnalysisProfile(
+  value: unknown
+): value is TakeoffAnalysisProfile {
+  return value === takeoffAnalysisProfile
+}
+
 export const processorRequestedScopes = [
   "fixture_counts",
   "cable_runs",

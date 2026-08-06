@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -28,12 +29,27 @@ def test_restart_fails_codex_job_without_persisting_a_key(
 ) -> None:
     configured = settings(tmp_path)
     store = JobStore(configured.data_dir / "jobs")
-    store.create(
+    job_dir = store.create(
         JobRecord(
             id="interruptedcodex",
             status=JobStatus.running,
             model=configured.default_model,
         )
+    )
+    (job_dir / "work" / "codex-events.jsonl").write_text(
+        json.dumps(
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 1_000,
+                    "cached_input_tokens": 200,
+                    "output_tokens": 100,
+                    "reasoning_output_tokens": 25,
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
     )
     manager = PipelineManager(configured, store)
 
@@ -44,6 +60,13 @@ def test_restart_fails_codex_job_without_persisting_a_key(
     assert recovered.status == JobStatus.failed
     assert recovered.retriable is True
     assert recovered.error_code == "processor_restarted"
+    assert recovered.processor_usage is not None
+    assert recovered.processor_usage.input_tokens == 1_000
+    assert recovered.processor_usage.estimated_cost_usd == 0.0071
+    assert (
+        recovered.processor_usage.estimated_cost_usd_all_input_uncached
+        == 0.008
+    )
     assert "credential" in recovered.error
     persisted = (
         configured.data_dir

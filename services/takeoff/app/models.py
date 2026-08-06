@@ -16,6 +16,12 @@ from pydantic import (
 )
 
 
+MAX_SAFE_JSON_INTEGER = 9_007_199_254_740_991
+SUPPORTED_TAKEOFF_MODELS = frozenset(
+    {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+)
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -82,6 +88,12 @@ class WorkflowKind(str, Enum):
     legend_fixture_takeoff_v1 = "legend_fixture_takeoff_v1"
 
 
+class AnalysisProfile(str, Enum):
+    analyze_building_drawings_v1 = (
+        "analyze-building-drawings@2026-08-06"
+    )
+
+
 class RequestedScope(str, Enum):
     fixture_counts = "fixture_counts"
     cable_runs = "cable_runs"
@@ -96,6 +108,117 @@ class ArtifactInfo(BaseModel):
     download_url: str
 
 
+class OpenAIRateSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    input: float = Field(gt=0, le=10_000, allow_inf_nan=False)
+    cached_input: float = Field(gt=0, le=10_000, allow_inf_nan=False)
+    cache_write: float = Field(gt=0, le=10_000, allow_inf_nan=False)
+    output: float = Field(gt=0, le=10_000, allow_inf_nan=False)
+
+
+class ProcessorUsage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal[1] = 1
+    provider: Literal["openai"] = "openai"
+    model: Literal[
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+    ]
+    pricing_as_of: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    currency: Literal["USD"] = "USD"
+    usage_turns: int = Field(ge=1, le=MAX_SAFE_JSON_INTEGER)
+    input_tokens: int = Field(ge=0, le=MAX_SAFE_JSON_INTEGER)
+    uncached_input_tokens: int = Field(ge=0, le=MAX_SAFE_JSON_INTEGER)
+    cached_input_tokens: int = Field(ge=0, le=MAX_SAFE_JSON_INTEGER)
+    cache_write_tokens: int = Field(ge=0, le=MAX_SAFE_JSON_INTEGER)
+    output_tokens: int = Field(ge=0, le=MAX_SAFE_JSON_INTEGER)
+    reasoning_output_tokens: int = Field(ge=0, le=MAX_SAFE_JSON_INTEGER)
+    estimated_cost_usd: float = Field(
+        ge=0,
+        le=1_000_000,
+        allow_inf_nan=False,
+    )
+    estimated_cost_usd_upper_bound: float | None = Field(
+        default=None,
+        ge=0,
+        le=1_000_000,
+        allow_inf_nan=False,
+    )
+    estimated_cost_usd_all_input_uncached: float = Field(
+        ge=0,
+        le=1_000_000,
+        allow_inf_nan=False,
+        description=(
+            "Hypothetical base-price estimate treating every input token as "
+            "uncached; not an invoice or actual billed cost."
+        ),
+    )
+    estimated_cost_usd_all_input_uncached_upper_bound: float | None = Field(
+        default=None,
+        ge=0,
+        le=1_000_000,
+        allow_inf_nan=False,
+        description=(
+            "Hypothetical long-context upper-bound estimate with every input "
+            "token treated as uncached; not an invoice or actual billed cost."
+        ),
+    )
+    long_context_pricing_may_apply: bool
+    rate_snapshot_usd_per_million: OpenAIRateSnapshot
+
+    @model_validator(mode="after")
+    def usage_totals_are_consistent(self) -> "ProcessorUsage":
+        expected_uncached = max(
+            self.input_tokens
+            - self.cached_input_tokens
+            - self.cache_write_tokens,
+            0,
+        )
+        if self.uncached_input_tokens != expected_uncached:
+            raise ValueError("uncached input tokens do not reconcile")
+        if (
+            self.uncached_input_tokens
+            + self.cached_input_tokens
+            + self.cache_write_tokens
+            != self.input_tokens
+        ):
+            raise ValueError("input token categories do not reconcile")
+        if self.reasoning_output_tokens > self.output_tokens:
+            raise ValueError("reasoning output must be a subset of output")
+        if self.long_context_pricing_may_apply:
+            if self.estimated_cost_usd_upper_bound is None:
+                raise ValueError("long-context usage requires an upper bound")
+            if (
+                self.estimated_cost_usd_all_input_uncached_upper_bound
+                is None
+            ):
+                raise ValueError(
+                    "long-context usage requires an all-uncached upper bound"
+                )
+            if (
+                self.estimated_cost_usd_upper_bound
+                < self.estimated_cost_usd
+            ):
+                raise ValueError("estimated cost upper bound is too small")
+            if (
+                self.estimated_cost_usd_all_input_uncached_upper_bound
+                < self.estimated_cost_usd_all_input_uncached
+            ):
+                raise ValueError(
+                    "all-uncached cost upper bound is too small"
+                )
+        elif (
+            self.estimated_cost_usd_upper_bound is not None
+            or self.estimated_cost_usd_all_input_uncached_upper_bound
+            is not None
+        ):
+            raise ValueError("short-context usage must not include upper bounds")
+        return self
+
+
 class JobRecord(BaseModel):
     id: str
     status: JobStatus
@@ -105,6 +228,9 @@ class JobRecord(BaseModel):
     stage: str = "queued"
     progress: int = 0
     model: str
+    analysis_profile: AnalysisProfile = (
+        AnalysisProfile.analyze_building_drawings_v1
+    )
     workflow_kind: WorkflowKind = WorkflowKind.legend_fixture_takeoff_v1
     requested_scopes: list[RequestedScope] = Field(
         default_factory=lambda: [RequestedScope.fixture_counts],
@@ -126,6 +252,7 @@ class JobRecord(BaseModel):
     error_code: str | None = None
     retriable: bool = False
     metrics: dict[str, Any] = Field(default_factory=dict)
+    processor_usage: ProcessorUsage | None = None
 
     @field_validator("requested_scopes")
     @classmethod
