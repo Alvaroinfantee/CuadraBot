@@ -54,6 +54,71 @@ rm -f -- "$provision_fixture" "$rendered_cloud_init"
 # an unrelated filesystem plus comments byte-for-byte.
 # shellcheck source=deploy/scripts/lib.sh
 source "$deploy_dir/scripts/lib.sh"
+
+docker_dir_fixture="$(mktemp -d)"
+docker_dir_owner="$(stat -c '%U' "$docker_dir_fixture")"
+docker_dir_group="$(stat -c '%G' "$docker_dir_fixture")"
+chmod 0700 "$docker_dir_fixture"
+check_docker_data_dir "$docker_dir_fixture" "$docker_dir_owner" "$docker_dir_group"
+chmod 0710 "$docker_dir_fixture"
+(
+  getent() {
+    if [[ "$1" == group ]]; then
+      printf '%s:x:4242:\n' "$docker_dir_group"
+    else
+      printf '%s:x:4242:4242:test:/nonexistent:/usr/sbin/nologin\n' "$docker_dir_owner"
+    fi
+  }
+  check_docker_data_dir "$docker_dir_fixture" "$docker_dir_owner" "$docker_dir_group"
+)
+if (
+  getent() {
+    if [[ "$1" == group ]]; then
+      printf '%s:x:4242:intruder\n' "$docker_dir_group"
+    else
+      printf '%s:x:4242:4242:test:/nonexistent:/usr/sbin/nologin\n' "$docker_dir_owner"
+    fi
+  }
+  check_docker_data_dir "$docker_dir_fixture" "$docker_dir_owner" "$docker_dir_group"
+); then
+  echo "Docker data directory check accepted a supplemental group member" >&2
+  exit 1
+fi
+if (
+  getent() {
+    if [[ "$1" == group ]]; then
+      printf '%s:x:4242:\n' "$docker_dir_group"
+    else
+      printf '%s:x:4242:4242:test:/nonexistent:/usr/sbin/nologin\n' "$docker_dir_owner"
+      printf 'intruder:x:4243:4242:test:/nonexistent:/usr/sbin/nologin\n'
+    fi
+  }
+  check_docker_data_dir "$docker_dir_fixture" "$docker_dir_owner" "$docker_dir_group"
+); then
+  echo "Docker data directory check accepted a shared primary GID" >&2
+  exit 1
+fi
+chmod 0750 "$docker_dir_fixture"
+if check_docker_data_dir "$docker_dir_fixture" "$docker_dir_owner" "$docker_dir_group"; then
+  echo "Docker data directory check accepted group-readable mode" >&2
+  exit 1
+fi
+rm -rf -- "$docker_dir_fixture"
+
+ufw_fixture_current=$'Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n\nTo Action From\n-- ------ ----\n22/tcp ALLOW 198.51.100.10\n'
+ufw_fixture_legacy=$'Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n\nTo Action From\n-- ------ ----\n22/tcp ALLOW IN 198.51.100.10\n'
+ufw_fixture_v6=$'Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n\nTo Action From\n-- ------ ----\n22/tcp ALLOW 198.51.100.10\n22/tcp (v6) ALLOW Anywhere (v6)\n'
+[[ "$(parse_ufw_inbound_permit_rules <<<"$ufw_fixture_current")" == 'ALLOW 22/tcp 198.51.100.10' ]]
+[[ "$(parse_ufw_inbound_permit_rules <<<"$ufw_fixture_legacy")" == 'ALLOW 22/tcp 198.51.100.10' ]]
+[[ "$(parse_ufw_inbound_permit_rules <<<"$ufw_fixture_v6" | wc -l)" -eq 2 ]]
+[[ "$(parse_ufw_inbound_permit_rules <<<'22/tcp LIMIT Anywhere')" == 'LIMIT 22/tcp Anywhere' ]]
+[[ -z "$(parse_ufw_inbound_permit_rules <<<'443/tcp ALLOW OUT Anywhere')" ]]
+ufw_default_denies_incoming <<<"$ufw_fixture_current"
+if ufw_default_denies_incoming <<<'Default: allow (incoming), allow (outgoing), disabled (routed)'; then
+  echo "UFW policy check accepted default-allow incoming" >&2
+  exit 1
+fi
+
 fstab_fixture="$(mktemp)"
 fstab_filtered="$(mktemp)"
 cat > "$fstab_fixture" <<'EOF'

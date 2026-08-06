@@ -95,7 +95,7 @@ done
 
 check_dir "$CUADRABOT_ROOT" root root 755 && pass "persistent root ownership" || fail "persistent root ownership/mode mismatch"
 check_dir "$CUADRABOT_ROOT/secrets" root root 700 && pass "secret directory ownership" || fail "secret directory ownership/mode mismatch"
-check_dir "$CUADRABOT_ROOT/docker" "$CUADRABOT_EXECUTOR_USER" "$CUADRABOT_EXECUTOR_USER" 700 \
+check_docker_data_dir "$CUADRABOT_ROOT/docker" "$CUADRABOT_EXECUTOR_USER" "$CUADRABOT_EXECUTOR_USER" \
   && pass "Docker data ownership" || fail "Docker data ownership/mode mismatch"
 check_dir "$CUADRABOT_ROOT/executor" "$CUADRABOT_EXECUTOR_USER" "$CUADRABOT_EXECUTOR_USER" 700 \
   && pass "executor state ownership" || fail "executor state ownership/mode mismatch"
@@ -205,15 +205,21 @@ else
   pass "worker unit receives only worker configuration"
 fi
 
-if ufw status | head -n1 | grep -q '^Status: active'; then
+ufw_status="$(LC_ALL=C ufw status verbose)"
+if head -n1 <<<"$ufw_status" | grep -q '^Status: active'; then
   pass "UFW active"
 else
   fail "UFW inactive"
 fi
-mapfile -t ufw_inbound_rules < <(ufw status | awk '$2 == "ALLOW" && $3 == "IN" {print $1 " " $4}')
+if ufw_default_denies_incoming <<<"$ufw_status"; then
+  pass "UFW default incoming policy is deny"
+else
+  fail "UFW default incoming policy is not deny"
+fi
+mapfile -t ufw_inbound_rules < <(parse_ufw_inbound_permit_rules <<<"$ufw_status")
 expected_ufw_source="$ADMIN_SSH_CIDR"
 [[ "$expected_ufw_source" == */32 ]] && expected_ufw_source="${expected_ufw_source%/32}"
-if [[ "${#ufw_inbound_rules[@]}" -eq 1 && "${ufw_inbound_rules[0]}" == "22/tcp $expected_ufw_source" ]]; then
+if [[ "${#ufw_inbound_rules[@]}" -eq 1 && "${ufw_inbound_rules[0]}" == "ALLOW 22/tcp $expected_ufw_source" ]]; then
   pass "UFW permits SSH only from the exact admin CIDR"
 else
   fail "UFW inbound policy differs from SSH-only admin CIDR"
