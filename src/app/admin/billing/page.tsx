@@ -4,6 +4,7 @@ import {
   syncStripeCatalog,
 } from "@/app/admin/actions"
 import { AdminHeader, AdminMetric } from "@/components/admin/admin-ui"
+import { StripeTestPromotionCard } from "@/components/admin/stripe-test-promotion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -190,6 +191,15 @@ export default async function AdminBillingPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Owner-only live Stripe test</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StripeTestPromotionCard />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

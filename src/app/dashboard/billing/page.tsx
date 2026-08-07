@@ -8,12 +8,15 @@ import {
   BillingPortalButton,
   CheckoutButton,
 } from "@/components/billing/checkout-button"
+import { CheckoutConversionPoller } from "@/components/billing/checkout-conversion-poller"
+import { GoogleAdsPurchaseConversion } from "@/components/site/google-ads-conversion"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAppFeatures } from "@/lib/app-settings"
 import { requireUser } from "@/lib/auth"
+import { verifyBillingConversion } from "@/lib/billing-conversion"
 import { getCustomerWorkspace } from "@/lib/customer-dashboard"
 import {
   dashboardCopy,
@@ -31,14 +34,33 @@ export async function generateMetadata() {
   return { title: dashboardCopy[locale].metadata.billing }
 }
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    checkout?: string | string[]
+    session_id?: string | string[]
+  }>
+}) {
   const user = await requireUser("/dashboard/billing")
-  const [{ credits, subscription }, features, locale] = await Promise.all([
+  const [query, { credits, subscription }, features, locale] = await Promise.all([
+    searchParams,
     getCustomerWorkspace(user.id),
     getAppFeatures(),
     getRequestLocale(),
   ])
   const copy = dashboardCopy[locale].billing
+  const checkoutState = singleValue(query.checkout)
+  const checkoutSessionId = singleValue(query.session_id)
+  let conversion = null
+
+  if (checkoutState === "success" && checkoutSessionId) {
+    try {
+      conversion = await verifyBillingConversion(user.id, checkoutSessionId)
+    } catch (error) {
+      console.error("Could not verify the Stripe Checkout return.", error)
+    }
+  }
 
   return (
     <div className="space-y-10">
@@ -50,6 +72,39 @@ export default async function BillingPage() {
           subscription ? <BillingPortalButton locale={locale} /> : undefined
         }
       />
+
+      {checkoutState === "success" ? (
+        <>
+          <Alert className={conversion ? "border-emerald-200 bg-emerald-50" : ""}>
+            <AlertTitle>
+              {conversion
+                ? copy.checkoutSuccessTitle
+                : copy.checkoutConfirmingTitle}
+            </AlertTitle>
+            <AlertDescription>
+              {conversion
+                ? copy.checkoutSuccessBody
+                : copy.checkoutConfirmingBody}
+            </AlertDescription>
+          </Alert>
+          {conversion ? (
+            <GoogleAdsPurchaseConversion
+              currency={conversion.currency}
+              transactionId={conversion.transactionId}
+              valueCents={conversion.valueCents}
+            />
+          ) : (
+            <CheckoutConversionPoller />
+          )}
+        </>
+      ) : null}
+
+      {checkoutState === "cancelled" ? (
+        <Alert>
+          <AlertTitle>{copy.checkoutCancelledTitle}</AlertTitle>
+          <AlertDescription>{copy.checkoutCancelledBody}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {features.maintenance || features.configurationError ? (
         <Alert>
@@ -209,6 +264,10 @@ export default async function BillingPage() {
       </div>
     </div>
   )
+}
+
+function singleValue(value: string | string[] | undefined) {
+  return typeof value === "string" ? value : null
 }
 
 function BillingMetric({

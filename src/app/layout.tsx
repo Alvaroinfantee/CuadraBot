@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { headers } from "next/headers"
 import { Toaster } from "@/components/ui/sonner"
+import { GoogleAdsTag } from "@/components/site/google-ads"
 import { normalizeLocale } from "@/lib/i18n"
 import "./globals.css"
 
@@ -80,6 +81,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster />
+        <GoogleAdsTag locale={locale} />
       </body>
     </html>
   );

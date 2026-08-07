@@ -1,9 +1,7 @@
-import Script from "next/script"
+"use client"
 
-const googleAdsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ?? "AW-18182187189"
-const purchaseConversionLabel =
-  process.env.NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_CONVERSION_LABEL ??
-  "CKrSCNrs17EcELXR-N1D"
+import { useEffect } from "react"
+import { googleAdsPurchaseDestination } from "@/lib/google-ads"
 
 export function GoogleAdsPurchaseConversion({
   currency,
@@ -14,26 +12,45 @@ export function GoogleAdsPurchaseConversion({
   transactionId: string | null
   valueCents: number | null
 }) {
-  if (!googleAdsId || !purchaseConversionLabel || !transactionId) return null
+  useEffect(() => {
+    if (
+      !googleAdsPurchaseDestination ||
+      !transactionId ||
+      !Number.isSafeInteger(valueCents) ||
+      !valueCents ||
+      valueCents < 1 ||
+      !currency ||
+      !/^[a-z]{3}$/i.test(currency)
+    ) {
+      return
+    }
 
-  const value = valueCents ? Number((valueCents / 100).toFixed(2)) : 1
-  const scriptId = `google-ads-purchase-conversion-${transactionId.replace(
-    /[^a-zA-Z0-9_-]/g,
-    "-"
-  )}`
+    const storageKey = `cuadrabot:google-ads:purchase:${transactionId}`
+    try {
+      if (window.sessionStorage.getItem(storageKey)) return
+    } catch {
+      // Storage can be unavailable in hardened browsers. Google still
+      // deduplicates repeated events with the server-generated transaction ID.
+    }
 
-  return (
-    <Script id={scriptId} strategy="afterInteractive">
-      {`
-        window.dataLayer = window.dataLayer || [];
-        window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
-        window.gtag('event', 'conversion', {
-          'send_to': '${googleAdsId}/${purchaseConversionLabel}',
-          'value': ${JSON.stringify(value)},
-          'currency': ${JSON.stringify((currency ?? "EUR").toUpperCase())},
-          'transaction_id': ${JSON.stringify(transactionId)}
-        });
-      `}
-    </Script>
-  )
+    window.dataLayer = window.dataLayer || []
+    window.gtag =
+      window.gtag ||
+      ((...args: unknown[]) => {
+        window.dataLayer?.push(args)
+      })
+    window.gtag("event", "conversion", {
+      send_to: googleAdsPurchaseDestination,
+      value: Number((valueCents / 100).toFixed(2)),
+      currency: currency.toUpperCase(),
+      transaction_id: transactionId,
+    })
+    try {
+      window.sessionStorage.setItem(storageKey, "sent")
+    } catch {
+      // The conversion was queued successfully even if storage is unavailable.
+    }
+  }, [currency, transactionId, valueCents])
+
+  return null
 }
