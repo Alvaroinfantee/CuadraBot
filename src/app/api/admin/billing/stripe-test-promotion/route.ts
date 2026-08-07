@@ -1,0 +1,324 @@
+import { NextResponse } from "next/server"
+import type Stripe from "stripe"
+import {
+  assertStripePriceMatchesCatalog,
+  getConfiguredBillingCatalogItem,
+  getStripePriceProductId,
+} from "@/lib/billing-catalog"
+import { getCurrentProfile } from "@/lib/auth"
+import { stripeAutomaticTaxEnabled } from "@/lib/config"
+import {
+  buildStripeTestPromotionCode,
+  stripeTestCheckoutSubtotalCents,
+  stripeTestDiscountAmount,
+  stripeTestPromotionExpiry,
+  stripeTestPromotionSku,
+} from "@/lib/stripe-test-promotion-policy"
+import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { getStripe } from "@/lib/stripe"
+
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
+const confirmationHeader = "live-owner-stripe-test"
+
+class StripeTestPromotionError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message)
+    this.name = "StripeTestPromotionError"
+  }
+}
+
+export async function POST(request: Request) {
+  const profile = await getCurrentProfile()
+
+  if (!profile) {
+    return jsonError("Authentication is required.", 401)
+  }
+
+  if (profile.role !== "admin" || profile.status !== "active") {
+    return jsonError("Active administrator access is required.", 403)
+  }
+
+  if (request.headers.get("x-cuadrabot-confirm") !== confirmationHeader) {
+    return jsonError("Explicit live-test confirmation is required.", 400)
+  }
+
+  const stripe = getStripe()
+  const supabase = createSupabaseAdminClient()
+  const attemptId = crypto.randomUUID()
+  const item = getConfiguredBillingCatalogItem(stripeTestPromotionSku)
+  let couponId: string | null = null
+  let promotionCodeId: string | null = null
+
+  try {
+    const [price, customerId] = await Promise.all([
+      stripe.prices.retrieve(item.priceId, { expand: ["product"] }),
+      getOrCreateStripeCustomer({
+        id: profile.id,
+        email: profile.email,
+        fullName: profile.full_name,
+        stripeCustomerId: profile.stripe_customer_id,
+      }),
+    ])
+    assertStripePriceMatchesCatalog(price, item)
+
+    const productId = getStripePriceProductId(price)
+    const nowSeconds = Math.floor(Date.now() / 1_000)
+    const expiresAt = stripeTestPromotionExpiry(nowSeconds)
+    const existingPromotion = await findExistingTestPromotion({
+      adminUserId: profile.id,
+      customerId,
+      nowSeconds,
+    })
+
+    if (existingPromotion?.status === "redeemed") {
+      throw new StripeTestPromotionError(
+        "The owner live-checkout test has already been redeemed. Refund that charge instead of creating another discounted pack.",
+        409
+      )
+    }
+
+    if (existingPromotion?.status === "active") {
+      return NextResponse.json(
+        promotionResponse({
+          code: existingPromotion.promotion.code,
+          expiresAt: existingPromotion.promotion.expires_at ?? expiresAt,
+          originalAmountCents: item.priceCents,
+          automaticTaxEnabled: stripeAutomaticTaxEnabled,
+        }),
+        { headers: { "Cache-Control": "no-store" } }
+      )
+    }
+
+    // Stripe enforces promotion-code uniqueness atomically for each customer.
+    // Keeping this code stable for the administrator/customer means concurrent
+    // requests race for one active code instead of minting separate discounts.
+    const code = buildStripeTestPromotionCode(profile.id)
+    const discountAmount = stripeTestDiscountAmount(item.priceCents)
+    const metadata = {
+      cuadrabot_admin_user_id: profile.id,
+      cuadrabot_test_attempt_id: attemptId,
+      cuadrabot_test_sku: item.sku,
+      cuadrabot_test_subtotal_cents: String(stripeTestCheckoutSubtotalCents),
+    }
+
+    const coupon = await stripe.coupons.create(
+      {
+        amount_off: discountAmount,
+        currency: item.currency,
+        duration: "once",
+        max_redemptions: 1,
+        redeem_by: expiresAt,
+        applies_to: { products: [productId] },
+        name: "Cuadrabot owner-only $2 live Checkout test",
+        metadata,
+      },
+      { idempotencyKey: `stripe-owner-test-coupon:${attemptId}` }
+    )
+    couponId = coupon.id
+
+    const promotionCode = await stripe.promotionCodes.create(
+      {
+        promotion: { type: "coupon", coupon: coupon.id },
+        code,
+        customer: customerId,
+        max_redemptions: 1,
+        expires_at: expiresAt,
+        metadata,
+      },
+      { idempotencyKey: `stripe-owner-test-code:${attemptId}` }
+    )
+    promotionCodeId = promotionCode.id
+
+    const { error: auditError } = await supabase
+      .from("admin_audit_log")
+      .insert({
+        actor_user_id: profile.id,
+        actor_email: profile.email,
+        action: "stripe_test_promotion.created",
+        target_type: "stripe_promotion_code",
+        target_id: promotionCode.id,
+        reason:
+          "Created a customer-bound, one-redemption promotion for a $2 live Checkout test.",
+        after_state: {
+          sku: item.sku,
+          original_amount_cents: item.priceCents,
+          test_subtotal_cents: stripeTestCheckoutSubtotalCents,
+          currency: item.currency,
+          expires_at: expiresAt,
+          max_redemptions: 1,
+        },
+        metadata: {
+          stripe_coupon_id: coupon.id,
+          stripe_product_id: productId,
+          stripe_customer_id: customerId,
+          test_attempt_id: attemptId,
+        },
+      })
+
+    if (auditError) {
+      throw new Error(`Could not audit the Stripe test code: ${auditError.message}`)
+    }
+
+    return NextResponse.json(
+      promotionResponse({
+        code,
+        expiresAt,
+        originalAmountCents: item.priceCents,
+        automaticTaxEnabled: stripeAutomaticTaxEnabled,
+      }),
+      {
+        status: 201,
+        headers: { "Cache-Control": "no-store" },
+      }
+    )
+  } catch (error) {
+    console.error("Could not create the owner Stripe test promotion.", error)
+
+    await Promise.allSettled([
+      promotionCodeId
+        ? stripe.promotionCodes.update(promotionCodeId, { active: false })
+        : Promise.resolve(),
+      couponId ? stripe.coupons.del(couponId) : Promise.resolve(),
+    ])
+
+    if (error instanceof StripeTestPromotionError) {
+      return jsonError(error.message, error.status)
+    }
+
+    return jsonError("The Stripe test code could not be created.", 503)
+  }
+}
+
+async function findExistingTestPromotion(input: {
+  adminUserId: string
+  customerId: string
+  nowSeconds: number
+}) {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from("admin_audit_log")
+    .select("target_id")
+    .eq("actor_user_id", input.adminUserId)
+    .eq("action", "stripe_test_promotion.created")
+    .order("created_at", { ascending: false })
+    .limit(20)
+
+  if (error) {
+    throw new Error(`Could not inspect prior Stripe test codes: ${error.message}`)
+  }
+
+  const stripe = getStripe()
+  let activePromotion: Stripe.PromotionCode | null = null
+
+  for (const audit of data ?? []) {
+    if (!audit.target_id?.startsWith("promo_")) continue
+
+    const promotion = await stripe.promotionCodes.retrieve(audit.target_id)
+    const promotionCustomerId =
+      typeof promotion.customer === "string"
+        ? promotion.customer
+        : promotion.customer?.id ?? null
+
+    if (
+      promotionCustomerId !== input.customerId ||
+      promotion.metadata?.cuadrabot_admin_user_id !== input.adminUserId ||
+      promotion.metadata?.cuadrabot_test_sku !== stripeTestPromotionSku
+    ) {
+      throw new Error("A prior Stripe test promotion failed its ownership check.")
+    }
+
+    if (promotion.times_redeemed > 0) {
+      return { status: "redeemed" as const, promotion }
+    }
+
+    if (
+      promotion.active &&
+      promotion.expires_at &&
+      promotion.expires_at > input.nowSeconds
+    ) {
+      activePromotion = promotion
+    }
+  }
+
+  return activePromotion
+    ? { status: "active" as const, promotion: activePromotion }
+    : null
+}
+
+function promotionResponse(input: {
+  code: string
+  expiresAt: number
+  originalAmountCents: number
+  automaticTaxEnabled: boolean
+}) {
+  return {
+    code: input.code,
+    expiresAt: input.expiresAt,
+    sku: stripeTestPromotionSku,
+    originalAmountCents: input.originalAmountCents,
+    checkoutSubtotalCents: stripeTestCheckoutSubtotalCents,
+    automaticTaxEnabled: input.automaticTaxEnabled,
+  }
+}
+
+async function getOrCreateStripeCustomer(input: {
+  id: string
+  email: string | null
+  fullName: string | null
+  stripeCustomerId: string | null
+}) {
+  if (input.stripeCustomerId) return input.stripeCustomerId
+
+  const stripe = getStripe()
+  const customer = await stripe.customers.create(
+    {
+      email: input.email ?? undefined,
+      name: input.fullName ?? undefined,
+      metadata: {
+        cuadrabot_user_id: input.id,
+        created_for: "owner_live_checkout_test",
+      },
+    },
+    { idempotencyKey: `owner-live-test-customer:${input.id}:v1` }
+  )
+  const supabase = createSupabaseAdminClient()
+  const { data: claimed, error: claimError } = await supabase
+    .from("profiles")
+    .update({ stripe_customer_id: customer.id })
+    .eq("id", input.id)
+    .is("stripe_customer_id", null)
+    .select("stripe_customer_id")
+    .maybeSingle()
+
+  if (claimError) {
+    throw new Error(`Could not save the Stripe Customer: ${claimError.message}`)
+  }
+
+  if (claimed?.stripe_customer_id) return claimed.stripe_customer_id as string
+
+  const { data: current, error: currentError } = await supabase
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", input.id)
+    .maybeSingle()
+
+  if (currentError || !current?.stripe_customer_id) {
+    throw new Error(
+      currentError?.message ?? "Could not resolve the Stripe Customer."
+    )
+  }
+
+  return current.stripe_customer_id as string
+}
+
+function jsonError(error: string, status: number) {
+  return NextResponse.json(
+    { error },
+    { status, headers: { "Cache-Control": "no-store" } }
+  )
+}

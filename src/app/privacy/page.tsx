@@ -12,7 +12,7 @@ export const metadata = buildLocalizedMetadata({
 
 export default function PrivacyPage() {
   return (
-    <PolicyPage title="Privacy policy" effective="July 29, 2026">
+    <PolicyPage title="Privacy policy" effective="August 7, 2026">
       <PolicySection title="1. Who is responsible">
         <p>
           Cuadrabot is the controller of account, billing, product-usage, and
@@ -86,7 +86,28 @@ export default function PrivacyPage() {
           legal hold or other obligation may require longer retention.
         </p>
       </PolicySection>
-      <PolicySection title="7. Your choices and rights">
+      <PolicySection title="7. Cookies and advertising measurement">
+        <p>
+          Cuadrabot uses necessary cookies and similar storage for sign-in,
+          security, language, and core service functions. With your permission,
+          we also use the Google tag and Google Ads conversion measurement to
+          understand whether an advertisement leads to a completed purchase.
+          Purchase events include the transaction reference, currency, and
+          amount confirmed by Stripe, but not full payment-card details.
+        </p>
+        <p>
+          Advertising, analytics, ad-user-data, and ad-personalization consent
+          are denied by default until you make a choice. When denied, Google
+          tags may send consent-aware, cookieless measurement signals with ads
+          data redaction. When allowed, Google may read or write advertising
+          identifiers for measurement. You can reject, allow, or later change
+          this choice with the Cookie settings control available throughout the
+          site. See Google&apos;s{" "}
+          <a href="https://policies.google.com/privacy">privacy policy</a> for
+          its processing and international-transfer safeguards.
+        </p>
+      </PolicySection>
+      <PolicySection title="8. Your choices and rights">
         <p>
           Depending on your location, you may request access, correction,
           deletion, restriction, portability, or objection, and may withdraw
@@ -96,7 +117,7 @@ export default function PrivacyPage() {
           We may verify identity before acting on a request.
         </p>
       </PolicySection>
-      <PolicySection title="8. Security and changes">
+      <PolicySection title="9. Security and changes">
         <p>
           We use private storage, tenant-level access rules, short-lived signed
           links, server-only credentials, checksum-backed source records,

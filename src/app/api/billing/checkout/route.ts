@@ -239,6 +239,11 @@ export async function POST(request: Request) {
           mode: catalogItem.checkoutMode,
           locale,
           customer: stripeCustomerId,
+          // Browser conversion measurement can only confirm payments while the
+          // buyer is returning from Checkout. Keep Checkout on Stripe's
+          // immediate card rail (including supported card wallets) so a
+          // multi-day delayed bank debit cannot finish after that browser flow.
+          payment_method_types: ["card"],
           client_reference_id: billingOrderId,
           line_items: [{ price: catalogItem.priceId, quantity: 1 }],
           metadata,

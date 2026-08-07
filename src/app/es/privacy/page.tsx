@@ -14,7 +14,7 @@ export default function PrivacyPageEs() {
   return (
     <PolicyPage
       title="Política de privacidad"
-      effective="29 de julio de 2026"
+      effective="7 de agosto de 2026"
     >
       <PolicySection title="1. Quién es responsable">
         <p>
@@ -116,7 +116,32 @@ export default function PrivacyPageEs() {
           obligación puede exigir una conservación más prolongada.
         </p>
       </PolicySection>
-      <PolicySection title="7. Tus opciones y derechos">
+      <PolicySection title="7. Cookies y medición publicitaria">
+        <p>
+          Cuadrabot utiliza cookies y almacenamiento similares necesarios para
+          el inicio de sesión, la seguridad, el idioma y las funciones
+          esenciales del servicio. Con tu permiso, también utilizamos la
+          etiqueta de Google y la medición de conversiones de Google Ads para
+          saber si un anuncio termina en una compra completada. Los eventos de
+          compra incluyen la referencia de la transacción, la moneda y el
+          importe confirmado por Stripe, pero no los datos completos de la
+          tarjeta.
+        </p>
+        <p>
+          El consentimiento para almacenamiento publicitario, analítica, datos
+          de usuario publicitarios y personalización se deniega por defecto
+          hasta que elijas. Si lo rechazas, las etiquetas de Google pueden
+          enviar señales de medición sin cookies y adaptadas al consentimiento,
+          con censura de datos publicitarios. Si lo permites, Google puede leer
+          o escribir identificadores publicitarios para la medición. Puedes
+          rechazar, permitir o cambiar después esta opción mediante el control
+          Configurar cookies disponible en todo el sitio. Consulta la{" "}
+          <a href="https://policies.google.com/privacy">política de privacidad de Google</a>{" "}
+          para conocer su tratamiento y sus garantías para transferencias
+          internacionales.
+        </p>
+      </PolicySection>
+      <PolicySection title="8. Tus opciones y derechos">
         <p>
           Dependiendo de tu ubicación, puedes solicitar acceso, rectificación,
           supresión, limitación, portabilidad u oposición, y retirar el
@@ -126,7 +151,7 @@ export default function PrivacyPageEs() {
           Podemos verificar tu identidad antes de atender una solicitud.
         </p>
       </PolicySection>
-      <PolicySection title="8. Seguridad y cambios">
+      <PolicySection title="9. Seguridad y cambios">
         <p>
           Utilizamos almacenamiento privado, reglas de acceso por cliente,
           enlaces firmados de corta duración, credenciales solo en el servidor,

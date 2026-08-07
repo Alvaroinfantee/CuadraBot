@@ -240,6 +240,14 @@ const englishDashboardCopy = {
     growthPack: "Growth pack",
     officePack: "Office pack",
     manageBilling: "Manage billing",
+    checkoutSuccessTitle: "Payment confirmed",
+    checkoutSuccessBody:
+      "Stripe confirmed the payment. Credits are granted only by the signed webhook and may take a moment to appear.",
+    checkoutConfirmingTitle: "Payment is still confirming",
+    checkoutConfirmingBody:
+      "We could not verify this Checkout return yet. Refresh this page shortly; no credits are granted from the return URL itself.",
+    checkoutCancelledTitle: "Checkout cancelled",
+    checkoutCancelledBody: "No payment was completed and no credits were changed.",
     checkoutUnavailable: "Checkout is not available.",
     checkoutFailed: "Checkout failed.",
     portalUnavailable: "Billing portal is not available.",
@@ -525,6 +533,14 @@ const spanishDashboardCopy = {
     growthPack: "Paquete Crecimiento",
     officePack: "Paquete Oficina",
     manageBilling: "Gestionar facturación",
+    checkoutSuccessTitle: "Pago confirmado",
+    checkoutSuccessBody:
+      "Stripe ha confirmado el pago. Los créditos solo se conceden mediante la notificación firmada y pueden tardar un momento en aparecer.",
+    checkoutConfirmingTitle: "El pago todavía se está confirmando",
+    checkoutConfirmingBody:
+      "Todavía no hemos podido verificar este retorno de Checkout. Actualiza la página en unos instantes; la URL de retorno nunca concede créditos por sí sola.",
+    checkoutCancelledTitle: "Checkout cancelado",
+    checkoutCancelledBody: "No se ha completado ningún pago ni se han modificado créditos.",
     checkoutUnavailable: "El proceso de pago no está disponible.",
     checkoutFailed: "No se pudo abrir el proceso de pago.",
     portalUnavailable: "El portal de facturación no está disponible.",
