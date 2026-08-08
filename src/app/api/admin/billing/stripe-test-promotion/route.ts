@@ -26,6 +26,7 @@ export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
 const confirmationHeader = "live-owner-stripe-test"
+const stripeTestCouponName = "Cuadrabot $2 live test"
 
 class StripeTestPromotionError extends Error {
   constructor(
@@ -121,7 +122,8 @@ export async function POST(request: Request) {
         max_redemptions: 1,
         redeem_by: expiresAt,
         applies_to: { products: [productId] },
-        name: "Cuadrabot owner-only $2 live Checkout test",
+        // Stripe limits coupon names to 40 characters.
+        name: stripeTestCouponName,
         metadata,
       },
       { idempotencyKey: `stripe-owner-test-coupon:${attemptId}` }
@@ -236,19 +238,30 @@ async function findExistingTestPromotion(input: {
   const stripe = getStripe()
   let activePromotion: Stripe.PromotionCode | null = null
 
-  for (const audit of data ?? []) {
-    if (!audit.target_id?.startsWith("promo_")) continue
+  // Old test-mode audit records can require several failed Stripe lookups after
+  // production moves to live mode. Resolve them concurrently so the admin
+  // request stays well inside the platform's HTTP timeout.
+  const promotions = await Promise.all(
+    (data ?? [])
+      .map((audit) => audit.target_id)
+      .filter((targetId): targetId is string =>
+        Boolean(targetId?.startsWith("promo_"))
+      )
+      .map(async (targetId) => {
+        try {
+          return await stripe.promotionCodes.retrieve(targetId)
+        } catch (error) {
+          // Audit records can point to test-mode objects after production moves
+          // to live mode. They are unavailable by design and must not block the
+          // one live owner test.
+          if (isMissingStripeResource(error)) return null
+          throw error
+        }
+      })
+  )
 
-    let promotion: Stripe.PromotionCode
-    try {
-      promotion = await stripe.promotionCodes.retrieve(audit.target_id)
-    } catch (error) {
-      // Audit records can point to test-mode objects after production moves to
-      // live mode. They are unavailable by design and must not block the one
-      // live owner test.
-      if (isMissingStripeResource(error)) continue
-      throw error
-    }
+  for (const promotion of promotions) {
+    if (!promotion) continue
     const promotionCustomerId =
       typeof promotion.customer === "string"
         ? promotion.customer
