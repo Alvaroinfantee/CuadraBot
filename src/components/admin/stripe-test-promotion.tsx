@@ -35,9 +35,9 @@ export function StripeTestPromotionCard() {
           body: "{}",
         }
       )
-      const payload = await response.json()
+      const payload = await readApiResponse<StripeTestPromotion>(response)
 
-      if (!response.ok || !payload.code) {
+      if (!response.ok || typeof payload.code !== "string") {
         throw new Error(payload.error || "Could not create the Stripe test code.")
       }
 
@@ -71,9 +71,9 @@ export function StripeTestPromotionCard() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sku: promotion.sku, locale: "en" }),
       })
-      const payload = await response.json()
+      const payload = await readApiResponse<{ url: string }>(response)
 
-      if (!response.ok || !payload.url) {
+      if (!response.ok || typeof payload.url !== "string") {
         throw new Error(payload.error || "Could not open Stripe Checkout.")
       }
 
@@ -148,5 +148,22 @@ export function StripeTestPromotionCard() {
         webhook can reverse all 550 credits cleanly.
       </p>
     </div>
+  )
+}
+
+async function readApiResponse<T>(response: Response) {
+  const body = await response.text()
+
+  try {
+    const payload = JSON.parse(body) as Partial<T> & { error?: string }
+    if (payload && typeof payload === "object") return payload
+  } catch {
+    // Fall through to a stable message instead of exposing an HTML error page.
+  }
+
+  throw new Error(
+    response.ok
+      ? "The server returned an invalid response."
+      : `The server request failed (${response.status}). Please try again.`
   )
 }

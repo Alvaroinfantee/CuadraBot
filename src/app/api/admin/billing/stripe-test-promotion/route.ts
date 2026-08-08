@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type Stripe from "stripe"
 import {
   assertStripePriceMatchesCatalog,
+  BillingCatalogConfigurationError,
   getConfiguredBillingCatalogItem,
   getStripePriceProductId,
 } from "@/lib/billing-catalog"
@@ -15,7 +16,11 @@ import {
   stripeTestPromotionSku,
 } from "@/lib/stripe-test-promotion-policy"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
-import { getStripe } from "@/lib/stripe"
+import {
+  getStripe,
+  StripeConfigurationError,
+} from "@/lib/stripe"
+import { getOrCreateStripeCustomer } from "@/lib/stripe-customer"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -33,35 +38,37 @@ class StripeTestPromotionError extends Error {
 }
 
 export async function POST(request: Request) {
-  const profile = await getCurrentProfile()
-
-  if (!profile) {
-    return jsonError("Authentication is required.", 401)
-  }
-
-  if (profile.role !== "admin" || profile.status !== "active") {
-    return jsonError("Active administrator access is required.", 403)
-  }
-
-  if (request.headers.get("x-cuadrabot-confirm") !== confirmationHeader) {
-    return jsonError("Explicit live-test confirmation is required.", 400)
-  }
-
-  const stripe = getStripe()
-  const supabase = createSupabaseAdminClient()
-  const attemptId = crypto.randomUUID()
-  const item = getConfiguredBillingCatalogItem(stripeTestPromotionSku)
+  let stripe: Stripe | null = null
   let couponId: string | null = null
   let promotionCodeId: string | null = null
 
   try {
+    const profile = await getCurrentProfile()
+
+    if (!profile) {
+      return jsonError("Authentication is required.", 401)
+    }
+
+    if (profile.role !== "admin" || profile.status !== "active") {
+      return jsonError("Active administrator access is required.", 403)
+    }
+
+    if (request.headers.get("x-cuadrabot-confirm") !== confirmationHeader) {
+      return jsonError("Explicit live-test confirmation is required.", 400)
+    }
+
+    stripe = getStripe()
+    const supabase = createSupabaseAdminClient()
+    const attemptId = crypto.randomUUID()
+    const item = getConfiguredBillingCatalogItem(stripeTestPromotionSku)
     const [price, customerId] = await Promise.all([
       stripe.prices.retrieve(item.priceId, { expand: ["product"] }),
-      getOrCreateStripeCustomer({
-        id: profile.id,
+      getOrCreateStripeCustomer(stripe, {
+        userId: profile.id,
         email: profile.email,
         fullName: profile.full_name,
         stripeCustomerId: profile.stripe_customer_id,
+        createdFor: "owner_live_checkout_test",
       }),
     ])
     assertStripePriceMatchesCatalog(price, item)
@@ -180,14 +187,28 @@ export async function POST(request: Request) {
     console.error("Could not create the owner Stripe test promotion.", error)
 
     await Promise.allSettled([
-      promotionCodeId
+      promotionCodeId && stripe
         ? stripe.promotionCodes.update(promotionCodeId, { active: false })
         : Promise.resolve(),
-      couponId ? stripe.coupons.del(couponId) : Promise.resolve(),
+      couponId && stripe ? stripe.coupons.del(couponId) : Promise.resolve(),
     ])
 
     if (error instanceof StripeTestPromotionError) {
       return jsonError(error.message, error.status)
+    }
+
+    if (
+      error instanceof StripeConfigurationError ||
+      error instanceof BillingCatalogConfigurationError
+    ) {
+      return jsonError("Stripe billing is not fully configured.", 503)
+    }
+
+    if (isMissingStripePrice(error)) {
+      return jsonError(
+        "The configured Starter Stripe Price is unavailable in the active Stripe account.",
+        503
+      )
     }
 
     return jsonError("The Stripe test code could not be created.", 503)
@@ -218,7 +239,16 @@ async function findExistingTestPromotion(input: {
   for (const audit of data ?? []) {
     if (!audit.target_id?.startsWith("promo_")) continue
 
-    const promotion = await stripe.promotionCodes.retrieve(audit.target_id)
+    let promotion: Stripe.PromotionCode
+    try {
+      promotion = await stripe.promotionCodes.retrieve(audit.target_id)
+    } catch (error) {
+      // Audit records can point to test-mode objects after production moves to
+      // live mode. They are unavailable by design and must not block the one
+      // live owner test.
+      if (isMissingStripeResource(error)) continue
+      throw error
+    }
     const promotionCustomerId =
       typeof promotion.customer === "string"
         ? promotion.customer
@@ -266,59 +296,29 @@ function promotionResponse(input: {
   }
 }
 
-async function getOrCreateStripeCustomer(input: {
-  id: string
-  email: string | null
-  fullName: string | null
-  stripeCustomerId: string | null
-}) {
-  if (input.stripeCustomerId) return input.stripeCustomerId
-
-  const stripe = getStripe()
-  const customer = await stripe.customers.create(
-    {
-      email: input.email ?? undefined,
-      name: input.fullName ?? undefined,
-      metadata: {
-        cuadrabot_user_id: input.id,
-        created_for: "owner_live_checkout_test",
-      },
-    },
-    { idempotencyKey: `owner-live-test-customer:${input.id}:v1` }
-  )
-  const supabase = createSupabaseAdminClient()
-  const { data: claimed, error: claimError } = await supabase
-    .from("profiles")
-    .update({ stripe_customer_id: customer.id })
-    .eq("id", input.id)
-    .is("stripe_customer_id", null)
-    .select("stripe_customer_id")
-    .maybeSingle()
-
-  if (claimError) {
-    throw new Error(`Could not save the Stripe Customer: ${claimError.message}`)
-  }
-
-  if (claimed?.stripe_customer_id) return claimed.stripe_customer_id as string
-
-  const { data: current, error: currentError } = await supabase
-    .from("profiles")
-    .select("stripe_customer_id")
-    .eq("id", input.id)
-    .maybeSingle()
-
-  if (currentError || !current?.stripe_customer_id) {
-    throw new Error(
-      currentError?.message ?? "Could not resolve the Stripe Customer."
-    )
-  }
-
-  return current.stripe_customer_id as string
-}
-
 function jsonError(error: string, status: number) {
   return NextResponse.json(
     { error },
     { status, headers: { "Cache-Control": "no-store" } }
+  )
+}
+
+function isMissingStripePrice(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "resource_missing" &&
+      "param" in error &&
+      error.param === "price"
+  )
+}
+
+function isMissingStripeResource(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "resource_missing"
   )
 }
