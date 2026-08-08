@@ -16,6 +16,21 @@ const route = readFileSync(
   ),
   "utf8"
 )
+const card = readFileSync(
+  new URL(
+    "../src/components/admin/stripe-test-promotion.tsx",
+    import.meta.url
+  ),
+  "utf8"
+)
+const customer = readFileSync(
+  new URL("../src/lib/stripe-customer.ts", import.meta.url),
+  "utf8"
+)
+const checkout = readFileSync(
+  new URL("../src/app/api/billing/checkout/route.ts", import.meta.url),
+  "utf8"
+)
 
 test("the owner test leaves exactly a $2 subtotal for the Starter pack", () => {
   assert.equal(stripeTestCheckoutSubtotalCents, 200)
@@ -35,7 +50,7 @@ test("test codes are high-entropy and expire after 30 minutes", () => {
 
 test("the generator is admin-only and every discount escape hatch is fixed server-side", () => {
   const authCheck = route.indexOf('profile.role !== "admin"')
-  const stripeAccess = route.indexOf("const stripe = getStripe()")
+  const stripeAccess = route.indexOf("stripe = getStripe()")
 
   assert.ok(authCheck >= 0)
   assert.ok(stripeAccess > authCheck)
@@ -50,4 +65,22 @@ test("the generator is admin-only and every discount escape hatch is fixed serve
   assert.doesNotMatch(route, /buildStripeTestPromotionCode\(attemptId\)/)
   assert.match(route, /stripe_test_promotion\.created/)
   assert.match(route, /promotionCodes\.update\(promotionCodeId, \{ active: false \}\)/)
+})
+
+test("promotion failures stay JSON and the admin client never parses HTML as JSON", () => {
+  assert.match(route, /isMissingStripePrice\(error\)/)
+  assert.match(route, /configured Starter Stripe Price is unavailable/)
+  assert.match(route, /if \(isMissingStripeResource\(error\)\) continue/)
+  assert.match(card, /const body = await response\.text\(\)/)
+  assert.match(card, /JSON\.parse\(body\)/)
+  assert.doesNotMatch(card, /response\.json\(\)/)
+})
+
+test("customers saved under a previous Stripe mode are replaced safely", () => {
+  assert.match(customer, /stripe\.customers\.retrieve\(customerId\)/)
+  assert.match(customer, /error\.code === "resource_missing"/)
+  assert.match(customer, /stripe_customer_id", input\.stripeCustomerId/)
+  assert.match(customer, /cuadrabot-customer:\$\{input\.userId\}:v2/)
+  assert.match(checkout, /getOrCreateStripeCustomer\(stripe, \{/)
+  assert.match(route, /getOrCreateStripeCustomer\(stripe, \{/)
 })

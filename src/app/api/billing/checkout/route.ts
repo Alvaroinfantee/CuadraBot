@@ -20,6 +20,7 @@ import {
   requestBodyLimits,
 } from "@/lib/request-body"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { getOrCreateStripeCustomer } from "@/lib/stripe-customer"
 import {
   getStripe,
   StripeConfigurationError,
@@ -168,12 +169,13 @@ export async function POST(request: Request) {
       await assertNoCurrentSubscription(user.id)
     }
 
-    const stripeCustomerId = await getOrCreateStripeCustomer(
-      stripe,
-      profile,
-      user,
-      locale
-    )
+    const stripeCustomerId = await getOrCreateStripeCustomer(stripe, {
+      userId: user.id,
+      email: user.email ?? profile.email,
+      fullName: profile.full_name,
+      stripeCustomerId: profile.stripe_customer_id,
+      preferredLocales: [locale],
+    })
     const billingOrderId = crypto.randomUUID()
     const { error: orderError } = await supabase.from("billing_orders").insert({
       id: billingOrderId,
@@ -478,64 +480,6 @@ async function assertNoCurrentSubscription(userId: string) {
       "current_subscription_exists"
     )
   }
-}
-
-async function getOrCreateStripeCustomer(
-  stripe: Stripe,
-  profile: ProfileRow,
-  user: CurrentUser,
-  locale: Locale
-) {
-  if (profile.stripe_customer_id) {
-    return profile.stripe_customer_id
-  }
-
-  const customer = await stripe.customers.create(
-    {
-      email: user.email ?? profile.email ?? undefined,
-      name: profile.full_name ?? undefined,
-      preferred_locales: [locale],
-      metadata: {
-        cuadrabot_user_id: user.id,
-      },
-    },
-    {
-      idempotencyKey: `cuadrabot-customer:${user.id}:v1`,
-    }
-  )
-  const supabase = createSupabaseAdminClient()
-  const { data: claimedProfile, error: claimError } = await supabase
-    .from("profiles")
-    .update({ stripe_customer_id: customer.id })
-    .eq("id", user.id)
-    .is("stripe_customer_id", null)
-    .select("stripe_customer_id")
-    .maybeSingle()
-
-  if (claimError) {
-    throw new Error(
-      `Could not save the Stripe Customer: ${claimError.message}`
-    )
-  }
-
-  if (claimedProfile?.stripe_customer_id) {
-    return claimedProfile.stripe_customer_id as string
-  }
-
-  const { data: currentProfile, error: currentProfileError } = await supabase
-    .from("profiles")
-    .select("stripe_customer_id")
-    .eq("id", user.id)
-    .maybeSingle()
-
-  if (currentProfileError || !currentProfile?.stripe_customer_id) {
-    throw new Error(
-      currentProfileError?.message ??
-        "Could not resolve the customer's Stripe account."
-    )
-  }
-
-  return currentProfile.stripe_customer_id as string
 }
 
 async function getOpenSubscriptionCheckoutUrl(
