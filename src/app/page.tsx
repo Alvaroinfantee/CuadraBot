@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
+import { ProductDemoVideo } from "@/components/site/product-demo-video"
 import { buildLocalizedMetadata } from "@/lib/i18n"
 import { servicePriceCards } from "@/lib/takeoff-pricing"
 import { cn } from "@/lib/utils"
@@ -159,6 +160,8 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+
+        <ProductDemoVideo />
 
         <section className="border-b py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
