@@ -70,10 +70,16 @@ test("the generator is admin-only and every discount escape hatch is fixed serve
 test("promotion failures stay JSON and the admin client never parses HTML as JSON", () => {
   assert.match(route, /isMissingStripePrice\(error\)/)
   assert.match(route, /configured Starter Stripe Price is unavailable/)
-  assert.match(route, /if \(isMissingStripeResource\(error\)\) continue/)
+  assert.match(route, /if \(isMissingStripeResource\(error\)\) return null/)
   assert.match(card, /const body = await response\.text\(\)/)
   assert.match(card, /JSON\.parse\(body\)/)
   assert.doesNotMatch(card, /response\.json\(\)/)
+})
+
+test("the live coupon stays within Stripe limits and stale lookups do not serialize", () => {
+  assert.match(route, /stripeTestCouponName = "Cuadrabot \$2 live test"/)
+  assert.match(route, /const promotions = await Promise\.all\(/)
+  assert.doesNotMatch(route, /for \(const audit of data \?\? \[\]\)/)
 })
 
 test("customers saved under a previous Stripe mode are replaced safely", () => {
