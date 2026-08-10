@@ -2,6 +2,17 @@
 
 ## 1. Provision and attest the host
 
+Choose one explicit host profile before provisioning:
+
+- `standard`: the 16 GiB / 8 vCPU shape below, for normal production capacity;
+- `budget`: 2 GiB / 1 vCPU, a 10 GiB encrypted volume, no paid Droplet backups,
+  and the exact limits in `config/budget-host.env.example`. This is a
+  low-volume launch profile and may fail large or dense drawing sets.
+
+Never mix the standard host size with budget container limits, or the budget
+host size with standard 6 GiB processor limits. The bootstrap, component
+preflight, and host validator reject mixed profiles.
+
 In the DigitalOcean UI create these exact resources in `lon1`:
 
 1. Ubuntu 24.04 LTS Basic Regular Droplet, 16 GiB RAM / 8 vCPU, with monitoring

@@ -74,7 +74,8 @@ Immutable release plan
   repository:      $REPOSITORY_URL
   executor image:  $EXECUTOR_IMAGE
   processor image: $EXECUTOR_PROCESSOR_IMAGE
-  concurrency:     1 job, 2 CPU, 6 GiB RAM, no container swap
+  host profile:    ${CUADRABOT_HOST_PROFILE:-standard}
+  concurrency:     1 job, ${EXECUTOR_PROCESSOR_CPUS:-2} CPU, ${EXECUTOR_PROCESSOR_MEMORY:-6g} RAM, no container swap
 EOF
 if [[ "$apply" != true ]]; then
   echo "Dry run complete. Add --apply after checking CI and image digests."

@@ -12,9 +12,17 @@ network="${EXECUTOR_EGRESS_NETWORK:-cuadrabot-egress}"
 state_volume="${EXECUTOR_EGRESS_STATE_VOLUME:-cuadrabot-egress-state}"
 state_dir="${EGRESS_STATE_DIR:-/state}"
 egress_env="${EGRESS_ENV_FILE:-/run/cuadrabot-executor/egress.env}"
+egress_memory="${EXECUTOR_EGRESS_MEMORY:-512m}"
+egress_memory_swap="${EXECUTOR_EGRESS_MEMORY_SWAP:-$egress_memory}"
+egress_cpus="${EXECUTOR_EGRESS_CPUS:-0.5}"
+egress_pids="${EXECUTOR_EGRESS_PIDS:-128}"
 
 [[ -f "$egress_env" && ! -L "$egress_env" ]] || die "staged egress environment is missing"
 [[ "$state_dir" == /* && "$state_dir" != / ]] || die "EGRESS_STATE_DIR must be a non-root absolute path"
+[[ "$egress_memory_swap" == "$egress_memory" ]] || die "egress memory-swap must equal memory"
+[[ "$egress_memory" =~ ^[1-9][0-9]*[mg]$ ]] || die "invalid egress memory limit"
+[[ "$egress_cpus" =~ ^(0\.[0-9]*[1-9]|[1-9][0-9]*(\.[0-9]+)?)$ ]] || die "invalid egress CPU limit"
+[[ "$egress_pids" =~ ^[1-9][0-9]*$ ]] || die "invalid egress PID limit"
 
 if rootless_docker container inspect "$container" >/dev/null 2>&1; then
   running="$(rootless_docker inspect --format '{{.State.Running}}' "$container")"
@@ -56,9 +64,9 @@ exec /usr/bin/docker run --rm \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
   --cap-drop ALL \
   --security-opt no-new-privileges:true \
-  --pids-limit 128 \
-  --cpus 0.5 \
-  --memory 512m \
-  --memory-swap 512m \
+  --pids-limit "$egress_pids" \
+  --cpus "$egress_cpus" \
+  --memory "$egress_memory" \
+  --memory-swap "$egress_memory_swap" \
   "$EXECUTOR_IMAGE" \
   node executor/src/egress-main.mjs
