@@ -1,206 +1,123 @@
-export const marketingEventNames = [
-  "page_view",
-  "signup_started",
-  "account_created",
-  "blueprint_upload_started",
-  "checkout_started",
-  "purchase",
-] as const
+import { z } from "zod"
 
-export type MarketingEventName = (typeof marketingEventNames)[number]
+const optionalText = (max: number) =>
+  z.string().trim().min(1).max(max).nullable()
 
-export type MarketingEventInput = {
-  eventName: MarketingEventName
-  anonymousId: string
-  sessionId: string
-  landingPath: string
-  referrerHost: string | null
-  source: string | null
-  medium: string | null
-  campaign: string | null
-  term: string | null
-  content: string | null
-  clickIdKind: string | null
-  clickId: string | null
-  tags: Record<string, string>
-  metadata: Record<string, string | number | boolean | null>
-}
+export const marketingEventSchema = z
+  .object({
+    eventName: z.enum([
+      "page_view",
+      "sign_up_started",
+      "sign_up_completed",
+      "checkout_started",
+      "purchase_completed",
+      "takeoff_started",
+    ]),
+    pagePath: z.string().max(300).regex(/^\/[^\r\n?#]*$/),
+    landingPath: z.string().max(300).regex(/^\/[^\r\n?#]*$/),
+    referrerHost: z
+      .string()
+      .trim()
+      .min(1)
+      .max(253)
+      .regex(/^[a-z0-9.-]+$/i)
+      .nullable(),
+    source: optionalText(120),
+    medium: optionalText(120),
+    campaign: optionalText(200),
+    term: optionalText(200),
+    content: optionalText(200),
+    firstSource: optionalText(120),
+    firstMedium: optionalText(120),
+    firstCampaign: optionalText(200),
+    clickIdType: z.enum(["gclid", "gbraid", "wbraid"]).nullable(),
+    language: optionalText(35),
+    timezone: optionalText(80),
+    screenBucket: z
+      .enum([
+        "under_640",
+        "640_1023",
+        "1024_1439",
+        "1440_1919",
+        "1920_plus",
+      ])
+      .nullable(),
+    consentVersion: z.literal(2),
+  })
+  .strict()
 
-const uuidV4Pattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
-const clickIdKinds = new Set([
-  "gclid",
-  "gbraid",
-  "wbraid",
-  "msclkid",
-  "fbclid",
-])
+export type MarketingEventPayload = z.infer<typeof marketingEventSchema>
 
-export function parseMarketingEventInput(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null
-  }
-  const input = value as Record<string, unknown>
-  if (
-    typeof input.eventName !== "string" ||
-    !marketingEventNames.includes(input.eventName as MarketingEventName) ||
-    typeof input.anonymousId !== "string" ||
-    !uuidV4Pattern.test(input.anonymousId) ||
-    typeof input.sessionId !== "string" ||
-    !uuidV4Pattern.test(input.sessionId)
-  ) {
-    return null
-  }
+export function browserDimensions(userAgent: string | null) {
+  const ua = userAgent ?? ""
+  const bot = /bot|crawler|spider|slurp|headless/i.test(ua)
+  const tablet = /iPad|Tablet|PlayBook|Silk/i.test(ua) ||
+    (/Android/i.test(ua) && !/Mobile/i.test(ua))
+  const mobile = /Mobile|iPhone|iPod|Android/i.test(ua)
 
-  const landingPath = boundedString(input.landingPath, 500)
-  if (!landingPath?.startsWith("/") || landingPath.startsWith("//")) {
-    return null
-  }
+  const deviceType = bot
+    ? "bot"
+    : tablet
+      ? "tablet"
+      : mobile
+        ? "mobile"
+        : ua
+          ? "desktop"
+          : "unknown"
 
-  const clickIdKind = boundedString(input.clickIdKind, 16)?.toLowerCase() ?? null
-  const clickId = boundedString(input.clickId, 500)
-  if (
-    (clickIdKind === null) !== (clickId === null) ||
-    (clickIdKind !== null && !clickIdKinds.has(clickIdKind))
-  ) {
-    return null
-  }
-
-  return {
-    eventName: input.eventName as MarketingEventName,
-    anonymousId: input.anonymousId,
-    sessionId: input.sessionId,
-    landingPath,
-    referrerHost: hostname(input.referrerHost),
-    source: boundedString(input.source, 200),
-    medium: boundedString(input.medium, 200),
-    campaign: boundedString(input.campaign, 200),
-    term: boundedString(input.term, 200),
-    content: boundedString(input.content, 200),
-    clickIdKind,
-    clickId,
-    tags: stringRecord(input.tags),
-    metadata: scalarRecord(input.metadata),
-  } satisfies MarketingEventInput
-}
-
-export function classifyUserAgent(userAgent: string | null) {
-  const value = userAgent ?? ""
-  const deviceType = /ipad|tablet|kindle|silk/i.test(value)
-    ? "tablet"
-    : /mobile|iphone|ipod|android/i.test(value)
-      ? "mobile"
-      : value
-        ? "desktop"
-        : "other"
-
-  const browserFamily = /edg\//i.test(value)
+  const browserName = /Edg\//i.test(ua)
     ? "Edge"
-    : /samsungbrowser/i.test(value)
-      ? "Samsung Internet"
-      : /firefox|fxios/i.test(value)
-        ? "Firefox"
-        : /chrome|crios/i.test(value)
+    : /OPR\//i.test(ua)
+      ? "Opera"
+      : /SamsungBrowser\//i.test(ua)
+        ? "Samsung Internet"
+        : /Chrome\//i.test(ua)
           ? "Chrome"
-          : /safari/i.test(value)
-            ? "Safari"
-            : value
-              ? "Other"
-              : null
+          : /Firefox\//i.test(ua)
+            ? "Firefox"
+            : /Safari\//i.test(ua)
+              ? "Safari"
+              : "Unknown"
 
-  const osFamily = /windows/i.test(value)
+  const osName = /Windows NT/i.test(ua)
     ? "Windows"
-    : /iphone|ipad|ipod/i.test(value)
-      ? "iOS"
-      : /android/i.test(value)
-        ? "Android"
-        : /macintosh|mac os x/i.test(value)
-          ? "macOS"
-          : /linux/i.test(value)
-            ? "Linux"
-            : value
-              ? "Other"
-              : null
+    : /CrOS/i.test(ua)
+      ? "ChromeOS"
+      : /iPhone|iPad|iPod/i.test(ua)
+        ? "iOS"
+        : /Android/i.test(ua)
+          ? "Android"
+          : /Mac OS X|Macintosh/i.test(ua)
+            ? "macOS"
+            : /Linux/i.test(ua)
+              ? "Linux"
+              : "Unknown"
 
-  return { deviceType, browserFamily, osFamily }
+  return { deviceType, browserName, osName }
 }
 
-export function coarseRequestGeo(headers: Headers) {
-  const rawCountry =
-    headers.get("cf-ipcountry") ??
-    headers.get("x-vercel-ip-country") ??
-    headers.get("x-country-code")
-  const countryCode = rawCountry?.trim().toUpperCase()
-  const region = boundedString(
-    headers.get("x-vercel-ip-country-region") ??
-      headers.get("cf-region-code"),
-    100
+export function requestIsSameOrigin(request: Request) {
+  const origin = request.headers.get("origin")
+  const fetchSite = request.headers.get("sec-fetch-site")
+  if (!origin) return fetchSite === "same-origin"
+
+  const allowedOrigins = new Set([new URL(request.url).origin])
+  const configuredSite = process.env.NEXT_PUBLIC_SITE_URL
+  if (configuredSite) {
+    try {
+      allowedOrigins.add(new URL(configuredSite).origin)
+    } catch {
+      // Invalid deployment configuration must not broaden allowed origins.
+    }
+  }
+  return allowedOrigins.has(origin) && fetchSite !== "cross-site"
+}
+
+export function isUuid(value: string | null | undefined) {
+  return Boolean(
+    value &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        value
+      )
   )
-
-  return {
-    countryCode:
-      countryCode && /^[A-Z]{2}$/.test(countryCode)
-        ? countryCode
-        : null,
-    region,
-  }
-}
-
-export function readCookie(cookieHeader: string | null, name: string) {
-  if (!cookieHeader) return null
-  const prefix = `${name}=`
-  const entry = cookieHeader
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(prefix))
-  if (!entry) return null
-  try {
-    return decodeURIComponent(entry.slice(prefix.length))
-  } catch {
-    return null
-  }
-}
-
-function hostname(value: unknown) {
-  const text = boundedString(value, 253)
-  if (!text) return null
-  return /^[a-z0-9.-]+$/i.test(text) ? text.toLowerCase() : null
-}
-
-function boundedString(value: unknown, maxLength: number) {
-  if (typeof value !== "string") return null
-  const text = value.trim()
-  return text ? text.slice(0, maxLength) : null
-}
-
-function stringRecord(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([key, item]) =>
-      /^[a-z0-9_]{1,40}$/i.test(key) && typeof item === "string"
-    )
-    .slice(0, 20)
-    .map(([key, item]) => [key, (item as string).slice(0, 200)])
-  return Object.fromEntries(entries)
-}
-
-function scalarRecord(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([key, item]) =>
-      /^[a-z0-9_]{1,40}$/i.test(key) &&
-      (item === null ||
-        typeof item === "string" ||
-        typeof item === "number" ||
-        typeof item === "boolean")
-    )
-    .slice(0, 20)
-    .map(([key, item]) => [
-      key,
-      typeof item === "string" ? item.slice(0, 500) : item,
-    ])
-  return Object.fromEntries(entries) as Record<
-    string,
-    string | number | boolean | null
-  >
 }

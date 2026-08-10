@@ -1,36 +1,44 @@
-import { NextResponse } from "next/server"
-import { jsonError } from "@/lib/http"
+import { NextRequest, NextResponse } from "next/server"
 import {
-  classifyUserAgent,
-  coarseRequestGeo,
-  parseMarketingEventInput,
-  readCookie,
+  browserDimensions,
+  isUuid,
+  marketingEventSchema,
+  requestIsSameOrigin,
 } from "@/lib/marketing-event"
 import {
-  marketingConsentCookieName,
-  marketingConsentVersion,
-} from "@/lib/marketing-consent"
+  marketingAnonymousCookieName,
+  marketingSessionCookieName,
+} from "@/lib/marketing-analytics"
+import {
+  consumeMarketingRateLimit,
+  RateLimitConfigurationError,
+} from "@/lib/request-rate-limit"
 import {
   readRequestJsonWithLimit,
   requestBodyLimits,
 } from "@/lib/request-body"
-import { consumeMarketingEventRateLimit } from "@/lib/request-rate-limit"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import {
+  marketingCollectionIsPermitted,
+  resolveRequestPrivacyRegion,
+} from "@/lib/privacy-region-server"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: Request) {
-  if (!sameOriginRequest(request)) {
-    return jsonError("Cross-site marketing events are not accepted.", 403)
+export async function POST(request: NextRequest) {
+  if (!requestIsSameOrigin(request)) {
+    return jsonResponse({ error: "Invalid request origin." }, 403)
+  }
+  const privacyRegion = await resolveRequestPrivacyRegion(request)
+  if (!marketingCollectionIsPermitted(request, privacyRegion)) {
+    return emptyResponse(204)
   }
 
-  const consent = readCookie(
-    request.headers.get("cookie"),
-    marketingConsentCookieName
-  )
-  if (consent !== "granted") {
-    return new NextResponse(null, { status: 204 })
+  const anonymousId = request.cookies.get(marketingAnonymousCookieName)?.value
+  const sessionId = request.cookies.get(marketingSessionCookieName)?.value
+  if (!isUuid(anonymousId) || !isUuid(sessionId)) {
+    return jsonResponse({ error: "Missing analytics identifiers." }, 400)
   }
 
   const body = await readRequestJsonWithLimit(
@@ -38,102 +46,130 @@ export async function POST(request: Request) {
     requestBodyLimits.marketingEventJson
   )
   if (!body.ok) {
-    return jsonError(
-      body.reason === "too_large"
-        ? "Marketing event payload is too large."
-        : "Marketing event payload is invalid.",
+    return jsonResponse(
+      { error: body.reason === "too_large" ? "Request too large." : "Invalid request." },
       body.reason === "too_large" ? 413 : 400
     )
   }
-
-  const event = parseMarketingEventInput(body.value)
-  if (!event) return jsonError("Marketing event payload is invalid.", 422)
-
-  const supabase = createSupabaseAdminClient()
-  const rateLimit = await consumeMarketingEventRateLimit({
-    supabase,
-    request,
-    anonymousId: event.anonymousId,
-  }).catch(() => null)
-  if (!rateLimit) {
-    return jsonError("Marketing event collection is temporarily unavailable.", 503)
+  const parsed = marketingEventSchema.safeParse(body.value)
+  if (!parsed.success) {
+    return jsonResponse({ error: "Invalid marketing event." }, 400)
   }
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: "Too many marketing events." },
-      {
+
+  const admin = createSupabaseAdminClient()
+  try {
+    const rateLimit = await consumeMarketingRateLimit({
+      supabase: admin,
+      request,
+      anonymousId: anonymousId!,
+    })
+    if (!rateLimit.allowed) {
+      return new NextResponse(null, {
         status: 429,
-        headers: {
-          "Retry-After": String(rateLimit.retryAfterSeconds),
-        },
-      }
-    )
+        headers: responseHeaders({
+          "retry-after": String(rateLimit.retryAfterSeconds),
+        }),
+      })
+    }
+  } catch (error) {
+    if (error instanceof RateLimitConfigurationError) {
+      return jsonResponse({ error: "Analytics temporarily unavailable." }, 503)
+    }
+    throw error
   }
 
-  const authClient = await createSupabaseServerClient()
-  const { data: claimsData } = await authClient.auth.getClaims()
-  const userId =
-    typeof claimsData?.claims?.sub === "string"
-      ? claimsData.claims.sub
-      : null
-  const demographic = userId
-    ? await readConsentedDemographic(supabase, userId)
-    : null
-  const geo = coarseRequestGeo(request.headers)
-  const device = classifyUserAgent(request.headers.get("user-agent"))
-  const now = new Date().toISOString()
+  const serverClient = await createSupabaseServerClient()
+  const { data: authData } = await serverClient.auth.getUser()
+  const userId = authData.user?.id ?? null
+  let location: {
+    country_code: string | null
+    region: string | null
+    city: string | null
+  } = {
+    country_code: privacyRegion.countryCode,
+    region: null,
+    city: null,
+  }
 
-  const { error } = await supabase.from("marketing_events").insert({
+  if (userId) {
+    const { data } = await admin
+      .from("profiles")
+      .select("country_code,region,city")
+      .eq("id", userId)
+      .maybeSingle()
+    if (data) {
+      location = {
+        country_code: data.country_code ?? privacyRegion.countryCode,
+        region: data.region,
+        city: data.city,
+      }
+    }
+  }
+
+  const dimensions = browserDimensions(request.headers.get("user-agent"))
+  const event = parsed.data
+  const { error } = await admin.from("marketing_events").insert({
+    anonymous_id: anonymousId,
+    session_id: sessionId,
     user_id: userId,
-    anonymous_id: event.anonymousId,
-    session_id: event.sessionId,
     event_name: event.eventName,
-    consent_version: marketingConsentVersion,
-    consented_at: now,
-    country_code: geo.countryCode,
-    region: geo.region,
-    device_type: device.deviceType,
-    browser_family: device.browserFamily,
-    os_family: device.osFamily,
-    age_band: demographic,
+    page_path: event.pagePath,
+    landing_path: event.landingPath,
+    referrer_host: event.referrerHost,
     source: event.source,
     medium: event.medium,
     campaign: event.campaign,
     term: event.term,
     content: event.content,
-    click_id_kind: event.clickIdKind,
-    click_id: event.clickId,
-    landing_path: event.landingPath,
-    referrer_host: event.referrerHost,
-    tags: event.tags,
-    metadata: event.metadata,
-    occurred_at: now,
+    first_source: event.firstSource,
+    first_medium: event.firstMedium,
+    first_campaign: event.firstCampaign,
+    click_id_type: event.clickIdType,
+    country_code: location.country_code,
+    region: location.region,
+    city: location.city,
+    device_type: dimensions.deviceType,
+    browser_name: dimensions.browserName,
+    os_name: dimensions.osName,
+    language: event.language,
+    timezone: event.timezone,
+    screen_bucket: event.screenBucket,
+    consent_version: event.consentVersion,
   })
-  if (error) {
-    return jsonError("Marketing event could not be recorded.", 500)
+  if (error) return jsonResponse({ error: "Could not save analytics event." }, 503)
+
+  return emptyResponse(204)
+}
+
+export async function DELETE(request: NextRequest) {
+  if (!requestIsSameOrigin(request)) {
+    return jsonResponse({ error: "Invalid request origin." }, 403)
   }
 
-  return new NextResponse(null, { status: 202 })
+  const anonymousId = request.cookies.get(marketingAnonymousCookieName)?.value
+  if (!isUuid(anonymousId)) return emptyResponse(204)
+
+  const admin = createSupabaseAdminClient()
+  const { error } = await admin
+    .from("marketing_events")
+    .delete()
+    .eq("anonymous_id", anonymousId!)
+  if (error) return jsonResponse({ error: "Could not delete analytics data." }, 503)
+  return emptyResponse(204)
 }
 
-async function readConsentedDemographic(
-  supabase: ReturnType<typeof createSupabaseAdminClient>,
-  userId: string
-) {
-  const { data } = await supabase
-    .from("profiles")
-    .select("age_band,demographic_consent_at")
-    .eq("id", userId)
-    .maybeSingle()
-  return data?.demographic_consent_at ? data.age_band : null
+function emptyResponse(status: number) {
+  return new NextResponse(null, { status, headers: responseHeaders() })
 }
 
-function sameOriginRequest(request: Request) {
-  const origin = request.headers.get("origin")
-  if (!origin) return true
-  try {
-    return new URL(origin).host === new URL(request.url).host
-  } catch {
-    return false
+function jsonResponse(body: unknown, status: number) {
+  return NextResponse.json(body, { status, headers: responseHeaders() })
+}
+
+function responseHeaders(extra: Record<string, string> = {}) {
+  return {
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    ...extra,
   }
 }

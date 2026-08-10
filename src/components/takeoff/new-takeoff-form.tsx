@@ -41,6 +41,7 @@ import {
   localizeTakeoffPrice,
   type Locale,
 } from "@/lib/i18n"
+import { emitMarketingEvent } from "@/lib/marketing-analytics"
 import { buttonVariants } from "@/components/ui/button"
 import {
   createSignedResumableUploadTask,
@@ -54,7 +55,6 @@ import {
   type SelectableTakeoffTrade,
 } from "@/lib/takeoff-types"
 import { cn } from "@/lib/utils"
-import { trackMarketingEventOnce } from "@/components/site/marketing-tracker"
 
 type Quote = {
   tier: TakeoffPricingTier
@@ -214,16 +214,6 @@ export function NewTakeoffForm({
 
       setProgress(20)
       if (!uploadComplete) {
-        void trackMarketingEventOnce(
-          "blueprint_upload_started",
-          currentDraft.jobId,
-          {
-            job_id: currentDraft.jobId,
-            mode,
-            size_bytes: file.size,
-            trade_count: trades.length,
-          }
-        )
         const uploadTask = createSignedResumableUploadTask({
           file,
           grant: currentDraft,
@@ -308,6 +298,7 @@ export function NewTakeoffForm({
           localizeCustomerError(payload.error, locale, copy.queueError)
         )
       }
+      emitMarketingEvent("takeoff_started")
       toast.success(copy.queuedToast)
       router.push(`/dashboard/jobs/${jobId}`)
       router.refresh()

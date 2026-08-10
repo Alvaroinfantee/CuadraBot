@@ -137,6 +137,11 @@ test("the migration keeps a durable marker so cleaned jobs cannot starve later b
     route,
     /\.lte\("project_files_purge_expires_at", claimedAt\.toISOString\(\)\)/
   )
+  assert.match(route, /purgeBoardScheduledMarketingEvents/)
+  assert.match(route, /\.not\("retention_until", "is", null\)/)
+  assert.match(route, /\.eq\("legal_hold", false\)/)
+  assert.match(route, /\.lte\("retention_until", new Date\(\)\.toISOString\(\)\)/)
+  assert.match(route, /MAX_MARKETING_EVENTS_PER_RUN = 10_000/)
 
   const claimPosition = route.indexOf(
     "const claimed = await claimRetentionJobs"

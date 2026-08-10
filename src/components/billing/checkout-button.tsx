@@ -9,7 +9,7 @@ import {
   localizeBillingError,
 } from "@/lib/dashboard-i18n"
 import type { Locale } from "@/lib/i18n"
-import { trackMarketingEventOnce } from "@/components/site/marketing-tracker"
+import { emitMarketingEvent } from "@/lib/marketing-analytics"
 
 export function CheckoutButton({
   sku,
@@ -27,7 +27,6 @@ export function CheckoutButton({
 
   async function checkout() {
     setBusy(true)
-    void trackMarketingEventOnce("checkout_started", sku, { sku })
     try {
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -45,6 +44,7 @@ export function CheckoutButton({
           )
         )
       }
+      emitMarketingEvent("checkout_started")
       window.location.assign(payload.url)
     } catch (error) {
       toast.error(

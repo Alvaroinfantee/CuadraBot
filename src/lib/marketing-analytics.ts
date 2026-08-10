@@ -30,6 +30,7 @@ export function parseAdminMarketingSnapshot(
   value: unknown
 ): AdminMarketingSnapshot {
   const root = record(value, "marketing snapshot")
+  if ("as_of" in root) return parseCurrentMarketingSnapshot(root)
   const metrics = record(root.metrics, "marketing metrics")
   return {
     asOf: isoString(root.asOf, "asOf"),
@@ -89,6 +90,48 @@ export function parseAdminMarketingSnapshot(
   }
 }
 
+function parseCurrentMarketingSnapshot(
+  root: Record<string, unknown>
+): AdminMarketingSnapshot {
+  const metrics = record(root.metrics, "marketing metrics")
+  const pageViews = count(metrics.page_views, "metrics.page_views")
+  return {
+    asOf: isoString(root.as_of, "as_of"),
+    metrics: {
+      events30: pageViews,
+      visitors30: count(metrics.visitors, "metrics.visitors"),
+      sessions30: count(metrics.sessions, "metrics.sessions"),
+      pageViews30: pageViews,
+      accountsCreated30: 0,
+      blueprintUploadsStarted30: 0,
+      checkoutsStarted30: 0,
+      purchases30: 0,
+    },
+    devices: rows(root.devices, "devices", (item, label) => ({
+      label: text(item.device, `${label}.device`),
+      events: 0,
+      visitors: count(item.visitors, `${label}.visitors`),
+    })),
+    geography: rows(root.locations, "locations", (item, label) => ({
+      label: text(item.country, `${label}.country`),
+      events: 0,
+      visitors: count(item.visitors, `${label}.visitors`),
+    })),
+    ageBands: [],
+    campaigns: rows(root.campaigns, "campaigns", (item, label) => ({
+      source: text(item.source, `${label}.source`),
+      medium: text(item.medium, `${label}.medium`),
+      campaign: text(item.campaign, `${label}.campaign`),
+      events: count(item.page_views, `${label}.page_views`),
+      visitors: count(item.visitors, `${label}.visitors`),
+      accountsCreated: 0,
+      blueprintUploadsStarted: 0,
+      checkoutsStarted: 0,
+      purchases: 0,
+    })),
+  }
+}
+
 function rows<Row>(
   value: unknown,
   label: string,
@@ -127,4 +170,102 @@ function isoString(value: unknown, label: string) {
     throw new Error(`Invalid ${label}.`)
   }
   return valueText
+}
+
+export const marketingConsentCookieName = "cuadrabot_marketing_consent_v2"
+export const legacyGoogleConsentCookieName = "cuadrabot_google_consent"
+export const marketingAnonymousCookieName = "cuadrabot_mid"
+export const marketingSessionCookieName = "cuadrabot_sid"
+export const marketingAttributionCookieName = "cuadrabot_attribution"
+export const marketingPrivacyRegionCookieName = "cuadrabot_privacy_region"
+export const marketingConsentChangedEvent =
+  "cuadrabot:marketing-consent-changed"
+export const marketingTrackEvent = "cuadrabot:marketing-event"
+export const marketingConsentVersion = 2
+
+export const regulatedMarketingCountryCodes = [
+  "AT",
+  "AX",
+  "BE",
+  "BG",
+  "CH",
+  "CY",
+  "CZ",
+  "DE",
+  "DK",
+  "EE",
+  "ES",
+  "FI",
+  "FR",
+  "GB",
+  "GG",
+  "GR",
+  "HR",
+  "HU",
+  "IE",
+  "IM",
+  "IS",
+  "IT",
+  "JE",
+  "LI",
+  "LT",
+  "LU",
+  "LV",
+  "MT",
+  "NL",
+  "NO",
+  "PL",
+  "PT",
+  "RO",
+  "SE",
+  "SI",
+  "SK",
+] as const
+
+export type MarketingPrivacyRegion = "regulated" | "standard" | "unknown"
+
+export function countryMarketingPrivacyRegion(
+  countryCode: string | null | undefined
+): MarketingPrivacyRegion {
+  const normalized = countryCode?.trim().toUpperCase()
+  if (!normalized || !/^[A-Z]{2}$/.test(normalized)) return "unknown"
+  return (regulatedMarketingCountryCodes as readonly string[]).includes(
+    normalized
+  )
+    ? "regulated"
+    : "standard"
+}
+
+export function browserGlobalPrivacyControlIsEnabled() {
+  if (typeof navigator === "undefined") return false
+  return (
+    navigator as Navigator & { globalPrivacyControl?: boolean }
+  ).globalPrivacyControl === true
+}
+
+export const marketingEventNames = [
+  "page_view",
+  "sign_up_started",
+  "sign_up_completed",
+  "checkout_started",
+  "purchase_completed",
+  "takeoff_started",
+] as const
+
+export type MarketingEventName = (typeof marketingEventNames)[number]
+
+export function isMarketingEventName(
+  value: unknown
+): value is MarketingEventName {
+  return (
+    typeof value === "string" &&
+    (marketingEventNames as readonly string[]).includes(value)
+  )
+}
+
+export function emitMarketingEvent(eventName: MarketingEventName) {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(
+    new CustomEvent(marketingTrackEvent, { detail: { eventName } })
+  )
 }
