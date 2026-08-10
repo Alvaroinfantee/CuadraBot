@@ -54,6 +54,7 @@ import {
   type SelectableTakeoffTrade,
 } from "@/lib/takeoff-types"
 import { cn } from "@/lib/utils"
+import { trackMarketingEventOnce } from "@/components/site/marketing-tracker"
 
 type Quote = {
   tier: TakeoffPricingTier
@@ -213,6 +214,16 @@ export function NewTakeoffForm({
 
       setProgress(20)
       if (!uploadComplete) {
+        void trackMarketingEventOnce(
+          "blueprint_upload_started",
+          currentDraft.jobId,
+          {
+            job_id: currentDraft.jobId,
+            mode,
+            size_bytes: file.size,
+            trade_count: trades.length,
+          }
+        )
         const uploadTask = createSignedResumableUploadTask({
           file,
           grant: currentDraft,

@@ -58,6 +58,8 @@ type RetentionOutcome = {
   metadataRowsDeleted: number
   jobsMarkedPurged: number
   fileBatchTruncated: boolean
+  marketingRetentionCutoff: string | null
+  marketingEventsDeleted: number
   failures: string[]
 }
 
@@ -89,6 +91,8 @@ async function runProjectFileRetention(request: Request) {
     metadataRowsDeleted: 0,
     jobsMarkedPurged: 0,
     fileBatchTruncated: false,
+    marketingRetentionCutoff: null,
+    marketingEventsDeleted: 0,
     failures: [],
   }
 
@@ -349,6 +353,7 @@ async function finishRetentionRun(
   supabase: SupabaseAdmin,
   outcome: RetentionOutcome
 ) {
+  await pruneMarketingEvents(supabase, outcome)
   const uniqueFailures = [...new Set(outcome.failures)]
   outcome.failures = uniqueFailures
   let alertWriteFailed = false
@@ -385,6 +390,8 @@ async function finishRetentionRun(
         metadataRowsDeleted: outcome.metadataRowsDeleted,
         jobsMarkedPurged: outcome.jobsMarkedPurged,
         fileBatchTruncated: outcome.fileBatchTruncated,
+        marketingRetentionCutoff: outcome.marketingRetentionCutoff,
+        marketingEventsDeleted: outcome.marketingEventsDeleted,
         failures: outcome.failures,
         alertWriteFailed,
       },
@@ -413,10 +420,31 @@ async function finishRetentionRun(
       metadataRowsDeleted: outcome.metadataRowsDeleted,
       jobsMarkedPurged: outcome.jobsMarkedPurged,
       fileBatchTruncated: outcome.fileBatchTruncated,
+      marketingRetentionCutoff: outcome.marketingRetentionCutoff,
+      marketingEventsDeleted: outcome.marketingEventsDeleted,
       failures: outcome.failures,
     },
     { status: outcome.failures.length ? 500 : 200 }
   )
+}
+
+async function pruneMarketingEvents(
+  supabase: SupabaseAdmin,
+  outcome: RetentionOutcome
+) {
+  const cutoff = new Date()
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - 13)
+  outcome.marketingRetentionCutoff = cutoff.toISOString()
+
+  const { count, error } = await supabase
+    .from("marketing_events")
+    .delete({ count: "exact" })
+    .lt("occurred_at", outcome.marketingRetentionCutoff)
+  if (error) {
+    outcome.failures.push("marketing_event_retention_failed")
+    return
+  }
+  outcome.marketingEventsDeleted = count ?? 0
 }
 
 async function createOrTouchRetentionAlert(

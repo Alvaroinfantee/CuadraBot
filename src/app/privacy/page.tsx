@@ -12,7 +12,7 @@ export const metadata = buildLocalizedMetadata({
 
 export default function PrivacyPage() {
   return (
-    <PolicyPage title="Privacy policy" effective="August 7, 2026">
+    <PolicyPage title="Privacy policy" effective="August 9, 2026">
       <PolicySection title="1. Who is responsible">
         <p>
           Cuadrabot is the controller of account, billing, product-usage, and
@@ -86,25 +86,40 @@ export default function PrivacyPage() {
           legal hold or other obligation may require longer retention.
         </p>
       </PolicySection>
-      <PolicySection title="7. Cookies and advertising measurement">
+      <PolicySection title="7. Cookies and marketing measurement">
         <p>
           Cuadrabot uses necessary cookies and similar storage for sign-in,
           security, language, and core service functions. With your permission,
-          we also use the Google tag and Google Ads conversion measurement to
-          understand whether an advertisement leads to a completed purchase.
-          Purchase events include the transaction reference, currency, and
-          amount confirmed by Stripe, but not full payment-card details.
+          we record first-party marketing events and use the Google tag and
+          Google Ads conversion measurement. The first-party events may include
+          coarse country or region, device category, browser and operating-system
+          family, referral host, campaign tags, advertising click identifiers,
+          page views, successful account creation, blueprint upload starts,
+          checkout starts, and verified purchases. We do not retain raw IP addresses
+          or full user-agent strings in the marketing-event store.
         </p>
         <p>
           Advertising, analytics, ad-user-data, and ad-personalization consent
-          are denied by default until you make a choice. When denied, Google
-          tags may send consent-aware, cookieless measurement signals with ads
-          data redaction. When allowed, Google may read or write advertising
-          identifiers for measurement. You can reject, allow, or later change
-          this choice with the Cookie settings control available throughout the
-          site. See Google&apos;s{" "}
+          and Cuadrabot marketing analytics are denied by default everywhere,
+          including the EEA, UK, and Switzerland, until you affirmatively allow
+          them. When denied, no events enter the first-party marketing database;
+          Google tags may still send consent-aware, cookieless measurement
+          signals with ads data redaction. When allowed, Google may read or write
+          advertising identifiers for measurement. You can reject, allow, or
+          later withdraw this choice with the Cookie settings control available
+          throughout the site. Global Privacy Control is treated as a denial.
+          Consented marketing events are scheduled for deletion after 13 months.
+          See Google&apos;s{" "}
           <a href="https://policies.google.com/privacy">privacy policy</a> for
           its processing and international-transfer safeguards.
+        </p>
+        <p>
+          An account holder may separately volunteer an age range from Company
+          settings for aggregated analysis. Age is never inferred, the field is
+          optional, and unchecking its consent control removes the value from the
+          profile. Verified purchase events include the transaction reference,
+          currency, and amount confirmed by Stripe, but not full payment-card
+          details.
         </p>
       </PolicySection>
       <PolicySection title="8. Your choices and rights">

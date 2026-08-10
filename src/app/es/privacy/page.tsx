@@ -14,7 +14,7 @@ export default function PrivacyPageEs() {
   return (
     <PolicyPage
       title="Política de privacidad"
-      effective="7 de agosto de 2026"
+      effective="9 de agosto de 2026"
     >
       <PolicySection title="1. Quién es responsable">
         <p>
@@ -116,29 +116,42 @@ export default function PrivacyPageEs() {
           obligación puede exigir una conservación más prolongada.
         </p>
       </PolicySection>
-      <PolicySection title="7. Cookies y medición publicitaria">
+      <PolicySection title="7. Cookies y medición de marketing">
         <p>
           Cuadrabot utiliza cookies y almacenamiento similares necesarios para
           el inicio de sesión, la seguridad, el idioma y las funciones
-          esenciales del servicio. Con tu permiso, también utilizamos la
-          etiqueta de Google y la medición de conversiones de Google Ads para
-          saber si un anuncio termina en una compra completada. Los eventos de
-          compra incluyen la referencia de la transacción, la moneda y el
-          importe confirmado por Stripe, pero no los datos completos de la
-          tarjeta.
+          esenciales del servicio. Con tu permiso, también registramos eventos
+          propios de marketing y utilizamos la etiqueta de Google y la medición
+          de conversiones de Google Ads. Los eventos propios pueden incluir el
+          país o región aproximados, la categoría del dispositivo, la familia
+          del navegador y del sistema operativo, el dominio de referencia,
+          etiquetas de campaña, identificadores publicitarios de clic, páginas
+          vistas, cuentas creadas correctamente, inicios de carga de planos,
+          inicios de pago y compras verificadas. No conservamos direcciones IP sin
+          procesar ni cadenas completas de agente de usuario en este registro.
         </p>
         <p>
           El consentimiento para almacenamiento publicitario, analítica, datos
-          de usuario publicitarios y personalización se deniega por defecto
-          hasta que elijas. Si lo rechazas, las etiquetas de Google pueden
-          enviar señales de medición sin cookies y adaptadas al consentimiento,
-          con censura de datos publicitarios. Si lo permites, Google puede leer
-          o escribir identificadores publicitarios para la medición. Puedes
-          rechazar, permitir o cambiar después esta opción mediante el control
-          Configurar cookies disponible en todo el sitio. Consulta la{" "}
+          de usuario publicitarios, personalización y analítica de marketing de
+          Cuadrabot se deniega por defecto en todas las regiones, incluidos el
+          EEE, Reino Unido y Suiza, hasta que lo permitas expresamente. Si lo
+          rechazas, no se guarda ningún evento en nuestra base de marketing; las
+          etiquetas de Google pueden enviar señales sin cookies adaptadas al
+          consentimiento y con censura de datos publicitarios. Puedes rechazar,
+          permitir o retirar esta opción mediante Configurar cookies. Global
+          Privacy Control se trata como una denegación. Los eventos consentidos
+          se eliminan de forma programada después de 13 meses. Consulta la{" "}
           <a href="https://policies.google.com/privacy">política de privacidad de Google</a>{" "}
           para conocer su tratamiento y sus garantías para transferencias
           internacionales.
+        </p>
+        <p>
+          El titular de una cuenta puede compartir voluntariamente un rango de
+          edad desde los datos de la empresa para análisis agregados. Nunca
+          inferimos la edad; el campo es opcional y retirar el consentimiento
+          elimina el valor del perfil. Los eventos de compra incluyen la
+          referencia de la transacción, la moneda y el importe confirmado por
+          Stripe, pero no los datos completos de la tarjeta.
         </p>
       </PolicySection>
       <PolicySection title="8. Tus opciones y derechos">

@@ -1,6 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 import { getSiteUrl } from "@/lib/config"
 import {
   localizedPublicPath,
@@ -15,6 +16,10 @@ import {
 import { safeRelativePath } from "@/lib/safe-redirect"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { signInNoticeCode } from "@/lib/auth-errors"
+import {
+  marketingAccountCreatedCookieName,
+  marketingConsentCookieName,
+} from "@/lib/marketing-consent"
 
 function textField(formData: FormData, name: string) {
   const value = formData.get(name)
@@ -119,6 +124,17 @@ export async function signUp(formData: FormData) {
   })
 
   if (error) authError("/signup", locale, "signup_failed")
+
+  const cookieStore = await cookies()
+  if (cookieStore.get(marketingConsentCookieName)?.value === "granted") {
+    cookieStore.set(marketingAccountCreatedCookieName, "1", {
+      httpOnly: false,
+      maxAge: 15 * 60,
+      path: "/",
+      sameSite: "lax",
+      secure: getSiteUrl().startsWith("https://"),
+    })
+  }
 
   if (data.session) redirect("/dashboard")
 

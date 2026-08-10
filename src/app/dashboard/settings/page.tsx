@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { getCurrentProfile, requireUser } from "@/lib/auth"
 import { dashboardCopy } from "@/lib/dashboard-i18n"
 import { getRequestLocale } from "@/lib/i18n-server"
@@ -102,6 +110,54 @@ export default async function CompanySettingsPage({
                   placeholder="America/New_York"
                   defaultValue={profile?.timezone ?? ""}
                 />
+              </div>
+              <div className="space-y-3 border p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ageBand">{copy.ageBand}</Label>
+                  <Select
+                    name="ageBand"
+                    defaultValue={profile?.age_band ?? "not_shared"}
+                    items={[
+                      { value: "not_shared", label: copy.ageNotShared },
+                      { value: "18-24", label: "18–24" },
+                      { value: "25-34", label: "25–34" },
+                      { value: "35-44", label: "35–44" },
+                      { value: "45-54", label: "45–54" },
+                      { value: "55-64", label: "55–64" },
+                      { value: "65+", label: "65+" },
+                    ]}
+                  >
+                    <SelectTrigger id="ageBand" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="not_shared">
+                          {copy.ageNotShared}
+                        </SelectItem>
+                        {["18-24", "25-34", "35-44", "45-54", "55-64", "65+"].map(
+                          (value) => (
+                            <SelectItem key={value} value={value}>
+                              {value}
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    name="shareAgeBand"
+                    defaultChecked={Boolean(profile?.demographic_consent_at)}
+                    className="mt-1 size-4"
+                  />
+                  <span>{copy.ageConsent}</span>
+                </label>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {copy.ageHelp}
+                </p>
               </div>
               <Button type="submit">{copy.save}</Button>
             </form>
