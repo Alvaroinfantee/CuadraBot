@@ -96,6 +96,10 @@ test("every API request body is streamed through an explicit byte cap", () => {
     ["src/app/api/billing/checkout/route.ts", "requestBodyLimits.billingJson"],
     ["src/app/api/billing/portal/route.ts", "requestBodyLimits.billingJson"],
     ["src/app/api/locale/route.ts", "requestBodyLimits.localeJson"],
+    [
+      "src/app/api/marketing/events/route.ts",
+      "requestBodyLimits.marketingEventJson",
+    ],
     ["src/app/api/stripe/webhook/route.ts", "requestBodyLimits.stripeWebhook"],
     ["src/app/api/takeoff/jobs/route.ts", "requestBodyLimits.takeoffDraftJson"],
     [
@@ -148,6 +152,7 @@ test("every API request body is streamed through an explicit byte cap", () => {
 
   assert.deepEqual(requestBodyLimits, {
     localeJson: 1024,
+    marketingEventJson: 8 * 1024,
     takeoffDraftJson: 32 * 1024,
     takeoffSubmitJson: 4 * 1024,
     billingJson: 4 * 1024,

@@ -4,6 +4,13 @@ import Link from "next/link"
 import { useCallback, useState, useSyncExternalStore } from "react"
 import { Button } from "@/components/ui/button"
 import type { Locale } from "@/lib/i18n"
+import {
+  legacyGoogleConsentCookieName,
+  marketingAttributionStorageKey,
+  marketingConsentChangedEvent,
+  marketingSessionStorageKey,
+  marketingVisitorCookieName,
+} from "@/lib/marketing-consent"
 
 type ConsentChoice = "granted" | "denied"
 
@@ -14,25 +21,23 @@ declare global {
   }
 }
 
-const consentChangedEvent = "cuadrabot:google-consent-changed"
-
 const copy = {
   en: {
-    label: "Advertising cookie choices",
+    label: "Marketing and analytics choices",
     title: "Your privacy choices",
-    body: "With your permission, Cuadrabot uses Google Ads measurement to understand whether an ad leads to a purchase. Necessary account and security cookies always remain available.",
+    body: "With your permission, Cuadrabot records coarse country, device category, campaign tags, and conversion events in our private analytics database and uses Google Ads measurement. We do not store raw IP addresses or full browser fingerprints. Necessary account and security cookies always remain available.",
     privacy: "Privacy policy",
-    reject: "Reject advertising cookies",
-    accept: "Allow advertising measurement",
+    reject: "Reject marketing analytics",
+    accept: "Allow marketing analytics",
     settings: "Cookie settings",
   },
   es: {
-    label: "Opciones de cookies publicitarias",
+    label: "Opciones de marketing y analítica",
     title: "Tus opciones de privacidad",
-    body: "Con tu permiso, Cuadrabot utiliza la medición de Google Ads para saber si un anuncio termina en una compra. Las cookies necesarias de cuenta y seguridad siguen disponibles.",
+    body: "Con tu permiso, Cuadrabot registra el país aproximado, la categoría del dispositivo, las etiquetas de campaña y los eventos de conversión en nuestra base de datos privada, y utiliza la medición de Google Ads. No guardamos direcciones IP sin procesar ni huellas completas del navegador. Las cookies necesarias de cuenta y seguridad siguen disponibles.",
     privacy: "Política de privacidad",
-    reject: "Rechazar cookies publicitarias",
-    accept: "Permitir medición publicitaria",
+    reject: "Rechazar analítica de marketing",
+    accept: "Permitir analítica de marketing",
     settings: "Configurar cookies",
   },
 } as const
@@ -47,8 +52,9 @@ export function GoogleAdsConsent({
   const [preferencesOpen, setPreferencesOpen] = useState(false)
   const content = copy[locale]
   const subscribe = useCallback((onStoreChange: () => void) => {
-    window.addEventListener(consentChangedEvent, onStoreChange)
-    return () => window.removeEventListener(consentChangedEvent, onStoreChange)
+    window.addEventListener(marketingConsentChangedEvent, onStoreChange)
+    return () =>
+      window.removeEventListener(marketingConsentChangedEvent, onStoreChange)
   }, [])
   const readChoice = useCallback(
     () => readConsentCookie(cookieName),
@@ -58,8 +64,10 @@ export function GoogleAdsConsent({
 
   function choose(nextChoice: ConsentChoice) {
     writeConsentCookie(cookieName, nextChoice)
+    deleteCookie(legacyGoogleConsentCookieName)
     updateGoogleConsent(nextChoice)
-    window.dispatchEvent(new Event(consentChangedEvent))
+    if (nextChoice === "denied") clearMarketingStorage()
+    window.dispatchEvent(new Event(marketingConsentChangedEvent))
     setPreferencesOpen(false)
   }
 
@@ -112,6 +120,12 @@ export function GoogleAdsConsent({
 }
 
 function readConsentCookie(cookieName: string): ConsentChoice | null {
+  if (
+    (navigator as Navigator & { globalPrivacyControl?: boolean })
+      .globalPrivacyControl
+  ) {
+    return "denied"
+  }
   const prefix = `${cookieName}=`
   const entry = document.cookie
     .split("; ")
@@ -119,6 +133,21 @@ function readConsentCookie(cookieName: string): ConsentChoice | null {
   const value = entry ? decodeURIComponent(entry.slice(prefix.length)) : null
 
   return value === "granted" || value === "denied" ? value : null
+}
+
+function deleteCookie(cookieName: string) {
+  const secure = window.location.protocol === "https:" ? "; Secure" : ""
+  document.cookie = `${cookieName}=; Path=/; Max-Age=0; SameSite=Lax${secure}`
+}
+
+function clearMarketingStorage() {
+  deleteCookie(marketingVisitorCookieName)
+  try {
+    window.localStorage.removeItem(marketingAttributionStorageKey)
+    window.sessionStorage.removeItem(marketingSessionStorageKey)
+  } catch {
+    // Consent revocation still takes effect when browser storage is blocked.
+  }
 }
 
 function writeConsentCookie(cookieName: string, choice: ConsentChoice) {

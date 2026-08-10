@@ -1,5 +1,6 @@
 export const requestBodyLimits = Object.freeze({
   localeJson: 1 * 1024,
+  marketingEventJson: 8 * 1024,
   takeoffDraftJson: 32 * 1024,
   takeoffSubmitJson: 4 * 1024,
   billingJson: 4 * 1024,

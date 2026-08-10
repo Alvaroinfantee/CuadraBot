@@ -266,6 +266,12 @@ const englishDashboardCopy = {
     region: "Region / state",
     city: "City",
     timezone: "Timezone",
+    ageBand: "Optional age range",
+    ageNotShared: "Prefer not to share",
+    ageConsent:
+      "I voluntarily allow Cuadrabot to use this age range in aggregated marketing analysis.",
+    ageHelp:
+      "We never infer your age. Leave this unchecked to remove any previously shared age range.",
     save: "Save profile",
     privacyTitle: "Privacy and account requests",
     privacyBody:
@@ -559,6 +565,12 @@ const spanishDashboardCopy = {
     region: "Región o provincia",
     city: "Ciudad",
     timezone: "Zona horaria",
+    ageBand: "Rango de edad opcional",
+    ageNotShared: "Prefiero no compartirlo",
+    ageConsent:
+      "Autorizo voluntariamente a Cuadrabot a utilizar este rango de edad en análisis de marketing agregados.",
+    ageHelp:
+      "Nunca inferimos tu edad. Deja esta casilla sin marcar para eliminar cualquier rango compartido anteriormente.",
     save: "Guardar perfil",
     privacyTitle: "Privacidad y solicitudes sobre la cuenta",
     privacyBody:

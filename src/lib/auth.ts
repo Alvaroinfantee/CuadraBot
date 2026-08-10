@@ -30,7 +30,7 @@ export const getCurrentProfile = cache(async () => {
   const { data } = await supabase
     .from("profiles")
     .select(
-      "id,email,full_name,role,status,company_name,country_code,region,city,timezone,stripe_customer_id,free_sample_used_at,last_seen_at"
+      "id,email,full_name,role,status,company_name,country_code,region,city,timezone,age_band,demographic_consent_at,stripe_customer_id,free_sample_used_at,last_seen_at"
     )
     .eq("id", user.id)
     .maybeSingle()

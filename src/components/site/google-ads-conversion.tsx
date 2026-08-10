@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { googleAdsPurchaseDestination } from "@/lib/google-ads"
+import { trackMarketingEvent } from "@/components/site/marketing-tracker"
 
 export function GoogleAdsPurchaseConversion({
   currency,
@@ -44,6 +45,11 @@ export function GoogleAdsPurchaseConversion({
       value: Number((valueCents / 100).toFixed(2)),
       currency: currency.toUpperCase(),
       transaction_id: transactionId,
+    })
+    void trackMarketingEvent("purchase", {
+      currency: currency.toUpperCase(),
+      transaction_id: transactionId,
+      value_cents: valueCents,
     })
     try {
       window.sessionStorage.setItem(storageKey, "sent")

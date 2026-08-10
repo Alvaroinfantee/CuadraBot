@@ -1,12 +1,18 @@
 import { AdminHeader, AdminMetric } from "@/components/admin/admin-ui"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { getAdminSnapshot } from "@/lib/admin-data"
+import {
+  getAdminMarketingSnapshot,
+  getAdminSnapshot,
+} from "@/lib/admin-data"
 
 export const metadata = { title: "Funnel and growth" }
 
 export default async function AdminGrowthPage() {
-  const data = await getAdminSnapshot()
+  const [data, marketing] = await Promise.all([
+    getAdminSnapshot(),
+    getAdminMarketingSnapshot(),
+  ])
   const first = data.funnel[0]?.count ?? 0
   const paid = data.funnel.find((step) => step.name === "takeoff_queued")?.count ?? 0
   const conversion = first ? (paid / first) * 100 : 0
@@ -34,6 +40,39 @@ export default async function AdminGrowthPage() {
           label="Repeat company rate"
           value={`${data.metrics.repeatCompanyRate.toFixed(1)}%`}
           note={`${data.metrics.repeatCompanies} of ${data.metrics.companiesWithConfirmedJobs} confirmed customers`}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <AdminMetric
+          label="Consented visitors · 30 days"
+          value={marketing.metrics.visitors30.toLocaleString()}
+          note={`${marketing.metrics.sessions30.toLocaleString()} sessions`}
+        />
+        <AdminMetric
+          label="Accounts created"
+          value={marketing.metrics.accountsCreated30.toLocaleString()}
+          note="Successful consented registrations"
+        />
+        <AdminMetric
+          label="Blueprint uploads started"
+          value={marketing.metrics.blueprintUploadsStarted30.toLocaleString()}
+          note="Unique upload drafts per session"
+        />
+        <AdminMetric
+          label="Checkouts started"
+          value={marketing.metrics.checkoutsStarted30.toLocaleString()}
+          note="Unique SKU starts per session"
+        />
+        <AdminMetric
+          label="Attributed purchases"
+          value={marketing.metrics.purchases30.toLocaleString()}
+          note="Server-verified Stripe conversions"
+        />
+        <AdminMetric
+          label="Consented events"
+          value={marketing.metrics.events30.toLocaleString()}
+          note="No raw IP or full user-agent storage"
         />
       </div>
 
@@ -73,27 +112,80 @@ export default async function AdminGrowthPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm leading-6 text-muted-foreground">
-              Source, medium, and campaign are stored on consent-aware product
-              events. No campaign has enough attributed data to display until
-              launch traffic arrives.
+              First-party source, medium, campaign, and purchase signals from
+              visitors who allowed marketing analytics.
             </p>
             <div className="mt-6 space-y-3">
-              {[
-                ["Primary growth KPI", "90-day contribution / CAC"],
-                ["Activation KPI", "Upload → verified quote"],
-                ["Revenue KPI", "Verified quote → confirmed credits"],
-                ["Retention KPI", "Second takeoff within 90 days"],
-              ].map(([name, value]) => (
-                <div key={name} className="border p-4">
-                  <p className="text-xs text-muted-foreground">{name}</p>
-                  <p className="mt-1 text-sm font-medium">{value}</p>
+              {marketing.campaigns.slice(0, 8).map((row) => (
+                <div
+                  key={`${row.source}:${row.medium}:${row.campaign}`}
+                  className="border p-4"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    {row.source} · {row.medium}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium">
+                    {row.campaign}
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    {row.visitors} visitors · {row.accountsCreated} accounts ·{" "}
+                    {row.blueprintUploadsStarted} uploads · {row.checkoutsStarted} checkouts ·{" "}
+                    {row.purchases} purchases
+                  </p>
                 </div>
               ))}
+              {!marketing.campaigns.length ? (
+                <p className="border p-4 text-sm text-muted-foreground">
+                  No consented campaign traffic recorded yet.
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <BreakdownCard title="Device mix" rows={marketing.devices} />
+        <BreakdownCard title="Visitor country" rows={marketing.geography} />
+        <BreakdownCard
+          title="Optional declared age range"
+          rows={marketing.ageBands.map((row) => ({ ...row, events: 0 }))}
+          hideEvents
+        />
+      </div>
     </div>
+  )
+}
+
+function BreakdownCard({
+  title,
+  rows,
+  hideEvents = false,
+}: {
+  title: string
+  rows: Array<{ label: string; visitors: number; events: number }>
+  hideEvents?: boolean
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {rows.slice(0, 10).map((row) => (
+          <div key={row.label} className="flex justify-between gap-4 border-b pb-3 text-sm last:border-0">
+            <span>{row.label}</span>
+            <span className="text-right text-muted-foreground">
+              {row.visitors} visitors
+              {!hideEvents ? ` · ${row.events} events` : ""}
+            </span>
+          </div>
+        ))}
+        {!rows.length ? (
+          <p className="text-sm text-muted-foreground">No consented data yet.</p>
+        ) : null}
+      </CardContent>
+    </Card>
   )
 }
 

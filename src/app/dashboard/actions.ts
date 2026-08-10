@@ -12,6 +12,15 @@ function field(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : ""
 }
 
+const ageBands = new Set([
+  "18-24",
+  "25-34",
+  "35-44",
+  "45-54",
+  "55-64",
+  "65+",
+])
+
 export async function updateCompanyProfile(formData: FormData) {
   const [user, locale] = await Promise.all([
     requireUser("/dashboard/settings"),
@@ -24,6 +33,12 @@ export async function updateCompanyProfile(formData: FormData) {
   const region = field(formData, "region")
   const city = field(formData, "city")
   const timezone = field(formData, "timezone")
+  const requestedAgeBand = field(formData, "ageBand")
+  const shareAgeBand = formData.get("shareAgeBand") === "on"
+  const ageBand =
+    shareAgeBand && ageBands.has(requestedAgeBand)
+      ? requestedAgeBand
+      : null
 
   if (fullName.length < 2 || companyName.length < 2) {
     throw new Error(copy.requiredName)
@@ -42,6 +57,8 @@ export async function updateCompanyProfile(formData: FormData) {
       region: region || null,
       city: city || null,
       timezone: timezone || null,
+      age_band: ageBand,
+      demographic_consent_at: ageBand ? new Date().toISOString() : null,
       location_source: "user",
       last_seen_at: new Date().toISOString(),
     })

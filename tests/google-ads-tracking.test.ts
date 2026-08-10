@@ -8,12 +8,17 @@ function read(relativePath: string) {
 
 const layout = read("src/app/layout.tsx")
 const globalTag = read("src/components/site/google-ads.tsx")
+const googleAdsConfig = read("src/lib/google-ads.ts")
 const consent = read("src/components/site/google-ads-consent.tsx")
 const conversion = read("src/components/site/google-ads-conversion.tsx")
 const poller = read("src/components/billing/checkout-conversion-poller.tsx")
 const verification = read("src/lib/billing-conversion.ts")
 const billingPage = read("src/app/dashboard/billing/page.tsx")
 const checkoutRoute = read("src/app/api/billing/checkout/route.ts")
+const marketingTracker = read("src/components/site/marketing-tracker.tsx")
+const signupAction = read("src/app/auth/actions.ts")
+const takeoffForm = read("src/components/takeoff/new-takeoff-form.tsx")
+const checkoutButton = read("src/components/billing/checkout-button.tsx")
 
 test("the Google tag is global and initializes Consent Mode v2 first", () => {
   assert.match(layout, /<GoogleAdsTag locale=\{locale\}/)
@@ -36,8 +41,11 @@ test("the Google tag is global and initializes Consent Mode v2 first", () => {
   }
 
   assert.match(globalTag, /ads_data_redaction/)
+  assert.match(globalTag, /marketingConsentCookieName/)
+  assert.match(globalTag, /globalPrivacyControl/)
   assert.match(consent, /Max-Age=31536000/)
   assert.match(consent, /Cookie settings/)
+  assert.match(consent, /clearMarketingStorage/)
 })
 
 test("purchase conversion requires a server-verified paid Stripe session", () => {
@@ -66,6 +74,22 @@ test("the conversion event uses a Stripe transaction id and has no fake fallback
   assert.match(conversion, /Number\.isSafeInteger\(valueCents\)/)
   assert.doesNotMatch(conversion, /valueCents \?[^\n]+: 1/)
   assert.match(conversion, /sessionStorage\.setItem/)
+  assert.match(conversion, /trackMarketingEvent\("purchase"/)
+})
+
+test("intermediate funnel conversions are consented, deduplicated, and remain separate from purchase", () => {
+  assert.match(marketingTracker, /trackMarketingEventOnce/)
+  assert.match(marketingTracker, /account_created/)
+  assert.match(marketingTracker, /blueprint_upload_started/)
+  assert.match(marketingTracker, /checkout_started/)
+  assert.match(marketingTracker, /sendGoogleAdsFunnelConversion/)
+  assert.match(signupAction, /marketingConsentCookieName/)
+  assert.match(signupAction, /marketingAccountCreatedCookieName/)
+  assert.match(takeoffForm, /"blueprint_upload_started"/)
+  assert.match(checkoutButton, /"checkout_started"/)
+  assert.match(googleAdsConfig, /o60NCISN694cELXR-N1D/)
+  assert.match(googleAdsConfig, /2NvSCIqN694cELXR-N1D/)
+  assert.match(googleAdsConfig, /uoDlCIeN694cELXR-N1D/)
 })
 
 test("both privacy notices describe Google Ads consent", () => {

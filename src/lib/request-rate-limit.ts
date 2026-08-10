@@ -27,6 +27,12 @@ const policies: Record<
   },
 }
 
+const marketingEventPolicy = {
+  visitorLimit: 240,
+  ipLimit: 1_000,
+  windowSeconds: 60 * 60,
+} as const
+
 export class RateLimitConfigurationError extends Error {}
 
 export async function consumeTakeoffRateLimit(options: {
@@ -59,6 +65,38 @@ export async function consumeTakeoffRateLimit(options: {
     allowed: userBucket.allowed && ipBucket.allowed,
     retryAfterSeconds: Math.max(
       userBucket.retry_after_seconds,
+      ipBucket.retry_after_seconds
+    ),
+  }
+}
+
+export async function consumeMarketingEventRateLimit(options: {
+  supabase: AdminClient
+  request: Request
+  anonymousId: string
+}) {
+  const { supabase, request, anonymousId } = options
+  const ip = getRequestIp(request)
+  const ipDigest = digestRequestIp(ip, getRateLimitSecret())
+  const [visitorBucket, ipBucket] = await Promise.all([
+    consumeBucket(
+      supabase,
+      `marketing:event:visitor:${anonymousId}`,
+      marketingEventPolicy.visitorLimit,
+      marketingEventPolicy.windowSeconds
+    ),
+    consumeBucket(
+      supabase,
+      `marketing:event:ip:${ipDigest}`,
+      marketingEventPolicy.ipLimit,
+      marketingEventPolicy.windowSeconds
+    ),
+  ])
+
+  return {
+    allowed: visitorBucket.allowed && ipBucket.allowed,
+    retryAfterSeconds: Math.max(
+      visitorBucket.retry_after_seconds,
       ipBucket.retry_after_seconds
     ),
   }

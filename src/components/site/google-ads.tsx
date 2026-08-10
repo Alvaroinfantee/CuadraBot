@@ -1,24 +1,25 @@
 import Script from "next/script"
 import { GoogleAdsConsent } from "@/components/site/google-ads-consent"
+import { MarketingTracker } from "@/components/site/marketing-tracker"
 import {
   googleAdsConfigurationIsValid,
   googleAdsId,
 } from "@/lib/google-ads"
 import type { Locale } from "@/lib/i18n"
-
-const consentCookieName = "cuadrabot_google_consent"
+import { marketingConsentCookieName } from "@/lib/marketing-consent"
 
 export function GoogleAdsTag({ locale }: { locale: Locale }) {
   if (!googleAdsConfigurationIsValid) return null
 
   const consentBootstrap = `
     (function () {
-      var cookieName = ${JSON.stringify(consentCookieName)};
+      var cookieName = ${JSON.stringify(marketingConsentCookieName)};
       var match = document.cookie.split('; ').find(function (entry) {
         return entry.indexOf(cookieName + '=') === 0;
       });
       var choice = match ? decodeURIComponent(match.slice(cookieName.length + 1)) : null;
-      var granted = choice === 'granted';
+      var privacySignal = navigator.globalPrivacyControl === true;
+      var granted = choice === 'granted' && !privacySignal;
 
       window.dataLayer = window.dataLayer || [];
       window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
@@ -48,7 +49,11 @@ export function GoogleAdsTag({ locale }: { locale: Locale }) {
         )}`}
         strategy="afterInteractive"
       />
-      <GoogleAdsConsent cookieName={consentCookieName} locale={locale} />
+      <GoogleAdsConsent
+        cookieName={marketingConsentCookieName}
+        locale={locale}
+      />
+      <MarketingTracker />
     </>
   )
 }

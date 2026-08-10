@@ -9,6 +9,7 @@ import {
   type AdminAnalyticsAggregate,
   type ServiceHealthRow,
 } from "@/lib/admin-analytics"
+import { parseAdminMarketingSnapshot } from "@/lib/marketing-analytics"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import type { TakeoffJob } from "@/lib/takeoff-types"
 
@@ -203,6 +204,18 @@ export const getAdminSnapshot = cache(async () => {
     settings,
     credits,
   })
+})
+
+export const getAdminMarketingSnapshot = cache(async () => {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase.rpc(
+    "get_admin_marketing_snapshot",
+    { p_as_of: new Date().toISOString() }
+  )
+  if (error) {
+    throw new Error(`Could not load marketing analytics: ${error.message}`)
+  }
+  return parseAdminMarketingSnapshot(data)
 })
 
 async function readRows<Row>(
