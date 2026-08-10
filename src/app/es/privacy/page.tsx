@@ -14,7 +14,7 @@ export default function PrivacyPageEs() {
   return (
     <PolicyPage
       title="Política de privacidad"
-      effective="9 de agosto de 2026"
+      effective="10 de agosto de 2026"
     >
       <PolicySection title="1. Quién es responsable">
         <p>
@@ -49,6 +49,14 @@ export default function PrivacyPageEs() {
             Eventos operativos, como cargas, etapas de trabajos, descargas,
             solicitudes de soporte, estado del servicio, registros de auditoría
             y registros de seguridad.
+          </li>
+          <li>
+            Con consentimiento, eventos propios de marketing como rutas de
+            páginas, etiquetas de campaña, dominio de referencia,
+            identificadores aleatorios de navegador y sesión, categoría de
+            dispositivo, navegador y sistema operativo, idioma, zona horaria,
+            intervalo de tamaño de pantalla y ubicación aproximada del perfil o
+            la facturación cuando esté disponible.
           </li>
         </ul>
       </PolicySection>
@@ -115,43 +123,58 @@ export default function PrivacyPageEs() {
           anonimizarse para los fines indicados. Una retención legal u otra
           obligación puede exigir una conservación más prolongada.
         </p>
+        <p>
+          El consejo todavía no ha aprobado un calendario fijo de conservación
+          por antigüedad para los eventos de marketing, por lo que la eliminación
+          automática por antigüedad está desactivada y la política queda pendiente
+          de revisión de gobierno. Esto no anula un derecho de supresión aplicable,
+          la retirada del consentimiento, una obligación legal ni una retención
+          legal documentada. Podemos agregar o anonimizar registros antiguos cuando
+          ya no necesiten identificar a un navegador o persona.
+        </p>
       </PolicySection>
-      <PolicySection title="7. Cookies y medición de marketing">
+      <PolicySection title="7. Cookies y medición publicitaria">
         <p>
           Cuadrabot utiliza cookies y almacenamiento similares necesarios para
-          el inicio de sesión, la seguridad, el idioma y las funciones
-          esenciales del servicio. Con tu permiso, también registramos eventos
-          propios de marketing y utilizamos la etiqueta de Google y la medición
-          de conversiones de Google Ads. Los eventos propios pueden incluir el
-          país o región aproximados, la categoría del dispositivo, la familia
-          del navegador y del sistema operativo, el dominio de referencia,
-          etiquetas de campaña, identificadores publicitarios de clic, páginas
-          vistas, cuentas creadas correctamente, inicios de carga de planos,
-          inicios de pago y compras verificadas. No conservamos direcciones IP sin
-          procesar ni cadenas completas de agente de usuario en este registro.
+          el inicio de sesión, la seguridad, el idioma, tus opciones de
+          consentimiento y las funciones esenciales del servicio. Cuando las
+          reglas regionales aplicables exigen consentimiento previo, esperamos
+          tu permiso antes de crear identificadores propios y aleatorios de
+          visitante y sesión y una cookie limitada de atribución de campañas. En
+          otras regiones estas herramientas opcionales pueden activarse por
+          defecto, con una opción de exclusión persistente. Así podemos crear
+          nuestra base interna de inteligencia de marketing. No copiamos cookies
+          arbitrarias del navegador ni guardamos direcciones IP sin tratar,
+          datos de pago o planos cargados en esa base.
         </p>
         <p>
-          El consentimiento para almacenamiento publicitario, analítica, datos
-          de usuario publicitarios, personalización y analítica de marketing de
-          Cuadrabot se deniega por defecto en todas las regiones, incluidos el
-          EEE, Reino Unido y Suiza, hasta que lo permitas expresamente. Si lo
-          rechazas, no se guarda ningún evento en nuestra base de marketing; las
-          etiquetas de Google pueden enviar señales sin cookies adaptadas al
-          consentimiento y con censura de datos publicitarios. Puedes rechazar,
-          permitir o retirar esta opción mediante Configurar cookies. Global
-          Privacy Control se trata como una denegación. Los eventos consentidos
-          se eliminan de forma programada después de 13 meses. Consulta la{" "}
+          Utilizamos una consulta de país en el servidor para elegir la
+          experiencia de consentimiento aplicable. Country.is trata
+          transitoriamente la IP para esa consulta y declara que no registra
+          las solicitudes. Cuadrabot solo conserva una clasificación regional
+          firmada y el código de país aproximado, no la dirección IP. Si no se
+          puede resolver el país, el almacenamiento opcional requiere
+          consentimiento. También respetamos las señales Global Privacy Control
+          compatibles como exclusión.
+        </p>
+        <p>
+          La misma opción regional controla la medición de conversiones de Google Ads.
+          Los eventos de compra enviados a Google incluyen la referencia de la
+          transacción, la moneda y el importe confirmado por Stripe, pero no los
+          datos completos de la tarjeta. El consentimiento para almacenamiento
+          publicitario, analítica, datos de usuario publicitarios y
+          personalización se deniega por defecto en las regiones de consentimiento
+          previo hasta que elijas. Si lo
+          rechazas, las etiquetas de Google pueden enviar señales de medición
+          sin cookies y adaptadas al consentimiento, con censura de datos
+          publicitarios. Si lo permites, Google puede leer o escribir
+          identificadores publicitarios para la medición. Puedes rechazar,
+          permitir o cambiar después esta opción mediante el control Configurar
+          cookies disponible en todo el sitio. Rechazar y permitir se presentan
+          al mismo nivel. Consulta la{" "}
           <a href="https://policies.google.com/privacy">política de privacidad de Google</a>{" "}
           para conocer su tratamiento y sus garantías para transferencias
           internacionales.
-        </p>
-        <p>
-          El titular de una cuenta puede compartir voluntariamente un rango de
-          edad desde los datos de la empresa para análisis agregados. Nunca
-          inferimos la edad; el campo es opcional y retirar el consentimiento
-          elimina el valor del perfil. Los eventos de compra incluyen la
-          referencia de la transacción, la moneda y el importe confirmado por
-          Stripe, pero no los datos completos de la tarjeta.
         </p>
       </PolicySection>
       <PolicySection title="8. Tus opciones y derechos">
@@ -166,7 +189,8 @@ export default function PrivacyPageEs() {
       </PolicySection>
       <PolicySection title="9. Seguridad y cambios">
         <p>
-          Utilizamos almacenamiento privado, reglas de acceso por cliente,
+          Utilizamos transporte cifrado y cifrado en reposo administrado por el
+          proveedor, almacenamiento privado, reglas de acceso por cliente,
           enlaces firmados de corta duración, credenciales solo en el servidor,
           registros de fuentes respaldados por checksum, comprobaciones
           programadas de presencia de objetos, registros de auditoría y acceso

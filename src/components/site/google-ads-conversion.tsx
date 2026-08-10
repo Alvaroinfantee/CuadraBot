@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { googleAdsPurchaseDestination } from "@/lib/google-ads"
-import { trackMarketingEvent } from "@/components/site/marketing-tracker"
+import { emitMarketingEvent } from "@/lib/marketing-analytics"
 
 export function GoogleAdsPurchaseConversion({
   currency,
@@ -15,7 +15,6 @@ export function GoogleAdsPurchaseConversion({
 }) {
   useEffect(() => {
     if (
-      !googleAdsPurchaseDestination ||
       !transactionId ||
       !Number.isSafeInteger(valueCents) ||
       !valueCents ||
@@ -26,7 +25,7 @@ export function GoogleAdsPurchaseConversion({
       return
     }
 
-    const storageKey = `cuadrabot:google-ads:purchase:${transactionId}`
+    const storageKey = `cuadrabot:purchase:${transactionId}`
     try {
       if (window.sessionStorage.getItem(storageKey)) return
     } catch {
@@ -34,23 +33,21 @@ export function GoogleAdsPurchaseConversion({
       // deduplicates repeated events with the server-generated transaction ID.
     }
 
-    window.dataLayer = window.dataLayer || []
-    window.gtag =
-      window.gtag ||
-      ((...args: unknown[]) => {
-        window.dataLayer?.push(args)
+    emitMarketingEvent("purchase_completed")
+    if (googleAdsPurchaseDestination) {
+      window.dataLayer = window.dataLayer || []
+      window.gtag =
+        window.gtag ||
+        ((...args: unknown[]) => {
+          window.dataLayer?.push(args)
+        })
+      window.gtag("event", "conversion", {
+        send_to: googleAdsPurchaseDestination,
+        value: Number((valueCents / 100).toFixed(2)),
+        currency: currency.toUpperCase(),
+        transaction_id: transactionId,
       })
-    window.gtag("event", "conversion", {
-      send_to: googleAdsPurchaseDestination,
-      value: Number((valueCents / 100).toFixed(2)),
-      currency: currency.toUpperCase(),
-      transaction_id: transactionId,
-    })
-    void trackMarketingEvent("purchase", {
-      currency: currency.toUpperCase(),
-      transaction_id: transactionId,
-      value_cents: valueCents,
-    })
+    }
     try {
       window.sessionStorage.setItem(storageKey, "sent")
     } catch {

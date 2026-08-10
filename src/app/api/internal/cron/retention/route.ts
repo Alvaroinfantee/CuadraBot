@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic"
 
 const MAX_JOBS_PER_RUN = 50
 const MAX_FILES_PER_RUN = 1_000
+const MAX_MARKETING_EVENTS_PER_RUN = 10_000
 const STORAGE_DELETE_BATCH_SIZE = 100
 const RETENTION_HEALTH_TTL_HOURS = 30
 const RETENTION_LEASE_HOURS = 2
@@ -58,8 +59,8 @@ type RetentionOutcome = {
   metadataRowsDeleted: number
   jobsMarkedPurged: number
   fileBatchTruncated: boolean
-  marketingRetentionCutoff: string | null
   marketingEventsDeleted: number
+  marketingEventBatchTruncated: boolean
   failures: string[]
 }
 
@@ -91,10 +92,12 @@ async function runProjectFileRetention(request: Request) {
     metadataRowsDeleted: 0,
     jobsMarkedPurged: 0,
     fileBatchTruncated: false,
-    marketingRetentionCutoff: null,
     marketingEventsDeleted: 0,
+    marketingEventBatchTruncated: false,
     failures: [],
   }
+
+  await purgeBoardScheduledMarketingEvents(supabase, outcome)
 
   const { data: setting, error: settingError } = await supabase
     .from("app_settings")
@@ -353,7 +356,6 @@ async function finishRetentionRun(
   supabase: SupabaseAdmin,
   outcome: RetentionOutcome
 ) {
-  await pruneMarketingEvents(supabase, outcome)
   const uniqueFailures = [...new Set(outcome.failures)]
   outcome.failures = uniqueFailures
   let alertWriteFailed = false
@@ -390,8 +392,8 @@ async function finishRetentionRun(
         metadataRowsDeleted: outcome.metadataRowsDeleted,
         jobsMarkedPurged: outcome.jobsMarkedPurged,
         fileBatchTruncated: outcome.fileBatchTruncated,
-        marketingRetentionCutoff: outcome.marketingRetentionCutoff,
         marketingEventsDeleted: outcome.marketingEventsDeleted,
+        marketingEventBatchTruncated: outcome.marketingEventBatchTruncated,
         failures: outcome.failures,
         alertWriteFailed,
       },
@@ -420,31 +422,48 @@ async function finishRetentionRun(
       metadataRowsDeleted: outcome.metadataRowsDeleted,
       jobsMarkedPurged: outcome.jobsMarkedPurged,
       fileBatchTruncated: outcome.fileBatchTruncated,
-      marketingRetentionCutoff: outcome.marketingRetentionCutoff,
       marketingEventsDeleted: outcome.marketingEventsDeleted,
+      marketingEventBatchTruncated: outcome.marketingEventBatchTruncated,
       failures: outcome.failures,
     },
     { status: outcome.failures.length ? 500 : 200 }
   )
 }
 
-async function pruneMarketingEvents(
+async function purgeBoardScheduledMarketingEvents(
   supabase: SupabaseAdmin,
   outcome: RetentionOutcome
 ) {
-  const cutoff = new Date()
-  cutoff.setUTCMonth(cutoff.getUTCMonth() - 13)
-  outcome.marketingRetentionCutoff = cutoff.toISOString()
-
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from("marketing_events")
-    .delete({ count: "exact" })
-    .lt("occurred_at", outcome.marketingRetentionCutoff)
+    .select("id")
+    .not("retention_until", "is", null)
+    .eq("legal_hold", false)
+    .lte("retention_until", new Date().toISOString())
+    .order("retention_until", { ascending: true })
+    .limit(MAX_MARKETING_EVENTS_PER_RUN)
+
   if (error) {
-    outcome.failures.push("marketing_event_retention_failed")
+    outcome.failures.push("marketing_event_retention_query_failed")
     return
   }
-  outcome.marketingEventsDeleted = count ?? 0
+
+  const ids = (data ?? []).map((event) => event.id as string)
+  outcome.marketingEventBatchTruncated =
+    ids.length === MAX_MARKETING_EVENTS_PER_RUN
+
+  for (const batch of chunks(ids, 500)) {
+    const { data: deleted, error: deleteError } = await supabase
+      .from("marketing_events")
+      .delete()
+      .in("id", batch)
+      .select("id")
+    if (deleteError) {
+      outcome.failures.push("marketing_event_retention_delete_failed")
+      continue
+    }
+    outcome.marketingEventsDeleted += deleted?.length ?? 0
+  }
 }
 
 async function createOrTouchRetentionAlert(

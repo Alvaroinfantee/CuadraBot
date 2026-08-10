@@ -1,16 +1,16 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react"
 import { Button } from "@/components/ui/button"
 import type { Locale } from "@/lib/i18n"
 import {
+  browserGlobalPrivacyControlIsEnabled,
   legacyGoogleConsentCookieName,
-  marketingAttributionStorageKey,
   marketingConsentChangedEvent,
-  marketingSessionStorageKey,
-  marketingVisitorCookieName,
-} from "@/lib/marketing-consent"
+  type MarketingPrivacyRegion,
+} from "@/lib/marketing-analytics"
+import { getBrowserPrivacyRegion } from "@/lib/privacy-region-client"
 
 type ConsentChoice = "granted" | "denied"
 
@@ -23,33 +23,41 @@ declare global {
 
 const copy = {
   en: {
-    label: "Marketing and analytics choices",
+    label: "Analytics and advertising cookie choices",
     title: "Your privacy choices",
-    body: "With your permission, Cuadrabot records coarse country, device category, campaign tags, and conversion events in our private analytics database and uses Google Ads measurement. We do not store raw IP addresses or full browser fingerprints. Necessary account and security cookies always remain available.",
+    body: "This region requires opt-in. With your permission, Cuadrabot saves first-party page, campaign, device, language, and available coarse-location analytics, and uses Google Ads measurement. We never save payment details, plans, raw IP addresses, or arbitrary browser cookies for marketing.",
+    standardBody: "Optional analytics and Google Ads measurement are enabled by default in your region. You can turn them off here at any time. We never save payment details, plans, raw IP addresses, or arbitrary browser cookies for marketing.",
+    gpcBody: "Your browser is sending a Global Privacy Control opt-out signal. Cuadrabot is honoring it, so optional analytics and advertising storage remain disabled.",
     privacy: "Privacy policy",
-    reject: "Reject marketing analytics",
-    accept: "Allow marketing analytics",
+    reject: "Reject optional analytics",
+    accept: "Allow analytics and measurement",
     settings: "Cookie settings",
   },
   es: {
-    label: "Opciones de marketing y analítica",
+    label: "Opciones de cookies analíticas y publicitarias",
     title: "Tus opciones de privacidad",
-    body: "Con tu permiso, Cuadrabot registra el país aproximado, la categoría del dispositivo, las etiquetas de campaña y los eventos de conversión en nuestra base de datos privada, y utiliza la medición de Google Ads. No guardamos direcciones IP sin procesar ni huellas completas del navegador. Las cookies necesarias de cuenta y seguridad siguen disponibles.",
+    body: "Esta región requiere consentimiento previo. Con tu permiso, Cuadrabot guarda analítica propia de páginas, campañas, dispositivo, idioma y ubicación aproximada disponible, y utiliza la medición de Google Ads. Nunca guardamos datos de pago, planos, direcciones IP sin tratar ni cookies arbitrarias del navegador para marketing.",
+    standardBody: "La analítica opcional y la medición de Google Ads están activadas por defecto en tu región. Puedes desactivarlas aquí en cualquier momento. Nunca guardamos datos de pago, planos, direcciones IP sin tratar ni cookies arbitrarias del navegador para marketing.",
+    gpcBody: "Tu navegador está enviando una señal de exclusión Global Privacy Control. Cuadrabot la respeta, por lo que la analítica opcional y el almacenamiento publicitario permanecen desactivados.",
     privacy: "Política de privacidad",
-    reject: "Rechazar analítica de marketing",
-    accept: "Permitir analítica de marketing",
+    reject: "Rechazar analítica opcional",
+    accept: "Permitir analítica y medición",
     settings: "Configurar cookies",
   },
 } as const
 
 export function GoogleAdsConsent({
   cookieName,
+  googleAdsEnabled,
   locale,
 }: {
   cookieName: string
+  googleAdsEnabled: boolean
   locale: Locale
 }) {
   const [preferencesOpen, setPreferencesOpen] = useState(false)
+  const [privacyRegion, setPrivacyRegion] =
+    useState<MarketingPrivacyRegion | null>(null)
   const content = copy[locale]
   const subscribe = useCallback((onStoreChange: () => void) => {
     window.addEventListener(marketingConsentChangedEvent, onStoreChange)
@@ -60,20 +68,40 @@ export function GoogleAdsConsent({
     () => readConsentCookie(cookieName),
     [cookieName]
   )
+  const subscribeToNoopStore = useCallback(() => () => undefined, [])
   const choice = useSyncExternalStore(subscribe, readChoice, () => undefined)
+  const globalPrivacyControl = useSyncExternalStore(
+    subscribeToNoopStore,
+    browserGlobalPrivacyControlIsEnabled,
+    () => false
+  )
+  useEffect(() => {
+    let active = true
+    void getBrowserPrivacyRegion().then((region) => {
+      if (active) setPrivacyRegion(region)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   function choose(nextChoice: ConsentChoice) {
-    writeConsentCookie(cookieName, nextChoice)
-    deleteCookie(legacyGoogleConsentCookieName)
-    updateGoogleConsent(nextChoice)
-    if (nextChoice === "denied") clearMarketingStorage()
+    const effectiveChoice =
+      globalPrivacyControl && nextChoice === "granted" ? "denied" : nextChoice
+    writeConsentCookie(cookieName, effectiveChoice)
+    if (googleAdsEnabled) updateGoogleConsent(effectiveChoice)
     window.dispatchEvent(new Event(marketingConsentChangedEvent))
     setPreferencesOpen(false)
   }
 
-  if (choice === undefined) return null
+  if (choice === undefined || privacyRegion === null) return null
 
-  if (choice !== null && !preferencesOpen) {
+  const requiresChoice =
+    !globalPrivacyControl &&
+    choice === null &&
+    privacyRegion !== "standard"
+
+  if (!requiresChoice && !preferencesOpen) {
     return (
       <button
         type="button"
@@ -96,7 +124,11 @@ export function GoogleAdsConsent({
         <div>
           <h2 className="text-base font-semibold">{content.title}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            {content.body}{" "}
+            {globalPrivacyControl
+              ? content.gpcBody
+              : privacyRegion === "standard"
+                ? content.standardBody
+                : content.body}{" "}
             <Link
               className="font-medium text-primary underline underline-offset-4"
               href={locale === "es" ? "/es/privacy" : "/privacy"}
@@ -107,10 +139,14 @@ export function GoogleAdsConsent({
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button type="button" variant="outline" onClick={() => choose("denied")}>
+          <Button type="button" onClick={() => choose("denied")}>
             {content.reject}
           </Button>
-          <Button type="button" onClick={() => choose("granted")}>
+          <Button
+            type="button"
+            disabled={globalPrivacyControl}
+            onClick={() => choose("granted")}
+          >
             {content.accept}
           </Button>
         </div>
@@ -120,33 +156,26 @@ export function GoogleAdsConsent({
 }
 
 function readConsentCookie(cookieName: string): ConsentChoice | null {
-  if (
-    (navigator as Navigator & { globalPrivacyControl?: boolean })
-      .globalPrivacyControl
-  ) {
-    return "denied"
-  }
-  const prefix = `${cookieName}=`
+  const value = readCookie(cookieName)
+  if (value === "granted" || value === "denied") return value
+
+  // Keep a previous rejection. A previous grant covered only Google Ads, so it
+  // cannot be silently expanded to first-party marketing analytics.
+  return readCookie(legacyGoogleConsentCookieName) === "denied"
+    ? "denied"
+    : null
+}
+
+function readCookie(name: string) {
+  const prefix = `${name}=`
   const entry = document.cookie
     .split("; ")
     .find((candidate) => candidate.startsWith(prefix))
-  const value = entry ? decodeURIComponent(entry.slice(prefix.length)) : null
-
-  return value === "granted" || value === "denied" ? value : null
-}
-
-function deleteCookie(cookieName: string) {
-  const secure = window.location.protocol === "https:" ? "; Secure" : ""
-  document.cookie = `${cookieName}=; Path=/; Max-Age=0; SameSite=Lax${secure}`
-}
-
-function clearMarketingStorage() {
-  deleteCookie(marketingVisitorCookieName)
+  if (!entry) return null
   try {
-    window.localStorage.removeItem(marketingAttributionStorageKey)
-    window.sessionStorage.removeItem(marketingSessionStorageKey)
+    return decodeURIComponent(entry.slice(prefix.length))
   } catch {
-    // Consent revocation still takes effect when browser storage is blocked.
+    return null
   }
 }
 

@@ -12,7 +12,7 @@ export const metadata = buildLocalizedMetadata({
 
 export default function PrivacyPage() {
   return (
-    <PolicyPage title="Privacy policy" effective="August 9, 2026">
+    <PolicyPage title="Privacy policy" effective="August 10, 2026">
       <PolicySection title="1. Who is responsible">
         <p>
           Cuadrabot is the controller of account, billing, product-usage, and
@@ -29,6 +29,7 @@ export default function PrivacyPage() {
           <li>Private project materials, including plan PDFs, scope notes, generated quantities, marked plans, workbooks, and validation records.</li>
           <li>Billing references, subscription state, purchased and consumed credits, invoices, refunds, and disputes. Stripe stores complete payment-card data; Cuadrabot does not.</li>
           <li>Operational events such as uploads, job stages, downloads, support requests, service health, audit records, and security logs.</li>
+          <li>With consent, first-party marketing events such as page paths, campaign tags, referring host, random browser and session identifiers, device category, browser and operating-system category, language, timezone, screen-size band, and coarse profile or billing geography when available.</li>
         </ul>
       </PolicySection>
       <PolicySection title="3. Why we process it">
@@ -85,41 +86,49 @@ export default function PrivacyPage() {
           records may be retained or de-identified for the purposes above. A
           legal hold or other obligation may require longer retention.
         </p>
+        <p>
+          The board has not yet approved a fixed age-based retention schedule
+          for marketing events, so automated age-based deletion is disabled and
+          the policy is marked for governance review. This does not override an
+          applicable deletion right, withdrawal of consent, legal requirement,
+          or documented legal hold. We may aggregate or anonymize older records
+          when they no longer need to identify a browser or person.
+        </p>
       </PolicySection>
-      <PolicySection title="7. Cookies and marketing measurement">
+      <PolicySection title="7. Cookies and advertising measurement">
         <p>
           Cuadrabot uses necessary cookies and similar storage for sign-in,
-          security, language, and core service functions. With your permission,
-          we record first-party marketing events and use the Google tag and
-          Google Ads conversion measurement. The first-party events may include
-          coarse country or region, device category, browser and operating-system
-          family, referral host, campaign tags, advertising click identifiers,
-          page views, successful account creation, blueprint upload starts,
-          checkout starts, and verified purchases. We do not retain raw IP addresses
-          or full user-agent strings in the marketing-event store.
+          security, language, consent choices, and core service functions. With
+          applicable regional rules require opt-in, we wait for your permission
+          before setting first-party random visitor and session IDs and a
+          limited campaign-attribution cookie. Elsewhere these optional tools
+          may be enabled by default, with a persistent opt-out. These let us
+          build an internal marketing-intelligence database from the categories
+          listed above. We do not copy arbitrary browser cookies or store raw IP
+          addresses, payment details, or uploaded plans in that database.
         </p>
         <p>
-          Advertising, analytics, ad-user-data, and ad-personalization consent
-          and Cuadrabot marketing analytics are denied by default everywhere,
-          including the EEA, UK, and Switzerland, until you affirmatively allow
-          them. When denied, no events enter the first-party marketing database;
-          Google tags may still send consent-aware, cookieless measurement
-          signals with ads data redaction. When allowed, Google may read or write
-          advertising identifiers for measurement. You can reject, allow, or
-          later withdraw this choice with the Cookie settings control available
-          throughout the site. Global Privacy Control is treated as a denial.
-          Consented marketing events are scheduled for deletion after 13 months.
-          See Google&apos;s{" "}
+          We use a server-side country lookup to choose the applicable consent
+          experience. Country.is processes the request IP transiently for that
+          lookup and states that it does not log requests. Cuadrabot stores only
+          a signed regional classification and coarse country code, not the IP
+          address. If the country cannot be resolved, optional storage remains
+          opt-in. We also honor supported Global Privacy Control signals as an
+          opt-out.
+        </p>
+        <p>
+          The same regional choice controls Google Ads conversion measurement.
+          Purchase events sent to Google include the transaction reference,
+          currency, and amount confirmed by Stripe, but not full payment-card
+          details. Advertising, analytics, ad-user-data, and ad-personalization
+          consent are denied by default in opt-in regions until you choose. When denied, Google
+          tags may send consent-aware, cookieless measurement signals with ads
+          data redaction. When allowed, Google may read or write advertising
+          identifiers for measurement. You can reject, allow, or later change
+          this choice with the Cookie settings control available throughout the
+          site. Reject and allow are presented at the same level. See Google&apos;s{" "}
           <a href="https://policies.google.com/privacy">privacy policy</a> for
           its processing and international-transfer safeguards.
-        </p>
-        <p>
-          An account holder may separately volunteer an age range from Company
-          settings for aggregated analysis. Age is never inferred, the field is
-          optional, and unchecking its consent control removes the value from the
-          profile. Verified purchase events include the transaction reference,
-          currency, and amount confirmed by Stripe, but not full payment-card
-          details.
         </p>
       </PolicySection>
       <PolicySection title="8. Your choices and rights">
@@ -134,7 +143,8 @@ export default function PrivacyPage() {
       </PolicySection>
       <PolicySection title="9. Security and changes">
         <p>
-          We use private storage, tenant-level access rules, short-lived signed
+          We use encrypted transport and provider-managed encryption at rest,
+          private storage, tenant-level access rules, short-lived signed
           links, server-only credentials, checksum-backed source records,
           scheduled object-presence checks, audit logs, and restricted
           administrative access. No system is completely secure. We will

@@ -483,6 +483,108 @@ test("archive migration enforces tenant access, billing capacity, and deletion c
       customer_policy_count: 0,
     })
 
+    const marketingRegistry = await db.query<{
+      rls_enabled: boolean
+      customer_select: boolean
+      customer_insert: boolean
+      service_select: boolean
+      service_insert: boolean
+      customer_policy_count: number
+      customer_snapshot_execute: boolean
+      service_snapshot_execute: boolean
+    }>(`
+      select
+        c.relrowsecurity as rls_enabled,
+        has_table_privilege(
+          'authenticated',
+          'public.marketing_events',
+          'select'
+        ) as customer_select,
+        has_table_privilege(
+          'authenticated',
+          'public.marketing_events',
+          'insert'
+        ) as customer_insert,
+        has_table_privilege(
+          'service_role',
+          'public.marketing_events',
+          'select'
+        ) as service_select,
+        has_table_privilege(
+          'service_role',
+          'public.marketing_events',
+          'insert'
+        ) as service_insert,
+        (
+          select count(*)::int
+          from pg_policies
+          where schemaname = 'public'
+            and tablename = 'marketing_events'
+            and roles::text like '%authenticated%'
+        ) as customer_policy_count,
+        has_function_privilege(
+          'authenticated',
+          'public.get_admin_marketing_snapshot(timestamptz)',
+          'execute'
+        ) as customer_snapshot_execute,
+        has_function_privilege(
+          'service_role',
+          'public.get_admin_marketing_snapshot(timestamptz)',
+          'execute'
+        ) as service_snapshot_execute
+      from pg_class as c
+      join pg_namespace as n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relname = 'marketing_events';
+    `)
+
+    assert.deepEqual(marketingRegistry.rows[0], {
+      rls_enabled: true,
+      customer_select: false,
+      customer_insert: false,
+      service_select: true,
+      service_insert: true,
+      customer_policy_count: 0,
+      customer_snapshot_execute: false,
+      service_snapshot_execute: true,
+    })
+
+    await db.exec(`
+      insert into public.marketing_events (
+        anonymous_id,
+        session_id,
+        event_name
+      )
+      values (
+        'abababab-abab-4bab-8bab-abababababab',
+        'cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd',
+        'page_view'
+      );
+    `)
+    const marketingGovernance = await db.query<{
+      mode: string
+      days: number | null
+      unscheduled_events: number
+    }>(`
+      select
+        value ->> 'mode' as mode,
+        (value ->> 'days')::int as days,
+        (
+          select count(*)::int
+          from public.marketing_events
+          where retention_until is null
+        ) as unscheduled_events
+      from public.app_settings
+      where key = 'governance.marketing_event_retention';
+    `)
+    assert.deepEqual(marketingGovernance.rows, [
+      {
+        mode: "board_pending",
+        days: null,
+        unscheduled_events: 1,
+      },
+    ])
+
     const profileBackfill = await db.query<{
       id: string
       processor_version: string | null

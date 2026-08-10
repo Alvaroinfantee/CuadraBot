@@ -2,134 +2,125 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import {
-  classifyUserAgent,
-  coarseRequestGeo,
-  parseMarketingEventInput,
-  readCookie,
+  countryMarketingPrivacyRegion,
+  regulatedMarketingCountryCodes,
+} from "../src/lib/marketing-analytics"
+import {
+  browserDimensions,
+  isUuid,
+  marketingEventSchema,
+  requestIsSameOrigin,
 } from "../src/lib/marketing-event"
-import { parseAdminMarketingSnapshot } from "../src/lib/marketing-analytics"
-
-const validEvent = {
-  eventName: "page_view",
-  anonymousId: "9b169a18-5eb7-4b56-b172-5f31be340c42",
-  sessionId: "d6c71d7d-8441-4916-9048-e270a7b39ef1",
-  landingPath: "/pricing",
-  referrerHost: "google.com",
-  source: "google",
-  medium: "cpc",
-  campaign: "takeoff-us",
-  term: "electrical takeoff",
-  content: "blueprint-counts",
-  clickIdKind: "gclid",
-  clickId: "test-click-id",
-  tags: { adgroup_id: "123" },
-  metadata: { language: "en-US", viewport_band: "large" },
-}
-
-test("accepts bounded consented marketing fields and rejects invalid identity", () => {
-  assert.deepEqual(parseMarketingEventInput(validEvent), validEvent)
-  assert.equal(
-    parseMarketingEventInput({ ...validEvent, anonymousId: "visitor-1" }),
-    null
-  )
-  assert.equal(
-    parseMarketingEventInput({ ...validEvent, landingPath: "https://evil.test" }),
-    null
-  )
-})
-
-test("reduces user agents to coarse device, browser, and OS families", () => {
-  assert.deepEqual(
-    classifyUserAgent(
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1"
-    ),
-    { deviceType: "mobile", browserFamily: "Safari", osFamily: "iOS" }
-  )
-  assert.deepEqual(
-    classifyUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36"
-    ),
-    { deviceType: "desktop", browserFamily: "Chrome", osFamily: "Windows" }
-  )
-})
-
-test("uses only validated coarse geo headers and parses consent cookies", () => {
-  assert.deepEqual(
-    coarseRequestGeo(
-      new Headers({ "cf-ipcountry": "es", "cf-region-code": "MD" })
-    ),
-    { countryCode: "ES", region: "MD" }
-  )
-  assert.deepEqual(
-    coarseRequestGeo(new Headers({ "cf-ipcountry": "unknown" })),
-    { countryCode: null, region: null }
-  )
-  assert.equal(
-    readCookie("a=1; cuadrabot_marketing_consent_v2=granted", "cuadrabot_marketing_consent_v2"),
-    "granted"
-  )
-})
-
-test("parses the private admin marketing aggregate", () => {
-  const parsed = parseAdminMarketingSnapshot({
-    asOf: "2026-08-09T12:00:00.000Z",
-    metrics: {
-      events30: 8,
-      visitors30: 3,
-      sessions30: 4,
-      pageViews30: 6,
-      accountsCreated30: 2,
-      blueprintUploadsStarted30: 2,
-      checkoutsStarted30: 1,
-      purchases30: 1,
-    },
-    devices: [{ label: "desktop", events: 5, visitors: 2 }],
-    geography: [{ label: "ES", events: 5, visitors: 2 }],
-    ageBands: [{ label: "35-44", visitors: 1 }],
-    campaigns: [
-      {
-        source: "google",
-        medium: "cpc",
-        campaign: "takeoff-us",
-        events: 5,
-        visitors: 2,
-        accountsCreated: 2,
-        blueprintUploadsStarted: 2,
-        checkoutsStarted: 1,
-        purchases: 1,
-      },
-    ],
-  })
-  assert.equal(parsed.metrics.purchases30, 1)
-  assert.equal(parsed.metrics.accountsCreated30, 2)
-  assert.equal(parsed.metrics.blueprintUploadsStarted30, 2)
-  assert.equal(parsed.metrics.checkoutsStarted30, 1)
-  assert.equal(parsed.campaigns[0]?.source, "google")
-})
-
-test("marketing storage is consent-only, private, coarse, and retained for 13 months", () => {
-  const migration = read(
-    "supabase/migrations/20260809164941_consent_aware_marketing_analytics.sql"
-  )
-  const route = read("src/app/api/marketing/events/route.ts")
-  const tracker = read("src/components/site/marketing-tracker.tsx")
-  const consent = read("src/components/site/google-ads-consent.tsx")
-  const retention = read("src/app/api/internal/cron/retention/route.ts")
-
-  assert.match(migration, /create table if not exists public\.marketing_events/)
-  assert.match(migration, /alter table public\.marketing_events enable row level security/)
-  assert.match(migration, /from public, anon, authenticated/)
-  assert.match(migration, /to service_role/)
-  assert.doesNotMatch(migration, /\bip_address\b|\buser_agent\b/)
-  assert.match(route, /consent !== "granted"/)
-  assert.match(route, /classifyUserAgent/)
-  assert.match(route, /coarseRequestGeo/)
-  assert.match(tracker, /utm_campaign/)
-  assert.match(tracker, /gclid/)
-  assert.match(consent, /globalPrivacyControl/)
-  assert.match(retention, /setUTCMonth\(cutoff\.getUTCMonth\(\) - 13\)/)
-})
 
 function read(relativePath: string) {
   return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8")
 }
+
+test("marketing payloads accept bounded campaign dimensions and reject extras", () => {
+  const valid = {
+    eventName: "page_view",
+    pagePath: "/pricing",
+    landingPath: "/",
+    referrerHost: "example.com",
+    source: "google",
+    medium: "cpc",
+    campaign: "launch",
+    term: null,
+    content: null,
+    firstSource: "google",
+    firstMedium: "cpc",
+    firstCampaign: "launch",
+    clickIdType: "gclid",
+    language: "en-US",
+    timezone: "Europe/Madrid",
+    screenBucket: "1024_1439",
+    consentVersion: 2,
+  }
+
+  assert.equal(marketingEventSchema.safeParse(valid).success, true)
+  assert.equal(
+    marketingEventSchema.safeParse({ ...valid, rawCookie: "secret" }).success,
+    false
+  )
+  assert.equal(
+    marketingEventSchema.safeParse({ ...valid, pagePath: "https://bad.test" })
+      .success,
+    false
+  )
+})
+
+test("device parsing stores categories rather than the raw user-agent", () => {
+  assert.deepEqual(
+    browserDimensions(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1"
+    ),
+    { deviceType: "mobile", browserName: "Safari", osName: "iOS" }
+  )
+  assert.deepEqual(
+    browserDimensions(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36 Edg/140.0"
+    ),
+    { deviceType: "desktop", browserName: "Edge", osName: "Windows" }
+  )
+})
+
+test("the ingestion endpoint requires a same-origin browser request", () => {
+  const sameOrigin = new Request("https://cuadrabot.com/api/marketing/events", {
+    method: "POST",
+    headers: {
+      origin: "https://cuadrabot.com",
+      "sec-fetch-site": "same-origin",
+    },
+  })
+  const crossOrigin = new Request("https://cuadrabot.com/api/marketing/events", {
+    method: "POST",
+    headers: {
+      origin: "https://attacker.test",
+      "sec-fetch-site": "cross-site",
+    },
+  })
+  assert.equal(requestIsSameOrigin(sameOrigin), true)
+  assert.equal(requestIsSameOrigin(crossOrigin), false)
+  assert.equal(isUuid("11111111-1111-4111-8111-111111111111"), true)
+  assert.equal(isUuid("not-a-uuid"), false)
+})
+
+test("regional consent is opt-in for EEA, UK, and Switzerland", () => {
+  for (const country of ["ES", "DE", "NO", "GB", "CH"]) {
+    assert.equal(countryMarketingPrivacyRegion(country), "regulated")
+    assert.equal(regulatedMarketingCountryCodes.includes(country as never), true)
+  }
+  assert.equal(countryMarketingPrivacyRegion("US"), "standard")
+  assert.equal(countryMarketingPrivacyRegion("CA"), "standard")
+  assert.equal(countryMarketingPrivacyRegion(null), "unknown")
+})
+
+test("consent is versioned and raw cookie or IP values are never collected", () => {
+  const tracker = read("src/components/site/marketing-analytics.tsx")
+  const consent = read("src/components/site/google-ads-consent.tsx")
+  const route = read("src/app/api/marketing/events/route.ts")
+  const migration = read(
+    "supabase/migrations/20260810135927_upgrade_consented_marketing_intelligence.sql"
+  )
+
+  assert.match(tracker, /cuadrabot_mid|marketingAnonymousCookieName/)
+  assert.match(tracker, /cuadrabot_attribution|marketingAttributionCookieName/)
+  assert.match(consent, /previous grant covered only Google Ads/)
+  assert.match(consent, /Reject optional analytics/)
+  assert.doesNotMatch(route, /\.from\("cookies"\)/)
+  assert.doesNotMatch(route, /raw_ip|raw_user_agent|cookie_value/)
+  assert.match(migration, /retention_until timestamptz/)
+  assert.match(migration, /"mode":"board_pending","days":null/)
+  assert.doesNotMatch(migration, /interval '365 days'/)
+  assert.match(migration, /revoke all on table public\.marketing_events from public, anon, authenticated/)
+  assert.match(route, /marketingCollectionIsPermitted/)
+  assert.match(read("src/components/site/google-ads.tsx"), /regulatedMarketingCountryCodes/)
+  assert.match(tracker, /legacyGoogleConsentCookieName/)
+  assert.match(
+    read("src/lib/privacy-region-server.ts"),
+    /legacyGoogleConsentCookieName/
+  )
+  assert.match(read("src/lib/privacy-region-server.ts"), /sec-gpc/)
+  assert.match(read("src/lib/country-geolocation.ts"), /https:\/\/api\.country\.is/)
+  assert.doesNotMatch(read("src/lib/privacy-region-server.ts"), /MAXMIND_/)
+})
