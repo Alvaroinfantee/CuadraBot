@@ -62,6 +62,7 @@ source "$config_file"
 : "${CUADRABOT_CRON_USER:=cuadracron}"
 : "${CUADRABOT_CRON_UID:=10004}"
 : "${CUADRABOT_LIBEXEC:=/usr/local/lib/cuadrabot}"
+: "${CUADRABOT_HOST_PROFILE:=standard}"
 : "${CUADRABOT_VOLUME_DEVICE:?CUADRABOT_VOLUME_DEVICE is required}"
 : "${CUADRABOT_VOLUME_LABEL:=cuadrabot-prod}"
 
@@ -95,11 +96,23 @@ source /etc/os-release
   echo "Ubuntu 24.04 LTS is required" >&2
   exit 2
 }
-[[ "$(nproc)" -ge 8 ]] || { echo "At least 8 vCPU are required" >&2; exit 2; }
 [[ "$(uname -m)" == x86_64 ]] || { echo "This pinned bootstrap currently supports x86_64 only" >&2; exit 2; }
 memory_kib="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
-[[ "$memory_kib" -ge 15000000 ]] || { echo "At least 16 GiB-class RAM is required" >&2; exit 2; }
-[[ -z "$(swapon --show --noheadings)" ]] || { echo "Host swap is not approved for this 16 GiB design" >&2; exit 2; }
+case "$CUADRABOT_HOST_PROFILE" in
+  standard)
+    [[ "$(nproc)" -ge 8 ]] || { echo "The standard profile requires at least 8 vCPU" >&2; exit 2; }
+    [[ "$memory_kib" -ge 15000000 ]] || { echo "The standard profile requires 16 GiB-class RAM" >&2; exit 2; }
+    ;;
+  budget)
+    [[ "$(nproc)" -ge 1 ]] || { echo "The budget profile requires at least 1 vCPU" >&2; exit 2; }
+    [[ "$memory_kib" -ge 1800000 ]] || { echo "The budget profile requires 2 GiB-class RAM" >&2; exit 2; }
+    ;;
+  *)
+    echo "CUADRABOT_HOST_PROFILE must be standard or budget" >&2
+    exit 2
+    ;;
+esac
+[[ -z "$(swapon --show --noheadings)" ]] || { echo "Host swap is not approved for either executor profile" >&2; exit 2; }
 for index in "${!runtime_users[@]}"; do
   runtime_user="${runtime_users[$index]}"
   runtime_uid="${runtime_uids[$index]}"
@@ -126,6 +139,7 @@ fi
 
 cat <<EOF
 CuadraBot host bootstrap plan
+  host profile:  $CUADRABOT_HOST_PROFILE
   deploy user:   $CUADRABOT_DEPLOY_USER (uid $CUADRABOT_DEPLOY_UID)
   executor user: $CUADRABOT_EXECUTOR_USER (uid $CUADRABOT_EXECUTOR_UID, rootless Docker)
   worker user:   $CUADRABOT_WORKER_USER (uid $CUADRABOT_WORKER_UID)

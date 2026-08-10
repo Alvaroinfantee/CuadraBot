@@ -5,7 +5,22 @@ DigitalOcean Droplet. It deliberately does **not** expose an HTTP application
 port. The existing App Platform web application remains public; the worker on
 this host calls it over HTTPS.
 
-## Fixed production shape
+## Production profiles
+
+The default `standard` profile remains the fully sized production shape. A
+separate `budget` profile is available for low-volume launch traffic when the
+monthly hosting ceiling is more important than throughput. Both profiles keep
+the same rootless-Docker, loopback broker, short-lived provider credential,
+disposable processor, and deny-by-default network boundaries.
+
+The budget profile is intentionally constrained to one job, one processor CPU,
+1 GiB processor memory, a 128 MiB processor tmpfs, and a 256 MiB egress proxy.
+It can be slower and can reject or exhaust unusually large or dense drawing
+sets. Do not silently use it as evidence that the standard capacity is no
+longer required; promote back to `standard` when real jobs show memory or
+latency pressure.
+
+### Standard profile
 
 - DigitalOcean `lon1`, Ubuntu 24.04 LTS.
 - Basic Regular `s-8vcpu-16gb` Droplet (8 shared vCPU, 16 GiB RAM).
@@ -122,6 +137,14 @@ manifests.
 7. Resolve every reported precondition, repeat deployment with `--apply`, and
    run the full validation again before routing public jobs.
 
+For the budget profile, start from
+`config/budget-provision.env.example` and
+`config/budget-host.env.example`. It uses a 1 vCPU / 2 GiB Basic Droplet, a
+10 GiB encrypted Block Storage volume, and deliberately disables paid Droplet
+backups because the executor is rebuildable and authoritative inputs/results
+remain outside the host. Take a temporary snapshot before risky maintenance if
+needed, then remove it when the maintenance window is closed.
+
 ## Recurring DigitalOcean resources
 
 Prices verified 6 August 2026:
@@ -135,6 +158,17 @@ Prices verified 6 August 2026:
 | Optional Spaces Standard for Restic | $5.00 | Includes 250 GiB; client-side Restic encryption |
 | **Required subtotal** | **$125.20** | Excludes OpenAI usage, tax, and overage |
 | **With optional off-host Restic target** | **$130.20** | Recommended because Droplet backups omit volumes |
+
+Low-volume launch profile:
+
+| Resource | Monthly estimate | Rationale |
+|---|---:|---|
+| 2 GiB / 1 vCPU Basic Regular Droplet | $12.00 | Lowest profile with enough RAM to attempt one constrained processor job |
+| 10 GiB encrypted Block Storage volume | $1.00 | Secrets, immutable manifests, rootless-Docker state, and transient job state |
+| Droplet backups | $0.00 | Disabled; the executor is rebuildable and source/results are external |
+| **Budget executor subtotal** | **$13.00** | Excludes OpenAI usage, tax, and temporary snapshots |
+| Existing App Platform web service | $10.00 | Current minimum web-service plan shown by the DigitalOcean control panel |
+| **Budget total baseline** | **$23.00** | The executor itself stays below $20; App Platform prevents a sub-$20 combined total |
 
 Sources: [Droplet pricing](https://www.digitalocean.com/pricing/droplets),
 [backup pricing](https://docs.digitalocean.com/products/backups/details/pricing/),

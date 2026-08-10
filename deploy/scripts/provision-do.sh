@@ -49,6 +49,7 @@ done
 # shellcheck disable=SC1090
 source "$config_file"
 : "${DOCTL_CONTEXT:=default}"
+: "${CUADRABOT_HOST_PROFILE:=standard}"
 : "${DO_SSH_KEY_FINGERPRINT:?DO_SSH_KEY_FINGERPRINT is required}"
 : "${DROPLET_NAME:=cuadrabot-executor-prod-1}"
 : "${DROPLET_REGION:=lon1}"
@@ -61,10 +62,22 @@ source "$config_file"
 : "${VOLUME_FS_LABEL:=cuadrabot-prod}"
 
 [[ "$DROPLET_REGION" == "lon1" ]] || { echo "DROPLET_REGION must be lon1" >&2; exit 2; }
-[[ "$DROPLET_SIZE" == "s-8vcpu-16gb" ]] || { echo "DROPLET_SIZE must be s-8vcpu-16gb" >&2; exit 2; }
 [[ "$DROPLET_IMAGE" == "ubuntu-24-04-x64" ]] || { echo "DROPLET_IMAGE must be ubuntu-24-04-x64" >&2; exit 2; }
-[[ "$VOLUME_SIZE" == "100GiB" ]] || { echo "VOLUME_SIZE must be 100GiB" >&2; exit 2; }
-[[ "$VOLUME_NAME" == "cuadrabot-prod" ]] || { echo "VOLUME_NAME must be cuadrabot-prod" >&2; exit 2; }
+case "$CUADRABOT_HOST_PROFILE" in
+  standard)
+    [[ "$DROPLET_SIZE" == "s-8vcpu-16gb" ]] || { echo "The standard profile requires s-8vcpu-16gb" >&2; exit 2; }
+    [[ "$VOLUME_SIZE" == "100GiB" ]] || { echo "The standard profile requires a 100GiB volume" >&2; exit 2; }
+    [[ "$VOLUME_NAME" == "cuadrabot-prod" ]] || { echo "The standard volume must be cuadrabot-prod" >&2; exit 2; }
+    enable_backups=true
+    ;;
+  budget)
+    [[ "$DROPLET_SIZE" == "s-1vcpu-2gb" ]] || { echo "The budget profile requires s-1vcpu-2gb" >&2; exit 2; }
+    [[ "$VOLUME_SIZE" == "10GiB" ]] || { echo "The budget profile requires a 10GiB volume" >&2; exit 2; }
+    [[ "$VOLUME_NAME" == "cuadrabot-bgt" ]] || { echo "The budget volume must be cuadrabot-bgt" >&2; exit 2; }
+    enable_backups=false
+    ;;
+  *) echo "CUADRABOT_HOST_PROFILE must be standard or budget" >&2; exit 2 ;;
+esac
 [[ "$VOLUME_FS_LABEL" == "$VOLUME_NAME" ]] || { echo "VOLUME_FS_LABEL must equal VOLUME_NAME" >&2; exit 2; }
 [[ "$DROPLET_NAME" =~ ^[a-z0-9][a-z0-9-]{2,62}$ ]] || { echo "Invalid DROPLET_NAME" >&2; exit 2; }
 [[ "$DROPLET_TAG" =~ ^[A-Za-z0-9:_-]{1,255}$ ]] || { echo "Invalid DROPLET_TAG" >&2; exit 2; }
@@ -77,10 +90,11 @@ bash "$script_dir/render-cloud-init.sh" --config "$config_file" --output "$cloud
 
 cat <<EOF
 DigitalOcean production plan (no changes made yet)
+  host profile:  $CUADRABOT_HOST_PROFILE
   context:       $DOCTL_CONTEXT
   region:        $DROPLET_REGION
   droplet:       $DROPLET_NAME ($DROPLET_SIZE, $DROPLET_IMAGE)
-  boot backups:  weekly, Sunday 02:00 UTC
+  boot backups:  $([[ "$enable_backups" == true ]] && printf 'weekly, Sunday 02:00 UTC' || printf 'disabled; executor is rebuildable and source/results remain external')
   volume:        $VOLUME_NAME ($VOLUME_SIZE, ext4 label=$VOLUME_FS_LABEL, attached at creation)
   firewall:      $FIREWALL_NAME (inbound TCP/22 from $ADMIN_SSH_CIDR only)
   public apps:   none on this Droplet
@@ -146,16 +160,20 @@ droplet_args=(
   --tag-name "$DROPLET_TAG"
   --volumes "$volume_id"
   --user-data-file "$cloud_init"
-  --enable-backups
-  --backup-policy-plan weekly
-  --backup-policy-weekday SUN
-  --backup-policy-hour 2
   --enable-monitoring
   --enable-private-networking
   --wait
   --format ID,PublicIPv4,Status
   --no-header
 )
+if [[ "$enable_backups" == true ]]; then
+  droplet_args+=(
+    --enable-backups
+    --backup-policy-plan weekly
+    --backup-policy-weekday SUN
+    --backup-policy-hour 2
+  )
+fi
 [[ -z "${DO_PROJECT_ID:-}" ]] || droplet_args+=(--project-id "$DO_PROJECT_ID")
 [[ -z "${DO_VPC_UUID:-}" ]] || droplet_args+=(--vpc-uuid "$DO_VPC_UUID")
 

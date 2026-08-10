@@ -32,6 +32,7 @@ source "$config_file"
 : "${CUADRABOT_CRON_USER:=cuadracron}"
 : "${CUADRABOT_CRON_UID:=10004}"
 : "${CUADRABOT_LIBEXEC:=/usr/local/lib/cuadrabot}"
+: "${CUADRABOT_HOST_PROFILE:=standard}"
 : "${CUADRABOT_VOLUME_DEVICE:?CUADRABOT_VOLUME_DEVICE is required}"
 : "${CUADRABOT_VOLUME_LABEL:?CUADRABOT_VOLUME_LABEL is required}"
 : "${ADMIN_SSH_CIDR:=}"
@@ -49,9 +50,55 @@ check_dir() {
   [[ -d "$path" && ! -L "$path" && "$(stat -c '%U:%G:%a' "$path")" == "$owner:$group:$mode" ]]
 }
 
-[[ "$(nproc)" -ge 8 ]] && pass "8+ vCPU" || fail "host has fewer than 8 vCPU"
+case "$CUADRABOT_HOST_PROFILE" in
+  standard)
+    expected_min_cpus=8
+    expected_min_memory_kib=15000000
+    expected_processor_memory=6g
+    expected_processor_memory_bytes=6442450944
+    expected_processor_cpus=2
+    expected_processor_nano_cpus=2000000000
+    expected_processor_pids=256
+    expected_processor_tmpfs=512m
+    expected_egress_memory=512m
+    expected_egress_memory_bytes=536870912
+    expected_egress_cpus=0.5
+    expected_egress_pids=128
+    ;;
+  budget)
+    expected_min_cpus=1
+    expected_min_memory_kib=1800000
+    expected_processor_memory=1g
+    expected_processor_memory_bytes=1073741824
+    expected_processor_cpus=1
+    expected_processor_nano_cpus=1000000000
+    expected_processor_pids=128
+    expected_processor_tmpfs=128m
+    expected_egress_memory=256m
+    expected_egress_memory_bytes=268435456
+    expected_egress_cpus=0.25
+    expected_egress_pids=96
+    ;;
+  *)
+    fail "CUADRABOT_HOST_PROFILE must be standard or budget"
+    expected_min_cpus=999
+    expected_min_memory_kib=999999999
+    expected_processor_memory=invalid
+    expected_processor_memory_bytes=-1
+    expected_processor_cpus=-1
+    expected_processor_nano_cpus=-1
+    expected_processor_pids=-1
+    expected_processor_tmpfs=invalid
+    expected_egress_memory=invalid
+    expected_egress_memory_bytes=-1
+    expected_egress_cpus=-1
+    expected_egress_pids=-1
+    ;;
+esac
+
+[[ "$(nproc)" -ge "$expected_min_cpus" ]] && pass "$CUADRABOT_HOST_PROFILE profile CPU floor" || fail "host has insufficient CPU for $CUADRABOT_HOST_PROFILE profile"
 memory_kib="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
-[[ "$memory_kib" -ge 15000000 ]] && pass "16 GiB-class RAM" || fail "host has insufficient RAM"
+[[ "$memory_kib" -ge "$expected_min_memory_kib" ]] && pass "$CUADRABOT_HOST_PROFILE profile RAM floor" || fail "host has insufficient RAM for $CUADRABOT_HOST_PROFILE profile"
 [[ -z "$(swapon --show --noheadings)" ]] && pass "host swap disabled" || fail "unexpected host swap enabled"
 [[ "${DO_VOLUME_ENCRYPTION_AT_REST_CONFIRMED:-false}" == true ]] \
   && pass "operator recorded DigitalOcean volume encryption control" \
@@ -167,8 +214,12 @@ fi
 
 is_image_digest "${EXECUTOR_IMAGE:-}" && pass "egress image uses repository digest" || fail "egress image is not digest-pinned"
 is_image_digest "${EXECUTOR_PROCESSOR_IMAGE:-}" && pass "processor image uses repository digest" || fail "processor image is not digest-pinned"
-[[ "${EXECUTOR_PROCESSOR_MEMORY:-}" == 6g && "${EXECUTOR_PROCESSOR_MEMORY_SWAP:-}" == 6g ]] \
-  && pass "processor memory and memory+swap are both 6g" || fail "processor swap prohibition is not configured"
+[[ "${EXECUTOR_PROCESSOR_MEMORY:-}" == "$expected_processor_memory" && "${EXECUTOR_PROCESSOR_MEMORY_SWAP:-}" == "$expected_processor_memory" ]] \
+  && pass "processor memory and memory+swap match $CUADRABOT_HOST_PROFILE profile" || fail "processor memory profile or swap prohibition is not configured"
+[[ "${EXECUTOR_PROCESSOR_CPUS:-}" == "$expected_processor_cpus" && "${EXECUTOR_PROCESSOR_PIDS:-}" == "$expected_processor_pids" && "${EXECUTOR_PROCESSOR_TMPFS:-}" == "$expected_processor_tmpfs" ]] \
+  && pass "processor CPU, PID, and tmpfs limits match $CUADRABOT_HOST_PROFILE profile" || fail "processor resource profile mismatch"
+[[ "${EXECUTOR_EGRESS_MEMORY:-}" == "$expected_egress_memory" && "${EXECUTOR_EGRESS_MEMORY_SWAP:-}" == "$expected_egress_memory" && "${EXECUTOR_EGRESS_CPUS:-}" == "$expected_egress_cpus" && "${EXECUTOR_EGRESS_PIDS:-}" == "$expected_egress_pids" ]] \
+  && pass "egress limits match $CUADRABOT_HOST_PROFILE profile" || fail "egress resource profile mismatch"
 [[ "${EXECUTOR_MAX_CONCURRENT_JOBS:-}" == 1 ]] \
   && pass "single-job concurrency" || fail "concurrency is not one"
 
@@ -277,7 +328,7 @@ if [[ "$mode" == full ]]; then
       && pass "egress is non-root" || fail "egress user is root/empty"
     jq -e '.HostConfig.ReadonlyRootfs == true and (.HostConfig.CapDrop | index("ALL")) != null and (.HostConfig.SecurityOpt | index("no-new-privileges:true")) != null' <<<"$egress_json" >/dev/null \
       && pass "egress container hardening" || fail "egress hardening mismatch"
-    jq -e '.HostConfig.Memory == 536870912 and .HostConfig.MemorySwap == 536870912 and .HostConfig.PidsLimit == 128' <<<"$egress_json" >/dev/null \
+    jq -e --argjson memory "$expected_egress_memory_bytes" --argjson pids "$expected_egress_pids" '.HostConfig.Memory == $memory and .HostConfig.MemorySwap == $memory and .HostConfig.PidsLimit == $pids' <<<"$egress_json" >/dev/null \
       && pass "egress resource limits" || fail "egress resource limits mismatch"
     jq -e '(.HostConfig.PortBindings | keys) == ["8092/tcp"] and .HostConfig.PortBindings["8092/tcp"] == [{"HostIp":"127.0.0.1","HostPort":"8092"}]' <<<"$egress_json" >/dev/null \
       && pass "egress exposes control on loopback only" || fail "egress port bindings unsafe"
@@ -294,7 +345,7 @@ if [[ "$mode" == full ]]; then
       || fail "$processor image mismatch"
     jq -e '.Config.User == "10001:10001" and .HostConfig.ReadonlyRootfs == true and (.HostConfig.CapDrop | index("ALL")) != null and (.HostConfig.SecurityOpt | index("no-new-privileges:true")) != null' <<<"$processor_json" >/dev/null \
       || fail "$processor isolation flags mismatch"
-    jq -e '.HostConfig.Memory == 6442450944 and .HostConfig.MemorySwap == 6442450944 and .HostConfig.NanoCpus == 2000000000 and .HostConfig.PidsLimit == 256' <<<"$processor_json" >/dev/null \
+    jq -e --argjson memory "$expected_processor_memory_bytes" --argjson nano_cpus "$expected_processor_nano_cpus" --argjson pids "$expected_processor_pids" '.HostConfig.Memory == $memory and .HostConfig.MemorySwap == $memory and .HostConfig.NanoCpus == $nano_cpus and .HostConfig.PidsLimit == $pids' <<<"$processor_json" >/dev/null \
       || fail "$processor resource limits mismatch"
     jq -e '(.NetworkSettings.Ports | keys) == ["8000/tcp"] and (.NetworkSettings.Ports["8000/tcp"] | length) == 1 and .NetworkSettings.Ports["8000/tcp"][0].HostIp == "127.0.0.1" and (.NetworkSettings.Ports["8000/tcp"][0].HostPort | test("^[1-9][0-9]{0,4}$"))' <<<"$processor_json" >/dev/null \
       || fail "$processor has an unsafe/non-single loopback binding"
