@@ -14,7 +14,7 @@ import {
   servicePriceCards,
   subscriptionPlans,
 } from "@/lib/takeoff-pricing"
-import { buildLocalizedMetadata } from "@/lib/i18n"
+import { buildLocalizedMetadata, freeTrialSignupPath } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export const metadata = buildLocalizedMetadata({
@@ -39,16 +39,16 @@ export default function PricingPage() {
               Buy legend-driven takeoff capacity, not another seat license.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Every takeoff requires credits from a reusable pack or monthly
-              subscription. You receive a fixed credit quote after the uploaded
-              PDF, page count, and selected scopes are verified.
+              Start with one real blueprint sheet free, no credit card required.
+              Paid takeoffs use credits from a reusable pack or monthly plan
+              after the PDF, page count, and selected scopes are verified.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                href="/signup"
+                href={freeTrialSignupPath("en")}
                 className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
               >
-                Create account
+                Start free trial
                 <ArrowRightIcon />
               </Link>
               <Link
@@ -61,6 +61,29 @@ export default function PricingPage() {
                 View sample output
               </Link>
             </div>
+          </div>
+        </section>
+
+        <section className="border-b bg-blue-50/70 py-12">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8">
+            <div>
+              <Badge>Free trial</Badge>
+              <h2 className="mt-4 text-3xl font-semibold">
+                One real blueprint sheet for $0
+              </h2>
+              <p className="mt-3 max-w-3xl leading-7 text-muted-foreground">
+                Choose one legend-based scope and receive the annotated PDF and
+                Excel quantity workbook. No credit card, no credits, one trial
+                per user.
+              </p>
+            </div>
+            <Link
+              href={freeTrialSignupPath("en")}
+              className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
+            >
+              Upload one sheet free
+              <ArrowRightIcon />
+            </Link>
           </div>
         </section>
 

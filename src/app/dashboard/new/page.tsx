@@ -49,18 +49,26 @@ export default async function NewTakeoffPage({
           </AlertDescription>
         </Alert>
       ) : (
-        <NewTakeoffForm
-          availableCredits={workspace.credits.balance}
-          sampleAvailable={
-            features.freeSample && !profile?.free_sample_used_at
-          }
-          initialMode={
-            params.mode === "sample" && features.freeSample
-              ? "sample"
-              : "standard"
-          }
-          locale={locale}
-        />
+        <>
+          {features.freeSample && !profile?.free_sample_used_at ? (
+            <Alert className="border-primary/40 bg-blue-50/70">
+              <AlertTitle>{copy.trialReadyTitle}</AlertTitle>
+              <AlertDescription>{copy.trialReadyBody}</AlertDescription>
+            </Alert>
+          ) : null}
+          <NewTakeoffForm
+            availableCredits={workspace.credits.balance}
+            sampleAvailable={
+              features.freeSample && !profile?.free_sample_used_at
+            }
+            initialMode={
+              params.mode === "sample" && features.freeSample
+                ? "sample"
+                : "standard"
+            }
+            locale={locale}
+          />
+        </>
       )}
     </div>
   )

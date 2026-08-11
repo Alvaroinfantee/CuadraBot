@@ -40,7 +40,7 @@ export async function updateCompanyProfile(formData: FormData) {
       ? requestedAgeBand
       : null
 
-  if (fullName.length < 2 || companyName.length < 2) {
+  if (fullName.length < 2) {
     throw new Error(copy.requiredName)
   }
   if (countryCode && !/^[A-Z]{2}$/.test(countryCode)) {
@@ -52,7 +52,7 @@ export async function updateCompanyProfile(formData: FormData) {
     .from("profiles")
     .update({
       full_name: fullName,
-      company_name: companyName,
+      company_name: companyName || null,
       country_code: countryCode || null,
       region: region || null,
       city: city || null,

@@ -10,7 +10,7 @@ import { PageHero } from "@/components/site/page-hero"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
 import { buttonVariants } from "@/components/ui/button"
-import { buildLocalizedMetadata } from "@/lib/i18n"
+import { buildLocalizedMetadata, freeTrialSignupPath } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export const metadata = buildLocalizedMetadata({
@@ -38,7 +38,7 @@ export default function SamplePage() {
           eyebrow="Sample takeoff"
           title="See how a legend code becomes a traceable count."
           body="This illustrative electrical sample shows the legend, matching placements, workbook structure, and automated validation context. Customer plans and actual outputs remain private."
-          primary="Create account"
+          primary="Try one sheet free"
           secondary="Read accuracy controls"
           secondaryHref="/accuracy"
         />
@@ -164,15 +164,15 @@ export default function SamplePage() {
               Use your own readable legend for the real test.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              This page is an illustrative output preview. Create an account,
-              buy credits through a pack or subscription, and submit your own
-              readable plans for a real takeoff.
+              This page is an illustrative output preview. Try one real sheet
+              free with no credit card and receive your own annotated PDF and
+              Excel workbook.
             </p>
             <Link
-              href="/signup"
+              href={freeTrialSignupPath("en")}
               className={cn(buttonVariants({ size: "lg" }), "mt-7 h-12 px-7")}
             >
-              Create account
+              Try one sheet free
               <ArrowRightIcon />
             </Link>
           </div>

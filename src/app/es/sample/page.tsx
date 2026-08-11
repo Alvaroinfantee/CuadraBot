@@ -12,7 +12,7 @@ import { SiteHeader } from "@/components/site/site-header"
 import { buttonVariants } from "@/components/ui/button"
 import {
   buildLocalizedMetadata,
-  localizedAuthPath,
+  freeTrialSignupPath,
 } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
@@ -81,7 +81,7 @@ export default function SamplePageEs() {
           eyebrow="Ejemplo de medición"
           title="Comprueba cómo un código de leyenda se convierte en un recuento trazable."
           body="Este ejemplo eléctrico ilustrativo muestra la leyenda, las ubicaciones correspondientes, la estructura del libro y el contexto de validación automatizada. Los planos reales permanecen privados."
-          primary="Crear una cuenta"
+          primary="Probar una hoja gratis"
           secondary="Ver los controles de precisión"
           secondaryHref="/es/accuracy"
           locale="es"
@@ -249,18 +249,18 @@ export default function SamplePageEs() {
               Haz la prueba real con tu propia leyenda legible.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Esta página es una vista previa ilustrativa del resultado. Crea
-              una cuenta, compra créditos mediante un paquete o una suscripción
-              y envía tus propios planos legibles para una medición real.
+              Esta página es una vista previa ilustrativa. Prueba una hoja real
+              gratis, sin tarjeta, y recibe tu propio PDF anotado y el libro de
+              Excel.
             </p>
             <Link
-              href={localizedAuthPath("/signup", "es")}
+              href={freeTrialSignupPath("es")}
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "mt-7 h-12 px-7"
               )}
             >
-              Crear una cuenta
+              Probar una hoja gratis
               <ArrowRightIcon />
             </Link>
           </div>

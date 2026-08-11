@@ -67,6 +67,15 @@ export function localizedAuthPath(path: string, locale: Locale) {
   return `${target.pathname}${target.search}${target.hash}`
 }
 
+export function freeTrialSignupPath(locale: Locale) {
+  const target = new URL(
+    localizedAuthPath("/signup", locale),
+    "https://cuadrabot.invalid"
+  )
+  target.searchParams.set("next", "/dashboard/new?mode=sample")
+  return `${target.pathname}${target.search}${target.hash}`
+}
+
 export function switchLocalePath(pathWithSuffix: string, locale: Locale) {
   const { pathname, suffix } = splitPathSuffix(pathWithSuffix)
   const englishPath = spanishPublicPathToEnglish(pathname)
@@ -267,7 +276,7 @@ export const commonCopy: Record<Locale, CommonCopy> = {
       security: "Security",
       faq: "FAQ",
       login: "Log in",
-      freeCta: "Create account",
+      freeCta: "Try one sheet free",
       openNavigation: "Open navigation",
     },
     footer: {
@@ -319,7 +328,7 @@ export const commonCopy: Record<Locale, CommonCopy> = {
       security: "Seguridad",
       faq: "Preguntas frecuentes",
       login: "Iniciar sesión",
-      freeCta: "Crear una cuenta",
+      freeCta: "Prueba una hoja gratis",
       openNavigation: "Abrir navegación",
     },
     footer: {
@@ -419,9 +428,9 @@ const spanishPriceCopy: Record<
   Pick<TakeoffPrice, "name" | "description">
 > = {
   free_sample: {
-    name: "Muestra de una hoja",
+    name: "Prueba gratuita — una hoja",
     description:
-      "Una hoja real con leyenda legible y un alcance, una vez por empresa.",
+      "Una hoja real con leyenda legible y un alcance, una vez por usuario.",
   },
   first_verified: {
     name: "Primera medición verificada",

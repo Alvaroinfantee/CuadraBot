@@ -26,7 +26,7 @@ import { SiteHeader } from "@/components/site/site-header"
 import { ProductDemoVideo } from "@/components/site/product-demo-video"
 import {
   buildLocalizedMetadata,
-  localizedAuthPath,
+  freeTrialSignupPath,
   localizedPublicPath,
   localizeTakeoffPrice,
   type PublicMarketingPath,
@@ -37,9 +37,9 @@ import { cn } from "@/lib/utils"
 export const metadata = buildLocalizedMetadata({
   locale: "es",
   path: "/",
-  title: "Conteo de elementos en planos PDF",
+  title: "Prueba gratis para contar elementos en planos PDF",
   description:
-    "Sube planos PDF con una leyenda legible y recibe en horas cantidades de elementos, dispositivos y recorridos compatibles vinculadas al origen.",
+    "Prueba gratis una hoja real sin tarjeta. Recibe recuentos vinculados al origen, un PDF anotado y un libro de Excel.",
   keywords: [
     "conteo de elementos en planos",
     "medición de instalaciones eléctricas",
@@ -116,7 +116,7 @@ export default function HomePageEs() {
           <div className="relative mx-auto grid min-h-[680px] w-full max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
             <div>
               <Badge variant="outline" className="mb-6 bg-white">
-                Mediciones guiadas por la leyenda
+                Prueba gratis · una hoja real · sin tarjeta
               </Badge>
               <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl">
                 Cuenta elementos de tus planos PDF en cuestión de horas.
@@ -129,10 +129,10 @@ export default function HomePageEs() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href={localizedAuthPath("/signup", "es")}
+                  href={freeTrialSignupPath("es")}
                   className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
                 >
-                  Crear una cuenta
+                  Probar una hoja gratis
                   <ArrowRightIcon />
                 </Link>
                 <Link
@@ -148,15 +148,15 @@ export default function HomePageEs() {
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <LockKeyholeIcon className="size-4 text-primary" />
-                  Almacenamiento privado de planos
+                  0 $ hoy
                 </span>
                 <span className="flex items-center gap-2">
                   <CheckCircle2Icon className="size-4 text-primary" />
-                  Una corrección incluida
+                  Sin tarjeta
                 </span>
                 <span className="flex items-center gap-2">
                   <Layers3Icon className="size-4 text-primary" />
-                  Suscripción opcional
+                  PDF anotado + Excel
                 </span>
               </div>
             </div>
@@ -342,7 +342,7 @@ export default function HomePageEs() {
               {[
                 [
                   "¿Las mediciones requieren créditos?",
-                  "Sí. Cada medición requiere créditos. Compra un paquete reutilizable o suscríbete para recibir créditos mensuales; después aprueba el precio fijo una vez verificados el PDF subido y el alcance.",
+                  "Tu primera prueba de una hoja es gratis: 0 $, sin tarjeta, un alcance basado en leyenda y una vez por usuario. Las mediciones de pago usan créditos después de que apruebes el precio verificado.",
                 ],
                 [
                   "¿Cuadrabot sustituye a un profesional de la estimación?",
@@ -380,17 +380,17 @@ export default function HomePageEs() {
               plano.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Crea una cuenta, añade créditos mediante un paquete reutilizable
-              o una suscripción mensual y aprueba el precio fijo verificado.
+              Prueba una hoja de un plano real gratis. No necesitas tarjeta ni
+              créditos; se incluyen el PDF anotado y el libro de Excel.
             </p>
             <Link
-              href={localizedAuthPath("/signup", "es")}
+              href={freeTrialSignupPath("es")}
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "mt-8 h-12 px-7"
               )}
             >
-              Crear una cuenta
+              Iniciar mi prueba gratis
               <ArrowRightIcon />
             </Link>
           </div>

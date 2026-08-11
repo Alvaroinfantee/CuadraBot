@@ -9,9 +9,14 @@ import {
   type Locale,
 } from "@/lib/i18n"
 import { safeRelativePath } from "@/lib/safe-redirect"
+import { marketingAccountCreatedCookieName } from "@/lib/marketing-consent"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 
-function localeRedirect(path: string, locale: Locale) {
+function localeRedirect(
+  path: string,
+  locale: Locale,
+  accountCreated = false
+) {
   const response = NextResponse.redirect(new URL(path, getSiteUrl()))
   response.cookies.set(localeCookieName, locale, {
     httpOnly: true,
@@ -21,6 +26,15 @@ function localeRedirect(path: string, locale: Locale) {
     maxAge: 365 * 24 * 60 * 60,
     priority: "medium",
   })
+  if (accountCreated) {
+    response.cookies.set(marketingAccountCreatedCookieName, "1", {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 15 * 60,
+    })
+  }
   return response
 }
 
@@ -34,6 +48,7 @@ function loginErrorPath(locale: Locale, code: AuthNoticeCode) {
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code")
   const next = safeRelativePath(request.nextUrl.searchParams.get("next"))
+  const accountCreated = request.nextUrl.searchParams.get("created") === "1"
   const explicitLocale = request.nextUrl.searchParams.get("lang")
   const locale = isLocale(explicitLocale)
     ? explicitLocale
@@ -56,5 +71,5 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  return localeRedirect(next, locale)
+  return localeRedirect(next, locale, accountCreated)
 }

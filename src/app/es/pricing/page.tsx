@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import {
   buildLocalizedMetadata,
+  freeTrialSignupPath,
   localizedAuthPath,
   localizedPublicPath,
   localizeSubscriptionPlanName,
@@ -52,17 +53,16 @@ export default function PricingPageEs() {
               licencia por usuario.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Cada medición requiere créditos de un paquete reutilizable o una
-              suscripción mensual. Recibes un precio fijo en créditos después
-              de verificar el PDF, su número real de páginas y los alcances
-              seleccionados.
+              Empieza con una hoja de un plano real gratis, sin tarjeta. Las
+              mediciones de pago usan créditos después de verificar el PDF, su
+              número real de páginas y los alcances seleccionados.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                href={localizedAuthPath("/signup", "es")}
+                href={freeTrialSignupPath("es")}
                 className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
               >
-                Crear una cuenta
+                Iniciar prueba gratis
                 <ArrowRightIcon />
               </Link>
               <Link
@@ -75,6 +75,29 @@ export default function PricingPageEs() {
                 Ver un ejemplo de entrega
               </Link>
             </div>
+          </div>
+        </section>
+
+        <section className="border-b bg-blue-50/70 py-12">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8">
+            <div>
+              <Badge>Prueba gratuita</Badge>
+              <h2 className="mt-4 text-3xl font-semibold">
+                Una hoja de un plano real por 0 $
+              </h2>
+              <p className="mt-3 max-w-3xl leading-7 text-muted-foreground">
+                Elige un alcance basado en leyenda y recibe el PDF anotado y el
+                libro de cantidades en Excel. Sin tarjeta, sin créditos y una
+                prueba por usuario.
+              </p>
+            </div>
+            <Link
+              href={freeTrialSignupPath("es")}
+              className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
+            >
+              Probar una hoja gratis
+              <ArrowRightIcon />
+            </Link>
           </div>
         </section>
 

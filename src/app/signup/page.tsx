@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { signUp } from "@/app/auth/actions"
 import { AuthCard } from "@/components/auth/auth-card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,10 +14,12 @@ import {
   type Locale,
 } from "@/lib/i18n"
 import { getRequestLocale } from "@/lib/i18n-server"
+import { safeRelativePath } from "@/lib/safe-redirect"
 
 type SignupSearchParams = {
   error?: string
   lang?: string
+  next?: string
 }
 
 const copy = {
@@ -25,11 +27,14 @@ const copy = {
     metadataTitle: "Create account",
     eyebrow: "Private company workspace",
     title: "Create your Cuadrabot account",
-    body: "Create your company workspace to buy credits, submit plans, and keep your drawings and results private.",
+    body: "Create your private workspace and run one real blueprint sheet free. No credit card required.",
+    trialTitle: "Your free trial is included",
+    trialBody:
+      "$0 today · no credit card · one real sheet · annotated PDF + Excel workbook. One trial per user.",
     existing: "Already have an account?",
     login: "Log in",
     name: "Your name",
-    company: "Company",
+    company: "Company (optional)",
     email: "Work email",
     password: "Password",
     passwordHelp: "At least 10 characters.",
@@ -43,11 +48,14 @@ const copy = {
     metadataTitle: "Crear una cuenta",
     eyebrow: "Espacio de trabajo privado",
     title: "Crea tu cuenta de Cuadrabot",
-    body: "Crea el espacio de trabajo de tu empresa para comprar créditos, enviar planos y mantener privados tus dibujos y resultados.",
+    body: "Crea tu espacio de trabajo privado y prueba una hoja de un plano real gratis. No se requiere tarjeta.",
+    trialTitle: "Tu prueba gratuita está incluida",
+    trialBody:
+      "0 $ hoy · sin tarjeta · una hoja real · PDF anotado + libro de Excel. Una prueba por usuario.",
     existing: "¿Ya tienes una cuenta?",
     login: "Iniciar sesión",
     name: "Tu nombre",
-    company: "Empresa",
+    company: "Empresa (opcional)",
     email: "Correo de trabajo",
     password: "Contraseña",
     passwordHelp: "Al menos 10 caracteres.",
@@ -81,6 +89,10 @@ export default async function SignupPage({
   const params = await searchParams
   const locale = await getRequestLocale(params.lang)
   const text = copy[locale]
+  const next = safeRelativePath(
+    params.next,
+    "/dashboard/new?mode=sample"
+  )
   const errorMessage = localizeAuthNotice(
     params.error,
     locale,
@@ -97,7 +109,10 @@ export default async function SignupPage({
         <>
           {text.existing}{" "}
           <Link
-            href={localizedAuthPath("/login", locale)}
+            href={localizedAuthPath(
+              `/login?next=${encodeURIComponent(next)}`,
+              locale
+            )}
             className="font-medium text-primary"
           >
             {text.login}
@@ -106,12 +121,17 @@ export default async function SignupPage({
       }
     >
       <form action={signUp} className="space-y-5">
+        <Alert className="border-primary/40 bg-blue-50/70">
+          <AlertTitle>{text.trialTitle}</AlertTitle>
+          <AlertDescription>{text.trialBody}</AlertDescription>
+        </Alert>
         {errorMessage ? (
           <Alert variant="destructive">
             <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         ) : null}
         <input type="hidden" name="locale" value={locale} />
+        <input type="hidden" name="next" value={next} />
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="fullName">{text.name}</Label>
@@ -128,7 +148,6 @@ export default async function SignupPage({
               id="companyName"
               name="companyName"
               autoComplete="organization"
-              required
             />
           </div>
         </div>

@@ -24,7 +24,7 @@ const noticeCopy: Record<Locale, Record<AuthNoticeCode, string>> = {
   en: {
     missing_credentials: "Enter your email and password.",
     invalid_credentials: "The email or password is not correct.",
-    missing_profile: "Enter your name and company.",
+    missing_profile: "Enter your name.",
     invalid_signup:
       "Use a valid email and a password with at least 10 characters.",
     signup_failed:
@@ -42,7 +42,7 @@ const noticeCopy: Record<Locale, Record<AuthNoticeCode, string>> = {
   es: {
     missing_credentials: "Introduce tu correo y contraseña.",
     invalid_credentials: "El correo o la contraseña no son correctos.",
-    missing_profile: "Introduce tu nombre y el de tu empresa.",
+    missing_profile: "Introduce tu nombre.",
     invalid_signup:
       "Usa un correo válido y una contraseña de al menos 10 caracteres.",
     signup_failed:

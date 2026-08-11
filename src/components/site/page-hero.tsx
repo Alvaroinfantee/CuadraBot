@@ -3,6 +3,7 @@ import { ArrowRightIcon } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import {
   commonCopy,
+  freeTrialSignupPath,
   localizedAuthPath,
   localizedPublicPath,
   type Locale,
@@ -29,9 +30,11 @@ export function PageHero({
   locale?: Locale
 }) {
   const primaryTarget =
-    primaryHref === "/signup" || primaryHref === "/login"
-      ? localizedAuthPath(primaryHref, locale)
-      : primaryHref
+    primaryHref === "/signup"
+      ? freeTrialSignupPath(locale)
+      : primaryHref === "/login"
+        ? localizedAuthPath(primaryHref, locale)
+        : primaryHref
   const secondaryTarget =
     secondaryHref === "/sample"
       ? localizedPublicPath("/sample", locale)
@@ -78,14 +81,14 @@ export function CtaBand({ locale = "en" }: { locale?: Locale }) {
   const copy =
     locale === "es"
       ? {
-          title: "Crea una cuenta para iniciar tu próxima medición.",
+          title: "Prueba Cuadrabot gratis con una hoja real.",
           body:
-            "Compra un paquete de créditos o suscríbete, confirma el precio fijo después de verificar el PDF y recibe el plano anotado y el libro de cantidades en horas.",
+            "Sin tarjeta. Sube una hoja con una leyenda legible y recibe el plano anotado y el libro de cantidades en Excel. Una prueba por usuario.",
         }
       : {
-          title: "Create an account to start your next takeoff.",
+          title: "Try Cuadrabot free on one real sheet.",
           body:
-            "Buy a credit pack or subscribe, approve the fixed quote after PDF verification, and receive the annotated plan and quantity workbook in hours.",
+            "No credit card. Upload one sheet with a readable legend and receive the annotated plan and Excel quantity workbook. One trial per user.",
         }
   return (
     <section className="blueprint-grid py-16">
@@ -97,7 +100,7 @@ export function CtaBand({ locale = "en" }: { locale?: Locale }) {
           {copy.body}
         </p>
         <Link
-          href={localizedAuthPath("/signup", locale)}
+          href={freeTrialSignupPath(locale)}
           className={cn(buttonVariants({ size: "lg" }), "mt-7 h-12 px-7")}
         >
           {commonCopy[locale].nav.freeCta}
