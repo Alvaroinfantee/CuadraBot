@@ -67,7 +67,7 @@ export default function HowItWorksPageEs() {
           eyebrow="Cómo funciona"
           title="Sube los planos, confirma el alcance y deja que Cuadrabot relacione la leyenda."
           body="El flujo autoservicio mantiene como etapas separadas y auditables el precio, los movimientos de créditos, el mapeo de leyenda, el recuento, la validación y la entrega en horas."
-          primary="Crear una cuenta"
+          primary="Probar una hoja gratis"
           secondary="Ver los controles de precisión"
           secondaryHref="/es/accuracy"
           locale="es"

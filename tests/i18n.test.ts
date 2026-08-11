@@ -10,6 +10,7 @@ import {
   buildLocalizedMetadata,
   buildLocalizedAuthMetadata,
   commonCopy,
+  freeTrialSignupPath,
   isLocale,
   localeCookieName,
   localeForRequestPath,
@@ -83,6 +84,14 @@ test("the public route manifest has exactly 13 reciprocal EN/ES pairs", () => {
 })
 
 test("locale switching preserves query strings and hashes without overmatching", () => {
+  assert.equal(
+    freeTrialSignupPath("en"),
+    "/signup?next=%2Fdashboard%2Fnew%3Fmode%3Dsample"
+  )
+  assert.equal(
+    freeTrialSignupPath("es"),
+    "/signup?lang=es&next=%2Fdashboard%2Fnew%3Fmode%3Dsample"
+  )
   assert.equal(
     switchLocalePath("/pricing?plan=growth#subscriptions", "es"),
     "/es/pricing?plan=growth#subscriptions"

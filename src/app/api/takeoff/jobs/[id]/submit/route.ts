@@ -72,7 +72,7 @@ export async function POST(request: Request, context: Context) {
   if (jobError) return jsonError(jobError.message, 500)
   if (!job) return jsonError("Takeoff not found.", 404)
   if (job.free_sample && !features.freeSample) {
-    return jsonError("The free sample is currently unavailable.", 403)
+    return jsonError("The free trial is currently unavailable.", 403)
   }
 
   if (parsed.data.confirm) {
@@ -202,7 +202,7 @@ export async function POST(request: Request, context: Context) {
 
     if (job.free_sample && price.tier !== "free_sample") {
       return jsonError(
-        "The free sample for this workspace is no longer available.",
+        "This user's free trial is no longer available.",
         409
       )
     }
@@ -355,14 +355,14 @@ async function confirmPreparedJob(
   }
   if (job.free_sample) {
     if (freeSampleUsedAt) {
-      return jsonError("The free sample has already been used.", 409)
+      return jsonError("The free trial has already been used.", 409)
     }
     const { data, error } = await supabase.rpc("queue_free_sample", {
       p_job_id: job.id,
       p_idempotency_key: `sample:${job.id}`,
     })
     if (error || !data) {
-      return jsonError(error?.message ?? "Could not queue the free sample.", 409)
+      return jsonError(error?.message ?? "Could not queue the free trial.", 409)
     }
   } else {
     const { error } = await supabase.rpc("reserve_takeoff_credits", {

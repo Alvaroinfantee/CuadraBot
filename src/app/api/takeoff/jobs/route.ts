@@ -51,14 +51,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (parsed.data.mode === "sample" && parsed.data.trades.length !== 1) {
-    return jsonError("A free sample covers exactly one scope.", 422)
+    return jsonError("A free trial covers exactly one scope.", 422)
   }
   if (parsed.data.mode === "sample" && !features.freeSample) {
-    return jsonError("The free sample is currently unavailable.", 403)
+    return jsonError("The free trial is currently unavailable.", 403)
   }
 
   if (parsed.data.mode === "sample" && profile.free_sample_used_at) {
-    return jsonError("The free sample for this workspace has already been used.", 409)
+    return jsonError("This user has already used the free trial.", 409)
   }
 
   const supabase = createSupabaseAdminClient()

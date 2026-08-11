@@ -60,7 +60,7 @@ const sections = [
       ],
       [
         "¿Las mediciones requieren créditos?",
-        "Sí. Cada medición requiere créditos mediante un paquete reutilizable o una suscripción con créditos mensuales. No hay licencias por usuario ni planes ilimitados.",
+        "La primera prueba de una hoja es gratis: 0 $, sin tarjeta, un alcance basado en leyenda y una vez por usuario. Las mediciones de pago usan créditos de un paquete o una suscripción. No hay licencias por usuario ni planes ilimitados.",
       ],
       [
         "¿Cuándo se cobran los créditos?",
@@ -112,7 +112,7 @@ export default function FaqPageEs() {
           eyebrow="Preguntas frecuentes"
           title="Respuestas claras antes de subir tus planos."
           body="Alcance, precios, evidencias, privacidad y aquello de lo que Cuadrabot se hace —y no se hace— responsable."
-          primary="Crear una cuenta"
+          primary="Probar una hoja gratis"
           secondary="Ver precios"
           secondaryHref="/es/pricing"
           locale="es"

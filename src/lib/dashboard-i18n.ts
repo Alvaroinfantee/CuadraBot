@@ -32,11 +32,11 @@ const englishDashboardCopy = {
     noSeatLicense: "No seat license required",
     recentTakeoffs: "Recent takeoffs",
     viewAll: "View all",
-    sampleBadge: "Included once per company",
+    sampleBadge: "Included once per user",
     sampleTitle: "Try one sheet free",
     sampleBody:
       "Pick one legend-based scope and a sheet where its legend is visible. We will return a marked PDF and quantity workbook through the same automated workflow as paid work.",
-    sampleCta: "Start free sample",
+    sampleCta: "Start free trial",
     emptyTitle: "No takeoffs yet",
     emptyBody:
       "Upload your first PDF plan set with a readable legend to receive a fixed credit quote.",
@@ -57,7 +57,7 @@ const englishDashboardCopy = {
     empty: "No takeoffs yet.",
   },
   detail: {
-    freeSample: "Free sample",
+    freeSample: "Free trial",
     verifiedTakeoff: "Verified takeoff",
     created: "Created",
     planPages: "plan pages",
@@ -137,6 +137,9 @@ const englishDashboardCopy = {
     title: "Upload a legend-based plan set",
     description:
       "Choose fixture and legend-device counts, cable or conduit runs, or both. Supported sets remain self-serve up to 250 pages, with delivery in hours.",
+    trialReadyTitle: "Your free trial is ready",
+    trialReadyBody:
+      "$0 · no credit card · one real sheet · one legend-based scope · annotated PDF + Excel. One trial per user.",
     pausedTitle: "New takeoffs are temporarily paused",
     pausedBody:
       "New takeoff actions are temporarily unavailable. Please try again later.",
@@ -145,10 +148,10 @@ const englishDashboardCopy = {
     projectAndScope: "Project and scope",
     verifiedTakeoff: "Verified takeoff",
     verifiedTakeoffBody: "Fixed credit quote after server verification.",
-    freeSample: "Free one-sheet sample",
+    freeSample: "Free trial — one sheet",
     available: "Available",
     used: "Used",
-    freeSampleBody: "One legend-based scope, once per company.",
+    freeSampleBody: "One legend-based scope, once per user. No credit card.",
     projectName: "Project name",
     projectPlaceholder: "Northside retail fit-out",
     measurePrompt: "What should Cuadrabot extract?",
@@ -161,7 +164,7 @@ const englishDashboardCopy = {
     fileLimitEnd: "MB · 250 pages",
     samplePage: "Sheet/page to count",
     samplePageBody:
-      "We will process only this PDF page for the free sample. Its applicable legend or schedule must be visible on the same sheet.",
+      "We will process only this PDF page for the free trial. Its applicable legend or schedule must be visible on the same sheet.",
     instructions: "Instructions and assumptions",
     instructionsPlaceholder:
       "Legend sheet or page, codes to include, demolition or alternates to exclude, areas, levels, and naming rules...",
@@ -261,7 +264,7 @@ const englishDashboardCopy = {
     saved: "Company settings saved.",
     profile: "Profile",
     yourName: "Your name",
-    company: "Company",
+    company: "Company (optional)",
     countryCode: "Country code",
     region: "Region / state",
     city: "City",
@@ -280,7 +283,7 @@ const englishDashboardCopy = {
     privacySubject: "Cuadrabot data request",
   },
   actions: {
-    requiredName: "Name and company are required.",
+    requiredName: "Name is required.",
     countryCode: "Use a two-letter country code.",
     profileSaveError: "Company settings could not be saved.",
     correctionLength:
@@ -326,11 +329,11 @@ const spanishDashboardCopy = {
     noSeatLicense: "Sin licencia por usuario",
     recentTakeoffs: "Mediciones recientes",
     viewAll: "Ver todas",
-    sampleBadge: "Incluida una vez por empresa",
+    sampleBadge: "Incluida una vez por usuario",
     sampleTitle: "Prueba una hoja gratis",
     sampleBody:
       "Elige un alcance basado en leyenda y una hoja donde la leyenda sea visible. Recibirás un PDF marcado y un libro de cantidades mediante el mismo flujo automatizado que los trabajos de pago.",
-    sampleCta: "Iniciar muestra gratuita",
+    sampleCta: "Iniciar prueba gratuita",
     emptyTitle: "Aún no hay mediciones",
     emptyBody:
       "Carga tu primer juego de planos PDF con una leyenda legible para recibir un presupuesto fijo en créditos.",
@@ -351,7 +354,7 @@ const spanishDashboardCopy = {
     empty: "Aún no hay mediciones.",
   },
   detail: {
-    freeSample: "Muestra gratuita",
+    freeSample: "Prueba gratuita",
     verifiedTakeoff: "Medición verificada",
     created: "Creada",
     planPages: "páginas de planos",
@@ -432,6 +435,9 @@ const spanishDashboardCopy = {
     title: "Carga planos con leyenda",
     description:
       "Elige recuentos de equipos y dispositivos por leyenda, recorridos de cables o canalizaciones, o ambos. Los proyectos compatibles siguen siendo autoservicio hasta 250 páginas, con entrega en horas.",
+    trialReadyTitle: "Tu prueba gratuita está lista",
+    trialReadyBody:
+      "0 $ · sin tarjeta · una hoja real · un alcance basado en leyenda · PDF anotado + Excel. Una prueba por usuario.",
     pausedTitle: "Las nuevas mediciones están pausadas temporalmente",
     pausedBody:
       "Las nuevas mediciones no están disponibles temporalmente. Inténtalo de nuevo más tarde.",
@@ -441,10 +447,11 @@ const spanishDashboardCopy = {
     verifiedTakeoff: "Medición verificada",
     verifiedTakeoffBody:
       "Presupuesto fijo en créditos tras la verificación en el servidor.",
-    freeSample: "Muestra gratuita de una hoja",
+    freeSample: "Prueba gratuita — una hoja",
     available: "Disponible",
     used: "Utilizada",
-    freeSampleBody: "Un alcance basado en leyenda, una vez por empresa.",
+    freeSampleBody:
+      "Un alcance basado en leyenda, una vez por usuario. Sin tarjeta.",
     projectName: "Nombre del proyecto",
     projectPlaceholder: "Reforma de local en Gran Vía",
     measurePrompt: "¿Qué debe extraer Cuadrabot?",
@@ -457,7 +464,7 @@ const spanishDashboardCopy = {
     fileLimitEnd: "MB · 250 páginas",
     samplePage: "Hoja o página que se contará",
     samplePageBody:
-      "Para la muestra gratuita solo procesaremos esta página del PDF. La leyenda o cuadro aplicable debe estar visible en la misma hoja.",
+      "Para la prueba gratuita solo procesaremos esta página del PDF. La leyenda o cuadro aplicable debe estar visible en la misma hoja.",
     instructions: "Instrucciones y supuestos",
     instructionsPlaceholder:
       "Hoja o página de la leyenda, códigos que incluir, demoliciones o alternativas que excluir, zonas, niveles y reglas de nombres...",
@@ -560,7 +567,7 @@ const spanishDashboardCopy = {
     saved: "Se han guardado los datos de la empresa.",
     profile: "Perfil",
     yourName: "Tu nombre",
-    company: "Empresa",
+    company: "Empresa (opcional)",
     countryCode: "Código de país",
     region: "Región o provincia",
     city: "Ciudad",
@@ -579,7 +586,7 @@ const spanishDashboardCopy = {
     privacySubject: "Solicitud de datos de Cuadrabot",
   },
   actions: {
-    requiredName: "El nombre y la empresa son obligatorios.",
+    requiredName: "El nombre es obligatorio.",
     countryCode: "Usa un código de país de dos letras.",
     profileSaveError: "No se pudieron guardar los datos de la empresa.",
     correctionLength:
@@ -737,7 +744,7 @@ export function localizeJobEvent(input: {
     case "plan_verified":
       return "Plano, formato PDF, número de páginas y presupuesto fijo verificados."
     case "free_sample_queued":
-      return "Muestra gratuita añadida a la cola de procesamiento."
+      return "Prueba gratuita añadida a la cola de procesamiento."
     case "credits_reserved":
       return credits === null
         ? "Créditos reservados para la medición."
@@ -784,7 +791,7 @@ const englishJobEventFallback: Record<string, string> = {
   draft_created: "Takeoff draft created; waiting for the plan upload.",
   plan_verified:
     "Plan object, PDF signature, page count, and fixed quote verified.",
-  free_sample_queued: "Free accuracy sample queued for processing.",
+  free_sample_queued: "Free trial queued for processing.",
   credits_reserved: "Credits reserved for this takeoff.",
   job_claimed: "Takeoff job claimed by processor.",
   processing_progress: "Takeoff processing updated.",
@@ -842,17 +849,27 @@ const spanishCustomerErrors: Record<string, string> = {
     "La configuración de las mediciones no está disponible temporalmente.",
   "Check the project details.": "Revisa los datos del proyecto.",
   "A free sample covers exactly one trade.":
-    "La muestra gratuita cubre exactamente un alcance.",
+    "La prueba gratuita cubre exactamente un alcance.",
   "A free sample covers exactly one scope.":
-    "La muestra gratuita cubre exactamente un alcance.",
+    "La prueba gratuita cubre exactamente un alcance.",
+  "A free trial covers exactly one scope.":
+    "La prueba gratuita cubre exactamente un alcance.",
   "The free sample is currently unavailable.":
-    "La muestra gratuita no está disponible en este momento.",
+    "La prueba gratuita no está disponible en este momento.",
+  "The free trial is currently unavailable.":
+    "La prueba gratuita no está disponible en este momento.",
   "The free sample for this workspace has already been used.":
-    "Este espacio de trabajo ya ha utilizado la muestra gratuita.",
+    "Este usuario ya ha utilizado la prueba gratuita.",
   "The free sample for this workspace is no longer available.":
-    "La muestra gratuita ya no está disponible para este espacio de trabajo.",
+    "La prueba gratuita ya no está disponible para este usuario.",
+  "This user has already used the free trial.":
+    "Este usuario ya ha utilizado la prueba gratuita.",
+  "This user's free trial is no longer available.":
+    "La prueba gratuita ya no está disponible para este usuario.",
   "The free sample has already been used.":
-    "La muestra gratuita ya se ha utilizado.",
+    "La prueba gratuita ya se ha utilizado.",
+  "The free trial has already been used.":
+    "La prueba gratuita ya se ha utilizado.",
   "Request limits are temporarily unavailable.":
     "Los límites de solicitudes no están disponibles temporalmente.",
   "Too many new takeoff requests. Try again later.":
@@ -881,7 +898,9 @@ const spanishCustomerErrors: Record<string, string> = {
   "Verify the plan and review its quote first.":
     "Verifica el plano y revisa el presupuesto antes de continuar.",
   "Could not queue the free sample.":
-    "No se pudo añadir la muestra gratuita a la cola.",
+    "No se pudo añadir la prueba gratuita a la cola.",
+  "Could not queue the free trial.":
+    "No se pudo añadir la prueba gratuita a la cola.",
 }
 
 export function localizeCustomerError(

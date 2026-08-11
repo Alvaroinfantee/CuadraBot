@@ -13,6 +13,7 @@ import {
   type Locale,
 } from "@/lib/i18n"
 import { getRequestLocale } from "@/lib/i18n-server"
+import { safeRelativePath } from "@/lib/safe-redirect"
 
 type LoginSearchParams = {
   error?: string
@@ -70,6 +71,7 @@ export default async function LoginPage({
   const params = await searchParams
   const locale = await getRequestLocale(params.lang)
   const text = copy[locale]
+  const next = safeRelativePath(params.next)
   const errorMessage = localizeAuthNotice(
     params.error,
     locale,
@@ -87,7 +89,10 @@ export default async function LoginPage({
         <>
           {text.newUser}{" "}
           <Link
-            href={localizedAuthPath("/signup", locale)}
+            href={localizedAuthPath(
+              `/signup?next=${encodeURIComponent(next)}`,
+              locale
+            )}
             className="font-medium text-primary"
           >
             {text.createAccount}
@@ -107,7 +112,7 @@ export default async function LoginPage({
           </Alert>
         ) : null}
         <input type="hidden" name="locale" value={locale} />
-        <input type="hidden" name="next" value={params.next ?? "/dashboard"} />
+        <input type="hidden" name="next" value={next} />
         <div className="space-y-2">
           <Label htmlFor="email">{text.email}</Label>
           <Input

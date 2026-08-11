@@ -18,7 +18,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { signInNoticeCode } from "@/lib/auth-errors"
 import {
   marketingAccountCreatedCookieName,
-  marketingConsentCookieName,
 } from "@/lib/marketing-consent"
 
 function textField(formData: FormData, name: string) {
@@ -45,9 +44,10 @@ function actionRedirectPath(
 function authError(
   path: string,
   locale: Locale,
-  code: AuthNoticeCode
+  code: AuthNoticeCode,
+  params: Record<string, string | undefined> = {}
 ): never {
-  redirect(actionRedirectPath(path, locale, { error: code }))
+  redirect(actionRedirectPath(path, locale, { ...params, error: code }))
 }
 
 async function getActionLocale(formData: FormData) {
@@ -96,17 +96,22 @@ export async function signUp(formData: FormData) {
   const companyName = textField(formData, "companyName")
   const email = textField(formData, "email")
   const password = textField(formData, "password")
+  const next = safeRelativePath(
+    textField(formData, "next"),
+    "/dashboard/new?mode=sample"
+  )
 
-  if (fullName.length < 2 || companyName.length < 2) {
-    authError("/signup", locale, "missing_profile")
+  if (fullName.length < 2) {
+    authError("/signup", locale, "missing_profile", { next })
   }
 
   if (!email || password.length < 10) {
-    authError("/signup", locale, "invalid_signup")
+    authError("/signup", locale, "invalid_signup", { next })
   }
 
   const confirmationUrl = new URL("/auth/confirm", getSiteUrl())
-  confirmationUrl.searchParams.set("next", "/dashboard")
+  confirmationUrl.searchParams.set("next", next)
+  confirmationUrl.searchParams.set("created", "1")
   if (locale === "es") confirmationUrl.searchParams.set("lang", locale)
 
   const supabase = await createSupabaseServerClient()
@@ -123,10 +128,10 @@ export async function signUp(formData: FormData) {
     },
   })
 
-  if (error) authError("/signup", locale, "signup_failed")
+  if (error) authError("/signup", locale, "signup_failed", { next })
 
-  const cookieStore = await cookies()
-  if (cookieStore.get(marketingConsentCookieName)?.value === "granted") {
+  if (data.session) {
+    const cookieStore = await cookies()
     cookieStore.set(marketingAccountCreatedCookieName, "1", {
       httpOnly: false,
       maxAge: 15 * 60,
@@ -134,13 +139,13 @@ export async function signUp(formData: FormData) {
       sameSite: "lax",
       secure: getSiteUrl().startsWith("https://"),
     })
+    redirect(next)
   }
-
-  if (data.session) redirect("/dashboard")
 
   redirect(
     actionRedirectPath("/login", locale, {
       message: "confirm_email",
+      next,
     })
   )
 }

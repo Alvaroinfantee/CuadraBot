@@ -70,7 +70,6 @@ export default async function CompanySettingsPage({
                     id="companyName"
                     name="companyName"
                     defaultValue={profile?.company_name ?? ""}
-                    required
                   />
                 </div>
               </div>

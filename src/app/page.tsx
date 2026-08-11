@@ -24,16 +24,16 @@ import { buttonVariants } from "@/components/ui/button"
 import { SiteFooter } from "@/components/site/site-footer"
 import { SiteHeader } from "@/components/site/site-header"
 import { ProductDemoVideo } from "@/components/site/product-demo-video"
-import { buildLocalizedMetadata } from "@/lib/i18n"
+import { buildLocalizedMetadata, freeTrialSignupPath } from "@/lib/i18n"
 import { servicePriceCards } from "@/lib/takeoff-pricing"
 import { cn } from "@/lib/utils"
 
 export const metadata = buildLocalizedMetadata({
   locale: "en",
   path: "/",
-  title: "PDF fixture takeoff and symbol counts",
+  title: "Free PDF fixture takeoff trial and symbol counts",
   description:
-    "Upload PDF plans with a readable legend and receive source-linked fixture, device, and supported cable or conduit quantities in hours.",
+    "Try one real blueprint sheet free with no credit card. Receive source-linked fixture or device counts, an annotated PDF, and an Excel workbook.",
   keywords: [
     "fixture takeoff",
     "electrical fixture takeoff",
@@ -98,7 +98,7 @@ export default function HomePage() {
           <div className="relative mx-auto grid min-h-[680px] w-full max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
             <div>
               <Badge variant="outline" className="mb-6 bg-white">
-                Legend-driven fixture takeoffs
+                Free trial · one real sheet · no credit card
               </Badge>
               <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl">
                 Count fixtures from PDF plans in hours.
@@ -111,10 +111,10 @@ export default function HomePage() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href="/signup"
+                  href={freeTrialSignupPath("en")}
                   className={cn(buttonVariants({ size: "lg" }), "h-12 px-6")}
                 >
-                  Create account
+                  Upload one sheet free
                   <ArrowRightIcon />
                 </Link>
                 <Link
@@ -130,15 +130,15 @@ export default function HomePage() {
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <LockKeyholeIcon className="size-4 text-primary" />
-                  Private plan storage
+                  $0 today
                 </span>
                 <span className="flex items-center gap-2">
                   <CheckCircle2Icon className="size-4 text-primary" />
-                  One correction included
+                  No credit card
                 </span>
                 <span className="flex items-center gap-2">
                   <Layers3Icon className="size-4 text-primary" />
-                  Subscription optional
+                  Annotated PDF + Excel
                 </span>
               </div>
             </div>
@@ -294,7 +294,7 @@ export default function HomePage() {
             />
             <Accordion>
               {[
-                ["Do takeoffs require credits?", "Yes. Every takeoff requires credits. Buy a reusable credit pack or subscribe for monthly credits, then approve the fixed quote after the uploaded PDF and scope are verified."],
+                ["Do takeoffs require credits?", "Your first one-sheet trial is free: $0, no credit card, one legend-based scope, once per user. Paid takeoffs use credits from a reusable pack or monthly plan after you approve the verified quote."],
                 ["Does Cuadrabot replace an estimator?", "No. Cuadrabot provides takeoff support and reviewable evidence. Your team remains responsible for scope interpretation, pricing, bid decisions, and final verification."],
                 ["Does Cuadrabot count the legend itself?", "No. The legend is used as the item catalog. Legend samples, schedule rows, key plans, and repeated reference views are excluded from installed-placement totals."],
                 ["Can Cuadrabot measure cable or conduit runs?", "Only when the route is visibly drawn, the applicable legend is readable, and the sheet states a usable scale. Ambiguous routes or codes are flagged rather than guessed."],
@@ -318,14 +318,14 @@ export default function HomePage() {
               Turn your next readable legend into source-linked quantities.
             </h2>
             <p className="mt-4 max-w-2xl leading-7 text-muted-foreground">
-              Create an account, add credits through a reusable pack or monthly
-              subscription, then approve the verified fixed quote.
+              Run one real blueprint sheet free. No credit card and no credits
+              required; your annotated PDF and Excel workbook are included.
             </p>
             <Link
-              href="/signup"
+              href={freeTrialSignupPath("en")}
               className={cn(buttonVariants({ size: "lg" }), "mt-8 h-12 px-7")}
             >
-              Create account
+              Start my free trial
               <ArrowRightIcon />
             </Link>
           </div>

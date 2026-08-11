@@ -4,6 +4,7 @@ import { LocaleSwitcher } from "@/components/i18n/locale-switcher"
 import { buttonVariants } from "@/components/ui/button"
 import {
   commonCopy,
+  freeTrialSignupPath,
   localizedAuthPath,
   localizedPublicPath,
   type Locale,
@@ -57,7 +58,7 @@ export function SiteHeader({ locale = "en" }: { locale?: Locale }) {
             {copy.nav.login}
           </Link>
           <Link
-            href={localizedAuthPath("/signup", locale)}
+            href={freeTrialSignupPath(locale)}
             className={cn(buttonVariants({ size: "sm" }), "hidden sm:inline-flex")}
           >
             {copy.nav.freeCta}
@@ -87,7 +88,7 @@ export function SiteHeader({ locale = "en" }: { locale?: Locale }) {
                 {copy.nav.login}
               </DropdownMenuItem>
               <DropdownMenuItem
-                render={<Link href={localizedAuthPath("/signup", locale)} />}
+                render={<Link href={freeTrialSignupPath(locale)} />}
               >
                 {copy.nav.freeCta}
               </DropdownMenuItem>

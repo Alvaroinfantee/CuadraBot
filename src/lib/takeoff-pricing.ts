@@ -20,13 +20,13 @@ export type TakeoffPrice = {
 
 const prices: Record<TakeoffPricingTier, Omit<TakeoffPrice, "tier">> = {
   free_sample: {
-    name: "One-sheet sample",
+    name: "Free trial — one sheet",
     credits: 0,
     priceCents: 0,
     turnaroundHours: 8,
     selfServe: true,
     description:
-      "One real sheet with a readable legend, one scope, once per company.",
+      "One real sheet with a readable legend, one scope, once per user.",
   },
   first_verified: {
     name: "First verified takeoff",
