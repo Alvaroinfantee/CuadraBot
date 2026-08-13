@@ -9,6 +9,7 @@ import {
   CommandError,
   DockerLifecycle,
   attestRuntime,
+  cleanupRunArgs,
   processorRunArgs,
 } from "../src/docker.mjs"
 import { AtomicJsonState } from "../src/state.mjs"
@@ -120,6 +121,39 @@ test("Docker removal treats already-removed objects as idempotent", async () => 
   const lifecycle = new DockerLifecycle(dockerConfig("C:/executor-test/jobs"), runner)
   await lifecycle.remove(runtimeRecord("d".repeat(32)))
   assert.equal(calls.length, 3)
+})
+
+test("job cleanup uses the pinned processor image without network or privilege", () => {
+  const root = path.resolve("C:/executor-test/jobs")
+  const executionId = "e".repeat(32)
+  const args = cleanupRunArgs(
+    dockerConfig(root),
+    executionId,
+    path.join(root, executionId)
+  )
+  const joined = args.join(" ")
+  for (const expected of [
+    "--rm",
+    `--name cuadrabot-cleanup-${executionId}`,
+    "--network none",
+    "--user 10001:10001",
+    "--read-only",
+    "--cap-drop ALL",
+    "--security-opt no-new-privileges:true",
+    "--pids-limit 32",
+    "--cpus 0.25",
+    "--memory 128m",
+    "--memory-swap 128m",
+    "com.cuadrabot.executor.role=cleanup",
+  ]) {
+    assert.match(joined, new RegExp(escapeRegExp(expected)))
+  }
+  assert.equal(
+    args[args.indexOf("--mount") + 1],
+    `type=bind,src=${path.join(root, executionId)},dst=/cleanup`
+  )
+  assert.equal(args[args.indexOf(IMAGE) + 1], "python")
+  assert.equal(args.includes("--privileged"), false)
 })
 
 test("runtime attestation requires live processor, no host ports, one internal network, and egress", () => {

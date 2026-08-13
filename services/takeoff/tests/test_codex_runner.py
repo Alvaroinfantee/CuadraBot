@@ -113,6 +113,19 @@ def test_api_key_is_only_passed_in_isolated_child_environment(
         if value == "--config"
     ]
     combined = "\n".join(overrides)
+    assert 'model_provider="cuadrabot-egress"' in combined
+    assert (
+        'model_providers.cuadrabot-egress.base_url='
+        '"http://openai-egress:8091/v1"'
+    ) in combined
+    assert (
+        'model_providers.cuadrabot-egress.env_key="CODEX_API_KEY"'
+        in combined
+    )
+    assert (
+        'model_providers.cuadrabot-egress.wire_api="responses"'
+        in combined
+    )
     assert 'default_permissions="workspace-only"' in combined
     assert 'permissions.workspace-only.extends=":workspace"' in combined
     assert '":root"="deny"' in combined

@@ -9,6 +9,16 @@ const PROCESSOR_COMMAND =
   "umask 000; exec uvicorn app.main:app --uds /data/processor.sock"
 const PROCESSOR_HEALTH_COMMAND =
   "curl --fail --silent --unix-socket /data/processor.sock http://localhost/readyz || exit 1"
+const CLEANUP_PROGRAM = [
+  "from pathlib import Path",
+  "import shutil",
+  "root = Path('/cleanup')",
+  "for item in root.iterdir():",
+  "    if item.is_symlink() or item.is_file():",
+  "        item.unlink()",
+  "    else:",
+  "        shutil.rmtree(item)",
+].join("\n")
 
 export class CommandError extends Error {
   constructor(message, { exitCode, stderr }) {
@@ -242,8 +252,60 @@ export class DockerLifecycle {
       if (error?.code === "ENOENT") return
       throw error
     }
-    await fs.rm(destination, { recursive: true, force: true })
+    try {
+      await fs.rmdir(destination)
+      return
+    } catch (error) {
+      if (error?.code !== "ENOTEMPTY" && error?.code !== "EEXIST") throw error
+    }
+    await this.runner.run(
+      cleanupRunArgs(this.config, executionId, destination),
+      { timeoutMs: 120_000 }
+    )
+    await fs.rmdir(destination)
   }
+}
+
+export function cleanupRunArgs(config, executionId, jobDirectory) {
+  assertSafeId(executionId, "execution identifier")
+  validateMount(jobDirectory, config.jobsRoot)
+  return [
+    "run",
+    "--rm",
+    "--name",
+    `cuadrabot-cleanup-${executionId}`,
+    "--label",
+    MANAGED_LABEL,
+    "--label",
+    `com.cuadrabot.executor.execution=${executionId}`,
+    "--label",
+    "com.cuadrabot.executor.role=cleanup",
+    "--network",
+    "none",
+    "--user",
+    `${config.processorUid}:${config.processorGid}`,
+    "--read-only",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges:true",
+    "--pids-limit",
+    "32",
+    "--cpus",
+    "0.25",
+    "--memory",
+    "128m",
+    "--memory-swap",
+    "128m",
+    "--ulimit",
+    "nofile=1024:1024",
+    "--mount",
+    `type=bind,src=${path.resolve(jobDirectory)},dst=/cleanup`,
+    config.processorImage,
+    "python",
+    "-c",
+    CLEANUP_PROGRAM,
+  ]
 }
 
 export function attestRuntime({ container, network, record, egressContainer }) {
