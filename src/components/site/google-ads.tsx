@@ -73,6 +73,7 @@ export function GoogleAdsTag({ locale }: { locale: Locale }) {
       <GoogleAdsConsent
         cookieName={marketingConsentCookieName}
         googleAdsEnabled={googleAdsConfigurationIsValid}
+        googleAdsId={googleAdsId}
         locale={locale}
       />
     </>

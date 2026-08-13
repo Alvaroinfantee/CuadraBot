@@ -16,6 +16,7 @@ type ConsentChoice = "granted" | "denied"
 
 declare global {
   interface Window {
+    __cuadrabotGoogleAdsConfigured?: boolean
     dataLayer?: unknown[]
     gtag?: (...args: unknown[]) => void
   }
@@ -49,10 +50,12 @@ const copy = {
 export function GoogleAdsConsent({
   cookieName,
   googleAdsEnabled,
+  googleAdsId,
   locale,
 }: {
   cookieName: string
   googleAdsEnabled: boolean
+  googleAdsId: string
   locale: Locale
 }) {
   const [preferencesOpen, setPreferencesOpen] = useState(false)
@@ -84,6 +87,21 @@ export function GoogleAdsConsent({
       active = false
     }
   }, [])
+  useEffect(() => {
+    if (!googleAdsEnabled || !privacyRegion) return
+    ensureGoogleAdsRuntime({
+      choice,
+      globalPrivacyControl,
+      googleAdsId,
+      privacyRegion,
+    })
+  }, [
+    choice,
+    globalPrivacyControl,
+    googleAdsEnabled,
+    googleAdsId,
+    privacyRegion,
+  ])
 
   function choose(nextChoice: ConsentChoice) {
     const effectiveChoice =
@@ -201,4 +219,50 @@ function updateGoogleConsent(choice: ConsentChoice) {
     ad_user_data: state,
     ad_personalization: state,
   })
+}
+
+function ensureGoogleAdsRuntime({
+  choice,
+  globalPrivacyControl,
+  googleAdsId,
+  privacyRegion,
+}: {
+  choice: ConsentChoice | null | undefined
+  globalPrivacyControl: boolean
+  googleAdsId: string
+  privacyRegion: MarketingPrivacyRegion
+}) {
+  if (
+    window.__cuadrabotGoogleAdsConfigured ||
+    (Array.isArray(window.dataLayer) && typeof window.gtag === "function")
+  ) {
+    window.__cuadrabotGoogleAdsConfigured = true
+    return
+  }
+
+  window.dataLayer = window.dataLayer || []
+  window.gtag =
+    window.gtag ||
+    ((...args: unknown[]) => {
+      window.dataLayer?.push(args)
+    })
+
+  const state = globalPrivacyControl
+    ? "denied"
+    : choice === "granted"
+      ? "granted"
+      : choice === "denied" || privacyRegion !== "standard"
+        ? "denied"
+        : "granted"
+
+  window.gtag("consent", "update", {
+    ad_storage: state,
+    analytics_storage: state,
+    ad_user_data: state,
+    ad_personalization: state,
+  })
+  window.gtag("set", "ads_data_redaction", true)
+  window.gtag("js", new Date())
+  window.gtag("config", googleAdsId)
+  window.__cuadrabotGoogleAdsConfigured = true
 }
