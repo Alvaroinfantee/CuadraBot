@@ -156,6 +156,68 @@ test("a multi-MiB plan image is admitted as vision input and SSE usage is debite
   assert.equal(record.actualOutputTokens, 100)
 })
 
+test("a response is not completed downstream before usage is settled", async (t) => {
+  const upstream = http.createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "application/json" })
+    response.end(
+      '{"id":"resp_test","status":"completed","usage":{"input_tokens":120,"output_tokens":40}}'
+    )
+  })
+  const upstreamUrl = await listen(upstream)
+  t.after(() => close(upstream))
+  const fixture = await egressFixture(t, {
+    upstreamOrigin: new URL(upstreamUrl),
+  })
+  const credential = await fixture.registry.register(registration())
+  const originalRecordUsage = fixture.registry.recordUsage.bind(
+    fixture.registry
+  )
+  let markAccountingStarted
+  const accountingStarted = new Promise((resolve) => {
+    markAccountingStarted = resolve
+  })
+  let releaseAccounting
+  const accountingReleased = new Promise((resolve) => {
+    releaseAccounting = resolve
+  })
+  fixture.registry.recordUsage = async (...arguments_) => {
+    markAccountingStarted()
+    await accountingReleased
+    return originalRecordUsage(...arguments_)
+  }
+
+  let responseCompleted = false
+  const first = fetch(`${fixture.dataUrl}/v1/responses`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${credential.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ model: MODEL, input: "first" }),
+  })
+    .then(async (response) => {
+      await response.text()
+      responseCompleted = true
+      return response
+    })
+  await accountingStarted
+  await new Promise((resolve) => setTimeout(resolve, 25))
+  assert.equal(responseCompleted, false)
+
+  releaseAccounting()
+  assert.equal((await first).status, 200)
+  const second = await fetch(`${fixture.dataUrl}/v1/responses`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${credential.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ model: MODEL, input: "second" }),
+  })
+  assert.equal(second.status, 200)
+  await second.text()
+})
+
 test("model, built-in tools, service tier, and output ceiling fail closed", async (t) => {
   const fixture = await egressFixture(t)
   const token = (await fixture.registry.register(registration())).token

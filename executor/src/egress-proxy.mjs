@@ -191,6 +191,7 @@ export async function handleDataRequest(request, response, options) {
         authorization.reservationId
       )
     }
+    response.end()
     return
   }
   if (!result.usage) {
@@ -198,7 +199,7 @@ export async function handleDataRequest(request, response, options) {
       authorization.tokenId,
       authorization.reservationId
     )
-    return
+    throw new Error("OpenAI response usage was unavailable")
   }
   try {
     await options.registry.recordUsage(
@@ -215,6 +216,10 @@ export async function handleDataRequest(request, response, options) {
       .catch(() => undefined)
     throw error
   }
+  // Do not tell Codex that the response is complete until its token usage has
+  // been durably settled. Otherwise Codex can issue the next turn while the
+  // previous reservation still exists and receive a false 409 rejection.
+  response.end()
 }
 
 function validateToolPolicy(tools) {
@@ -364,7 +369,6 @@ async function forwardToOpenAI(response, body, options, tokenId) {
         }
       }
     }
-    response.end()
     return {
       status: upstream.status,
       usage: extractUsage(Buffer.concat(captured, bytes), contentType),
