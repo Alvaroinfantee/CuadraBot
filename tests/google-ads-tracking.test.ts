@@ -46,6 +46,9 @@ test("the Google tag is global and initializes Consent Mode v2 first", () => {
   assert.match(consent, /Max-Age=31536000/)
   assert.match(consent, /Cookie settings/)
   assert.match(consent, /marketingConsentChangedEvent/)
+  assert.match(consent, /ensureGoogleAdsRuntime/)
+  assert.match(consent, /__cuadrabotGoogleAdsConfigured/)
+  assert.match(consent, /window\.gtag\("config", googleAdsId\)/)
   assert.match(marketingAnalytics, /deleteMarketingIdentity/)
 })
 
