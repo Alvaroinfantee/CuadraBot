@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getAppFeatures } from "@/lib/app-settings"
 import { jsonError } from "@/lib/http"
-import { getCurrentProfile, getCurrentUser } from "@/lib/auth"
+import { getCurrentAuthContext } from "@/lib/auth"
 import { getRequiredEnv, takeoffUploadBucket } from "@/lib/config"
 import { consumeTakeoffRateLimit } from "@/lib/request-rate-limit"
 import {
@@ -17,9 +17,8 @@ import { takeoffAnalysisProfile } from "@/lib/takeoff-workflow"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
-  const [user, profile, features] = await Promise.all([
-    getCurrentUser(),
-    getCurrentProfile(),
+  const [{ user, profile }, features] = await Promise.all([
+    getCurrentAuthContext(),
     getAppFeatures(),
   ])
 

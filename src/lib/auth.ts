@@ -9,25 +9,21 @@ export type CurrentUser = {
   email: string | null
 }
 
-export const getCurrentUser = cache(async () => {
+export const getCurrentAuthContext = cache(async () => {
   const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !data?.claims?.sub) return null
+  if (error || !data?.claims?.sub) {
+    return { user: null, profile: null }
+  }
 
-  return {
+  const user = {
     id: data.claims.sub,
     email:
       typeof data.claims.email === "string" ? data.claims.email : null,
   } satisfies CurrentUser
-})
 
-export const getCurrentProfile = cache(async () => {
-  const user = await getCurrentUser()
-  if (!user) return null
-
-  const supabase = await createSupabaseServerClient()
-  const { data } = await supabase
+  const { data: profile } = await supabase
     .from("profiles")
     .select(
       "id,email,full_name,role,status,company_name,country_code,region,city,timezone,age_band,demographic_consent_at,stripe_customer_id,free_sample_used_at,last_seen_at"
@@ -35,14 +31,19 @@ export const getCurrentProfile = cache(async () => {
     .eq("id", user.id)
     .maybeSingle()
 
-  return data
+  return { user, profile }
 })
 
+export const getCurrentUser = cache(
+  async () => (await getCurrentAuthContext()).user
+)
+
+export const getCurrentProfile = cache(
+  async () => (await getCurrentAuthContext()).profile
+)
+
 export const getActiveUser = cache(async () => {
-  const [user, profile] = await Promise.all([
-    getCurrentUser(),
-    getCurrentProfile(),
-  ])
+  const { user, profile } = await getCurrentAuthContext()
   return user && profile?.status === "active" ? user : null
 })
 

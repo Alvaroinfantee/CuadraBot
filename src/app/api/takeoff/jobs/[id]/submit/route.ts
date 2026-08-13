@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getAppFeatures } from "@/lib/app-settings"
-import { getCurrentProfile, getCurrentUser } from "@/lib/auth"
+import { getCurrentAuthContext } from "@/lib/auth"
 import { jsonError } from "@/lib/http"
 import { maxPlanPages, maxUploadBytes } from "@/lib/config"
 import {
@@ -32,9 +32,8 @@ export const runtime = "nodejs"
 
 export async function POST(request: Request, context: Context) {
   const { id } = await context.params
-  const [user, profile, features] = await Promise.all([
-    getCurrentUser(),
-    getCurrentProfile(),
+  const [{ user, profile }, features] = await Promise.all([
+    getCurrentAuthContext(),
     getAppFeatures(),
   ])
   if (!user || !profile) return jsonError("Log in to continue.", 401)
