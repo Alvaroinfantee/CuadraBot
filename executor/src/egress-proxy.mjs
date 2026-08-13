@@ -20,7 +20,6 @@ const STATEFUL_FIELDS = [
   "previous_response_id",
   "conversation",
   "prompt",
-  "prompt_cache_key",
   "prompt_cache_options",
   "prompt_cache_retention",
 ]
@@ -100,6 +99,10 @@ export async function handleDataRequest(request, response, options) {
       throw error
     }
   }
+  // Codex adds an opaque cache key to Responses requests. Isolated jobs do not
+  // need it, so remove it before admission and forwarding to keep every request
+  // stateless and billed as uncached input.
+  delete body.prompt_cache_key
   validateToolPolicy(body.tools)
   if (
     body.service_tier !== undefined &&

@@ -14,10 +14,10 @@ const CLEANUP_PROGRAM = [
   "import shutil",
   "root = Path('/cleanup')",
   "for item in root.iterdir():",
-  "    if item.is_symlink() or item.is_file():",
-  "        item.unlink()",
-  "    else:",
+  "    if item.is_dir() and not item.is_symlink():",
   "        shutil.rmtree(item)",
+  "    else:",
+  "        item.unlink()",
 ].join("\n")
 
 export class CommandError extends Error {
