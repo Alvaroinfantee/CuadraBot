@@ -26,32 +26,57 @@ class CodexRunError(RuntimeError):
     pass
 
 
-OPENAI_PRICING_AS_OF = "2026-08-06"
+OPENAI_PRICING_AS_OF = "2026-08-13"
 OPENAI_LONG_CONTEXT_INPUT_THRESHOLD = 272_000
 # Versioned snapshot from the official OpenAI model pricing pages. Keep the
 # date and rates together so historical job estimates remain explainable.
 OPENAI_RATES_USD_PER_MILLION = {
-    "gpt-5.6-sol": {
-        "input": Decimal("5"),
-        "cached_input": Decimal("0.5"),
-        "cache_write": Decimal("6.25"),
-        "output": Decimal("30"),
+    "default": {
+        "gpt-5.6-sol": {
+            "input": Decimal("5"),
+            "cached_input": Decimal("0.5"),
+            "cache_write": Decimal("6.25"),
+            "output": Decimal("30"),
+        },
+        "gpt-5.6-terra": {
+            "input": Decimal("2.5"),
+            "cached_input": Decimal("0.25"),
+            "cache_write": Decimal("3.125"),
+            "output": Decimal("15"),
+        },
+        "gpt-5.6-luna": {
+            "input": Decimal("1"),
+            "cached_input": Decimal("0.1"),
+            "cache_write": Decimal("1.25"),
+            "output": Decimal("6"),
+        },
     },
-    "gpt-5.6-terra": {
-        "input": Decimal("2"),
-        "cached_input": Decimal("0.2"),
-        "cache_write": Decimal("2.5"),
-        "output": Decimal("12"),
-    },
-    "gpt-5.6-luna": {
-        "input": Decimal("0.2"),
-        "cached_input": Decimal("0.02"),
-        "cache_write": Decimal("0.25"),
-        "output": Decimal("1.2"),
+    "priority": {
+        "gpt-5.6-sol": {
+            "input": Decimal("10"),
+            "cached_input": Decimal("1"),
+            "cache_write": Decimal("12.5"),
+            "output": Decimal("60"),
+        },
+        "gpt-5.6-terra": {
+            "input": Decimal("5"),
+            "cached_input": Decimal("0.5"),
+            "cache_write": Decimal("6.25"),
+            "output": Decimal("30"),
+        },
+        "gpt-5.6-luna": {
+            "input": Decimal("2"),
+            "cached_input": Decimal("0.2"),
+            "cache_write": Decimal("2.5"),
+            "output": Decimal("12"),
+        },
     },
 }
-if set(OPENAI_RATES_USD_PER_MILLION) != set(SUPPORTED_TAKEOFF_MODELS):
-    raise RuntimeError("Takeoff model allowlist and pricing snapshot differ")
+for service_tier, tier_rates in OPENAI_RATES_USD_PER_MILLION.items():
+    if set(tier_rates) != set(SUPPORTED_TAKEOFF_MODELS):
+        raise RuntimeError(
+            f"Takeoff model allowlist and {service_tier} pricing snapshot differ"
+        )
 
 
 @dataclass(frozen=True)
@@ -479,11 +504,16 @@ def _money_number(value: Decimal) -> float:
 
 
 def collect_codex_usage(
-    events_path: Path, *, model: str
+    events_path: Path,
+    *,
+    model: str,
+    service_tier: str = "default",
 ) -> dict[str, Any]:
     """Aggregate private Codex JSONL usage into a safe cost-estimate payload."""
     normalized_model = model.strip().lower()
-    rates = OPENAI_RATES_USD_PER_MILLION.get(normalized_model)
+    rates = OPENAI_RATES_USD_PER_MILLION.get(service_tier, {}).get(
+        normalized_model
+    )
     if rates is None:
         return {}
 
@@ -836,6 +866,57 @@ def build_prompt(
                 "END_UNTRUSTED_CUSTOMER_SCOPE_JSON",
             ]
         )
+    if has_template:
+        workbook_criteria = [
+            "- create a polished Excel workbook matching the supplied template, "
+            "including filters and precomputed static totals",
+            "- write values only in every workbook cell; formulas of every kind "
+            "are forbidden, including arithmetic, functions, links, DDE, and "
+            "defined-name formulas",
+            "- do not create workbook defined names of any kind; use direct "
+            "static cell values and ordinary worksheet filters only",
+            "- every workbook must contain a machine-audit sheet named Takeoff "
+            "with one row per mapped asset and the complete required headers "
+            "unit_id, legend_entry_id, measurement_kind, code, description, "
+            "page, sheet, area_code, area, level, method, confidence, quantity, "
+            "unit, path_length_pdf_points, scale_kind, scale_source_page, "
+            "scale_source_sheet, scale_source_text, and "
+            "scale_real_units_per_pdf_point; unresolved symbols must not appear "
+            "as quantity rows",
+            "- visually inspect and verify the workbook before completing",
+        ]
+        required_outputs = [
+            f"- {output_dir / 'takeoff.json'}",
+            f"- {output_dir / 'takeoff.xlsx'}",
+            f"- {output_dir / 'methodology.json'}",
+        ]
+        completion_checks = (
+            "Before finishing, validate file existence, JSON structure, unique "
+            "unit_ids and legend_entry_ids, complete legend mapping, unresolved "
+            "symbol exclusion, page bounds, path-length-times-scale quantities, "
+            "independent scale-factor derivation, legend-specific dimensional "
+            "summary reconciliation, absence of all workbook formulas, and "
+            "visual workbook layout."
+        )
+    else:
+        workbook_criteria = [
+            "- do not create or inspect takeoff.xlsx; after takeoff.json passes "
+            "deterministic validation, the trusted server builds and validates "
+            "the canonical static ORTEGA-format workbook",
+            "- in the final result object, still set workbook to "
+            "artifacts/takeoff.xlsx, the server-owned output path",
+        ]
+        required_outputs = [
+            f"- {output_dir / 'takeoff.json'}",
+            f"- {output_dir / 'methodology.json'}",
+        ]
+        completion_checks = (
+            "Before finishing, validate file existence, JSON structure, unique "
+            "unit_ids and legend_entry_ids, complete legend mapping, unresolved "
+            "symbol exclusion, page bounds, path-length-times-scale quantities, "
+            "independent scale-factor derivation, and legend-specific "
+            "dimensional summary reconciliation."
+        )
     parts.extend(
         [
             "",
@@ -900,27 +981,10 @@ def build_prompt(
             "match method, confidence, and visibly flag unmatched items",
             "- if the source contains a DOP/USD rate, precompute static USD "
             "conversion values; otherwise keep prices in DOP",
-            "- create a polished Excel workbook matching the supplied template "
-            "when one exists, including filters and precomputed static totals",
-            "- write values only in every workbook cell; formulas of every kind "
-            "are forbidden, including arithmetic, functions, links, DDE, and "
-            "defined-name formulas",
-            "- do not create workbook defined names of any kind; use direct "
-            "static cell values and ordinary worksheet filters only",
-            "- every workbook must contain a machine-audit sheet named Takeoff "
-            "with one row per mapped asset and the complete required headers "
-            "unit_id, legend_entry_id, measurement_kind, code, description, "
-            "page, sheet, area_code, area, level, method, confidence, quantity, "
-            "unit, path_length_pdf_points, scale_kind, scale_source_page, "
-            "scale_source_sheet, scale_source_text, and "
-            "scale_real_units_per_pdf_point; unresolved symbols must not appear "
-            "as quantity rows",
-            "- visually inspect and verify the workbook before completing",
+            *workbook_criteria,
             "",
             "Required outputs:",
-            f"- {output_dir / 'takeoff.json'}",
-            f"- {output_dir / 'takeoff.xlsx'}",
-            f"- {output_dir / 'methodology.json'}",
+            *required_outputs,
             "",
             "The takeoff.json root must contain source, legend_entries, assets, "
             "unresolved_symbols, by_code, by_area, and limitations. Each mapped "
@@ -941,12 +1005,7 @@ def build_prompt(
             "entire PDF to one model request when it exceeds file limits",
             "- do not expose credentials in files, output, commands, or logs",
             "",
-            "Before finishing, validate file existence, JSON structure, unique "
-            "unit_ids and legend_entry_ids, complete legend mapping, unresolved "
-            "symbol exclusion, page bounds, path-length-times-scale quantities, "
-            "independent scale-factor derivation, legend-specific dimensional "
-            "summary reconciliation, absence of all workbook formulas, and "
-            "visual workbook layout.",
+            completion_checks,
         ]
     )
     return "\n".join(parts) + "\n"
@@ -967,8 +1026,11 @@ def run_codex(
     analysis_skill_sha256: str,
     workflow_kind: WorkflowKind = WorkflowKind.legend_fixture_takeoff_v1,
     requested_scopes: list[RequestedScope] | None = None,
+    service_tier: str = "default",
     timeout_seconds: int = 21600,
 ) -> CodexRunOutcome:
+    if service_tier not in OPENAI_RATES_USD_PER_MILLION:
+        raise ValueError("unsupported OpenAI service tier")
     prompt = build_prompt(
         job_dir,
         instructions=instructions,
@@ -1098,5 +1160,9 @@ def run_codex(
         )
     return CodexRunOutcome(
         result=result,
-        metrics=collect_codex_usage(events_path, model=model),
+        metrics=collect_codex_usage(
+            events_path,
+            model=model,
+            service_tier=service_tier,
+        ),
     )

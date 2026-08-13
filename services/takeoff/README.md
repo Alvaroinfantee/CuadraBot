@@ -22,6 +22,12 @@ This service turns a construction drawing PDF into:
 
 The service runs Codex locally through `codex exec`. It uses an OpenAI Platform
 API key for usage-based access instead of the operator's ChatGPT session.
+The trusted production egress selects Priority processing for the one-sheet
+free sample and Standard processing for paid jobs. Usage telemetry is priced
+with the matching dated rate snapshot, including the all-input-uncached
+counterfactual. When no customer workbook template is supplied, Codex produces
+the evidence JSON and methodology only; the service then builds and validates
+the canonical ORTEGA-format workbook deterministically.
 The key is accepted in `X-Codex-API-Key`, held only in memory, and passed only
 to the single child process as `CODEX_API_KEY`. It is never written into the
 job directory, command line, result, or log.

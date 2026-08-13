@@ -54,6 +54,10 @@ MEDIA_TYPES = {
 }
 
 
+def _openai_service_tier(record: JobRecord) -> str:
+    return "priority" if record.free_sample else "default"
+
+
 def sha256_file(path: Path, chunk_size: int = 8 * 1024**2) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -253,6 +257,7 @@ class PipelineManager:
             processor_usage = record.processor_usage or self._usage_from_events(
                 job_dir,
                 model=record.model,
+                service_tier=_openai_service_tier(record),
             )
             self.store.update(
                 record.id,
@@ -276,10 +281,12 @@ class PipelineManager:
         job_dir: Path,
         *,
         model: str,
+        service_tier: str = "default",
     ) -> ProcessorUsage | None:
         metrics = collect_codex_usage(
             job_dir / "work" / "codex-events.jsonl",
             model=model,
+            service_tier=service_tier,
         )
         return PipelineManager._validated_usage(metrics)
 
@@ -422,6 +429,7 @@ class PipelineManager:
                     analysis_skill_sha256=drawing_index.skill_sha256,
                     workflow_kind=record.workflow_kind,
                     requested_scopes=record.requested_scopes,
+                    service_tier=_openai_service_tier(record),
                 )
                 processor_usage = self._validated_usage(
                     codex_outcome.metrics
@@ -642,6 +650,7 @@ class PipelineManager:
                 processor_usage = self._usage_from_events(
                     job_dir,
                     model=failed_record.model,
+                    service_tier=_openai_service_tier(failed_record),
                 )
             self.store.update(
                 job_id,

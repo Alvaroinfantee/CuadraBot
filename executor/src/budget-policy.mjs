@@ -9,7 +9,7 @@ export const BUDGET_CLASSES = Object.freeze([
 
 export const BUDGET_PROFILES = deepFreeze({
   free_sample: {
-    maxCostMicros: 10_000_000,
+    maxCostMicros: 20_000_000,
     maxRequestBytes: 256 * 1024 * 1024,
     maxOutputTokens: 80_000,
     maxOutputTokensPerRequest: 12_000,
@@ -52,9 +52,11 @@ export const BUDGET_PROFILES = deepFreeze({
   },
 })
 
-// Micro-USD per token. Admission uses the maximum 1.25x cache-write input rate
-// on top of the long-context multiplier. Actual reporting remains the requested
-// all-uncached counterfactual and explicit cache controls are rejected.
+// Standard-tier micro-USD per token. Admission uses the maximum 1.25x
+// cache-write input rate on top of the long-context multiplier. Priority
+// reservations and debits use a 2x multiplier. Actual reporting remains the
+// requested all-uncached counterfactual and explicit cache controls are
+// rejected.
 export const MODEL_COST_RATES = deepFreeze({
   "gpt-5.6-sol": {
     inputMicros: 5,
@@ -64,18 +66,18 @@ export const MODEL_COST_RATES = deepFreeze({
     reservationInputMicros: 12.5,
   },
   "gpt-5.6-terra": {
-    inputMicros: 2,
-    outputMicros: 12,
-    longInputMicros: 4,
-    longOutputMicros: 18,
-    reservationInputMicros: 5,
+    inputMicros: 2.5,
+    outputMicros: 15,
+    longInputMicros: 5,
+    longOutputMicros: 22.5,
+    reservationInputMicros: 6.25,
   },
   "gpt-5.6-luna": {
-    inputMicros: 0.2,
-    outputMicros: 1.2,
-    longInputMicros: 0.4,
-    longOutputMicros: 1.8,
-    reservationInputMicros: 0.5,
+    inputMicros: 1,
+    outputMicros: 6,
+    longInputMicros: 2,
+    longOutputMicros: 9,
+    reservationInputMicros: 2.5,
   },
 })
 
@@ -98,6 +100,7 @@ export function reservationCostMicros({
   model,
   estimatedInputTokens,
   outputTokens,
+  serviceTier = "default",
 }) {
   const rates = MODEL_COST_RATES[model]
   if (!rates) throw new Error("Unknown model cost rates")
@@ -109,9 +112,11 @@ export function reservationCostMicros({
   ) {
     throw new Error("Invalid cost reservation")
   }
+  const multiplier = serviceTierMultiplier(serviceTier)
   return Math.ceil(
-    estimatedInputTokens * rates.reservationInputMicros +
-      outputTokens * rates.longOutputMicros
+    (estimatedInputTokens * rates.reservationInputMicros +
+      outputTokens * rates.longOutputMicros) *
+      multiplier
   )
 }
 
@@ -191,30 +196,11 @@ export function forceBoundedImageDetail(body) {
   return body
 }
 
-export function usageCostMicros({ model, inputTokens, outputTokens }) {
-  const rates = MODEL_COST_RATES[model]
-  if (!rates) throw new Error("Unknown model cost rates")
-  if (
-    !Number.isSafeInteger(inputTokens) ||
-    inputTokens < 0 ||
-    !Number.isSafeInteger(outputTokens) ||
-    outputTokens < 0
-  ) {
-    throw new Error("Invalid usage accounting")
-  }
-  const longContext = inputTokens > LONG_CONTEXT_INPUT_THRESHOLD
-  return Math.ceil(
-    inputTokens *
-      (longContext ? rates.longInputMicros : rates.inputMicros) +
-      outputTokens *
-        (longContext ? rates.longOutputMicros : rates.outputMicros)
-  )
-}
-
-export function enforcementUsageCostMicros({
+export function usageCostMicros({
   model,
   inputTokens,
   outputTokens,
+  serviceTier = "default",
 }) {
   const rates = MODEL_COST_RATES[model]
   if (!rates) throw new Error("Unknown model cost rates")
@@ -227,11 +213,46 @@ export function enforcementUsageCostMicros({
     throw new Error("Invalid usage accounting")
   }
   const longContext = inputTokens > LONG_CONTEXT_INPUT_THRESHOLD
+  const multiplier = serviceTierMultiplier(serviceTier)
   return Math.ceil(
-    inputTokens * rates.reservationInputMicros +
+    (inputTokens *
+      (longContext ? rates.longInputMicros : rates.inputMicros) +
       outputTokens *
-        (longContext ? rates.longOutputMicros : rates.outputMicros)
+        (longContext ? rates.longOutputMicros : rates.outputMicros)) *
+      multiplier
   )
+}
+
+export function enforcementUsageCostMicros({
+  model,
+  inputTokens,
+  outputTokens,
+  serviceTier = "default",
+}) {
+  const rates = MODEL_COST_RATES[model]
+  if (!rates) throw new Error("Unknown model cost rates")
+  if (
+    !Number.isSafeInteger(inputTokens) ||
+    inputTokens < 0 ||
+    !Number.isSafeInteger(outputTokens) ||
+    outputTokens < 0
+  ) {
+    throw new Error("Invalid usage accounting")
+  }
+  const longContext = inputTokens > LONG_CONTEXT_INPUT_THRESHOLD
+  const multiplier = serviceTierMultiplier(serviceTier)
+  return Math.ceil(
+    (inputTokens * rates.reservationInputMicros +
+      outputTokens *
+        (longContext ? rates.longOutputMicros : rates.outputMicros)) *
+      multiplier
+  )
+}
+
+function serviceTierMultiplier(serviceTier) {
+  if (serviceTier === "default") return 1
+  if (serviceTier === "priority") return 2
+  throw new Error("Unknown service tier")
 }
 
 function deepFreeze(value) {

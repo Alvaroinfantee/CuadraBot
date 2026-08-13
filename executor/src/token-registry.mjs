@@ -100,6 +100,9 @@ export function validateTokenState(state) {
         reservation.maxOutputTokens < 1 ||
         !Number.isSafeInteger(reservation.costMicros) ||
         reservation.costMicros < 1 ||
+        !["default", "priority"].includes(
+          reservation.serviceTier ?? "default"
+        ) ||
         !Number.isSafeInteger(reservation.createdAt)
       ) {
         throw new Error("Invalid token cost reservation")
@@ -371,6 +374,8 @@ export class TokenRegistry {
         model,
         estimatedInputTokens,
         outputTokens: effectiveOutputTokens,
+        serviceTier:
+          record.budgetClass === "free_sample" ? "priority" : "default",
       })
       if (
         ledger.spentCostMicros + ledger.reservedCostMicros + costMicros >
@@ -393,6 +398,8 @@ export class TokenRegistry {
         estimatedInputTokens,
         maxOutputTokens: effectiveOutputTokens,
         costMicros,
+        serviceTier:
+          record.budgetClass === "free_sample" ? "priority" : "default",
         createdAt: now,
       }
       authorized = {
@@ -403,6 +410,8 @@ export class TokenRegistry {
         reservationId,
         maxOutputTokens: effectiveOutputTokens,
         reservedCostMicros: costMicros,
+        serviceTier:
+          record.budgetClass === "free_sample" ? "priority" : "default",
       }
     })
     if (authorizationError) throw authorizationError
@@ -428,6 +437,7 @@ export class TokenRegistry {
         model: reservation.model,
         inputTokens,
         outputTokens,
+        serviceTier: reservation.serviceTier ?? "default",
       })
       delete record.reservations[reservationId]
       ledger.reservedCostMicros -= reservation.costMicros

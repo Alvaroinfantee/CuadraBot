@@ -8,27 +8,75 @@ const usdComparisonTolerance = 0.5 / usdRoundingFactor
 const longContextInputThreshold = 272_000
 
 const canonicalTakeoffPricing = {
-  "gpt-5.6-sol": {
-    pricingAsOf: "2026-08-06",
-    input: 5,
-    cached_input: 0.5,
-    cache_write: 6.25,
-    output: 30,
-  },
-  "gpt-5.6-terra": {
-    pricingAsOf: "2026-08-06",
-    input: 2,
-    cached_input: 0.2,
-    cache_write: 2.5,
-    output: 12,
-  },
-  "gpt-5.6-luna": {
-    pricingAsOf: "2026-08-06",
-    input: 0.2,
-    cached_input: 0.02,
-    cache_write: 0.25,
-    output: 1.2,
-  },
+  "gpt-5.6-sol": [
+    {
+      pricingAsOf: "2026-08-06",
+      input: 5,
+      cached_input: 0.5,
+      cache_write: 6.25,
+      output: 30,
+    },
+    {
+      pricingAsOf: "2026-08-13",
+      input: 5,
+      cached_input: 0.5,
+      cache_write: 6.25,
+      output: 30,
+    },
+    {
+      pricingAsOf: "2026-08-13",
+      input: 10,
+      cached_input: 1,
+      cache_write: 12.5,
+      output: 60,
+    },
+  ],
+  "gpt-5.6-terra": [
+    {
+      pricingAsOf: "2026-08-06",
+      input: 2,
+      cached_input: 0.2,
+      cache_write: 2.5,
+      output: 12,
+    },
+    {
+      pricingAsOf: "2026-08-13",
+      input: 2.5,
+      cached_input: 0.25,
+      cache_write: 3.125,
+      output: 15,
+    },
+    {
+      pricingAsOf: "2026-08-13",
+      input: 5,
+      cached_input: 0.5,
+      cache_write: 6.25,
+      output: 30,
+    },
+  ],
+  "gpt-5.6-luna": [
+    {
+      pricingAsOf: "2026-08-06",
+      input: 0.2,
+      cached_input: 0.02,
+      cache_write: 0.25,
+      output: 1.2,
+    },
+    {
+      pricingAsOf: "2026-08-13",
+      input: 1,
+      cached_input: 0.1,
+      cache_write: 1.25,
+      output: 6,
+    },
+    {
+      pricingAsOf: "2026-08-13",
+      input: 2,
+      cached_input: 0.2,
+      cache_write: 2.5,
+      output: 12,
+    },
+  ],
 } as const
 
 function roundedUsd(value: number) {
@@ -69,8 +117,22 @@ export const takeoffProcessorUsageSchema = z
   })
   .strict()
   .superRefine((usage, context) => {
-    const canonical = canonicalTakeoffPricing[usage.model]
-    if (usage.pricing_as_of !== canonical.pricingAsOf) {
+    const candidates = canonicalTakeoffPricing[usage.model]
+    const canonical = candidates.find(
+      (candidate) =>
+        usage.pricing_as_of === candidate.pricingAsOf &&
+        candidate.input === usage.rate_snapshot_usd_per_million.input &&
+        candidate.cached_input ===
+          usage.rate_snapshot_usd_per_million.cached_input &&
+        candidate.cache_write ===
+          usage.rate_snapshot_usd_per_million.cache_write &&
+        candidate.output === usage.rate_snapshot_usd_per_million.output
+    )
+    if (
+      !candidates.some(
+        (candidate) => usage.pricing_as_of === candidate.pricingAsOf
+      )
+    ) {
       context.addIssue({
         code: "custom",
         path: ["pricing_as_of"],
@@ -83,13 +145,27 @@ export const takeoffProcessorUsageSchema = z
       "cache_write",
       "output",
     ] as const) {
-      if (usage.rate_snapshot_usd_per_million[field] !== canonical[field]) {
+      if (
+        !candidates.some(
+          (candidate) =>
+            candidate.pricingAsOf === usage.pricing_as_of &&
+            usage.rate_snapshot_usd_per_million[field] === candidate[field]
+        )
+      ) {
         context.addIssue({
           code: "custom",
           path: ["rate_snapshot_usd_per_million", field],
           message: "Rate does not match the canonical model snapshot.",
         })
       }
+    }
+    if (!canonical) {
+      context.addIssue({
+        code: "custom",
+        path: ["rate_snapshot_usd_per_million"],
+        message: "Rate fields must come from one canonical pricing snapshot.",
+      })
+      return
     }
 
     if (

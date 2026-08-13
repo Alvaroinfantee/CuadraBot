@@ -44,7 +44,7 @@ test("trusted pricing classes enforce conservative source-job USD ceilings atomi
       ])
     ),
     {
-      free_sample: 10_000_000,
+      free_sample: 20_000_000,
       first_verified: 10_000_000,
       essential: 20_000_000,
       professional: 35_000_000,
@@ -62,7 +62,8 @@ test("trusted pricing classes enforce conservative source-job USD ceilings atomi
   })
   const freeRecord = fixture.state.snapshot().tokens[free.tokenId]
   assert.ok(admitted.reservedCostMicros <= BUDGET_PROFILES.free_sample.maxCostMicros)
-  assert.equal(admitted.reservedCostMicros, 1_295_000)
+  assert.equal(admitted.reservedCostMicros, 2_590_000)
+  assert.equal(admitted.serviceTier, "priority")
   assert.equal(
     freeRecord.reservations[admitted.reservationId].costMicros,
     admitted.reservedCostMicros
@@ -220,7 +221,7 @@ test("source-job budget survives token revocation and a new worker attempt", asy
       maxOutputTokens: 1_000,
     }
   )
-  assert.equal(uncertain.reservedCostMicros, 3_795_000)
+  assert.equal(uncertain.reservedCostMicros, 7_590_000)
   await fixture.registry.recordUsage(first.tokenId, uncertain.reservationId, {
     input_tokens: 300_000,
     output_tokens: 1_000,

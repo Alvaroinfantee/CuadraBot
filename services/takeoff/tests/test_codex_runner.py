@@ -143,7 +143,7 @@ def test_api_key_is_only_passed_in_isolated_child_environment(
         "schema_version": 1,
         "provider": "openai",
         "model": "gpt-5.6-sol",
-        "pricing_as_of": "2026-08-06",
+        "pricing_as_of": "2026-08-13",
         "currency": "USD",
         "usage_turns": 1,
         "input_tokens": 100_000,
@@ -268,8 +268,44 @@ def test_usage_cost_uses_cross_runtime_half_up_rounding(tmp_path: Path) -> None:
 
     usage = collect_codex_usage(events_path, model="gpt-5.6-terra")
 
-    assert usage["estimated_cost_usd"] == 0.0000025
-    assert usage["estimated_cost_usd_all_input_uncached"] == 0.000002
+    assert usage["estimated_cost_usd"] == 0.00000313
+    assert usage["estimated_cost_usd_all_input_uncached"] == 0.0000025
+
+
+def test_usage_cost_supports_priority_processing(tmp_path: Path) -> None:
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps(
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 100_000,
+                    "cached_input_tokens": 20_000,
+                    "cache_write_tokens": 10_000,
+                    "output_tokens": 5_000,
+                    "reasoning_output_tokens": 1_000,
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    usage = collect_codex_usage(
+        events_path,
+        model="gpt-5.6-sol",
+        service_tier="priority",
+    )
+
+    assert usage["pricing_as_of"] == "2026-08-13"
+    assert usage["estimated_cost_usd"] == 1.145
+    assert usage["estimated_cost_usd_all_input_uncached"] == 1.3
+    assert usage["rate_snapshot_usd_per_million"] == {
+        "input": 10.0,
+        "cached_input": 1.0,
+        "cache_write": 12.5,
+        "output": 60.0,
+    }
 
 
 def test_usage_parser_omits_estimate_for_unpriced_model(
@@ -419,9 +455,11 @@ def test_customer_scope_is_normalized_and_json_quoted(tmp_path: Path) -> None:
     assert "quantity=1, unit=EA" in prompt
     assert "aggregated count rows are forbidden" in prompt
     assert "never add EA counts to m/ft lengths" in prompt
-    assert "formulas of every kind are forbidden" in prompt
+    assert "do not create or inspect takeoff.xlsx" in prompt
+    assert "trusted server builds and validates" in prompt
+    assert "formulas of every kind are forbidden" not in prompt
     assert "precompute static USD conversion values" in prompt
-    assert "do not create workbook defined names of any kind" in prompt
+    assert "do not create workbook defined names of any kind" not in prompt
 
 
 def test_customer_scope_length_is_enforced() -> None:
@@ -431,3 +469,28 @@ def test_customer_scope_length_is_enforced() -> None:
         assert "10 normalized characters" in str(exc)
     else:
         raise AssertionError("overlong customer scope was accepted")
+
+
+def test_prompt_delegates_only_template_free_workbooks_to_server(
+    tmp_path: Path,
+) -> None:
+    prompt = build_prompt(
+        tmp_path,
+        instructions="",
+        has_template=True,
+        has_prices=False,
+        analysis_profile=AnalysisProfile.analyze_building_drawings_v1,
+        analysis_skill_dir=(
+            tmp_path
+            / ".agents"
+            / "skills"
+            / "analyze-building-drawings"
+        ),
+        drawing_index_dir=tmp_path / "work" / "drawing-index",
+        analysis_skill_sha256="a" * 64,
+    )
+
+    assert "formulas of every kind are forbidden" in prompt
+    assert "do not create workbook defined names of any kind" in prompt
+    assert "visually inspect and verify the workbook" in prompt
+    assert "do not create or inspect takeoff.xlsx" not in prompt

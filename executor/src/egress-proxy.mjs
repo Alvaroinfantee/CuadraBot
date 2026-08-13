@@ -152,7 +152,7 @@ export async function handleDataRequest(request, response, options) {
     JSON.stringify({
       ...body,
       store: false,
-      service_tier: "default",
+      service_tier: authorization.serviceTier,
       max_output_tokens: authorization.maxOutputTokens,
       safety_identifier: authorization.safetyIdentifier,
     })

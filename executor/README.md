@@ -103,7 +103,7 @@ budget:
 
 | Job tier | API budget | Output tokens/request |
 | --- | ---: | ---: |
-| `free_sample` | $10 | 12,000 |
+| `free_sample` | $20 | 12,000 |
 | `first_verified` | $10 | 16,000 |
 | `essential` | $20 | 20,000 |
 | `professional` | $35 | 24,000 |
@@ -117,9 +117,11 @@ inline PNG/JPEG/WebP images have their dimensions parsed and reserve
 `ceil(width/32) * ceil(height/32) * 4` input tokens; base64 bytes are not
 mispriced as text. Every image is forced to bounded `high` detail, and remote or
 account-scoped file references are rejected. Input reservations use the
-long-context plus 1.25x cache-write rate (Sol/Terra/Luna: 12.5/5/0.5
+long-context plus 1.25x cache-write rate (Sol/Terra/Luna: 12.5/6.25/2.5
 micro-USD per token), and output reserves the full requested maximum at the
-long-context rate (45/18/1.8 micro-USD per token).
+long-context rate (45/22.5/9 micro-USD per token). The free-sample reservation
+is doubled because those requests use Priority processing; its $20 ceiling
+preserves the same conservative token allowance as a $10 Standard job.
 
 Completed Responses `usage` is durably debited before another request is
 admitted. Missing/malformed usage, a debit above its reservation, a proxy crash
@@ -137,11 +139,13 @@ compact ledgers are intentionally retained so a later retry cannot regain spent
 budget.
 
 The proxy also rejects built-in server-side tools, background requests,
-stateful response/conversation/prompt references, priority/flex tiers, unknown
-models, and account-scoped input files. It allows only custom/function tools
-needed by the local Codex runtime, forces `store=false` and the default service
-tier, strips caller OpenAI headers, and injects a stable `cb_*` safety identifier
-derived from the end-user UUID.
+stateful response/conversation/prompt references, customer-selected
+priority/flex tiers, unknown models, and account-scoped input files. It allows
+only custom/function tools needed by the local Codex runtime, forces
+`store=false`, uses server-owned Priority processing for one-sheet free samples
+and the default tier for paid jobs, strips caller OpenAI headers, and injects a
+stable `cb_*` safety identifier derived from the end-user UUID. Processor cost
+telemetry uses the matching dated Standard or Priority rate snapshot.
 
 ## Worker
 
