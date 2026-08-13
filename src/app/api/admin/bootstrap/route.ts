@@ -6,7 +6,7 @@ import {
   isAdminBootstrapRedemptionResult,
   maxAdminBootstrapRequestBytes,
 } from "@/lib/admin-bootstrap"
-import { getCurrentProfile, getCurrentUser } from "@/lib/auth"
+import { getCurrentAuthContext } from "@/lib/auth"
 import { jsonError } from "@/lib/http"
 import { getRequestIp } from "@/lib/request-rate-limit"
 import { readRequestTextWithLimit } from "@/lib/request-body"
@@ -18,10 +18,7 @@ const genericRejection = "The one-time administrator key is not valid."
 const invalidKeySentinel = "invalid-admin-bootstrap-key"
 
 export async function POST(request: NextRequest) {
-  const [user, profile] = await Promise.all([
-    getCurrentUser(),
-    getCurrentProfile(),
-  ])
+  const { user, profile } = await getCurrentAuthContext()
 
   if (!user || !profile) return jsonError("Log in to continue.", 401)
   if (profile.status !== "active") {

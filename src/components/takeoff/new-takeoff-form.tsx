@@ -194,7 +194,9 @@ export function NewTakeoffForm({
             sizeBytes: file.size,
           }),
         })
-        const draft = await draftResponse.json()
+        const draft = await draftResponse.json().catch(() => {
+          throw new Error(copy.createError)
+        })
         if (!draftResponse.ok) {
           throw new Error(
             localizeCustomerError(draft.error, locale, copy.createError)
@@ -241,7 +243,9 @@ export function NewTakeoffForm({
           }),
         }
       )
-      const prepared = await quoteResponse.json()
+      const prepared = await quoteResponse.json().catch(() => {
+        throw new Error(copy.verifyError)
+      })
       if (!quoteResponse.ok) {
         throw new Error(
           localizeCustomerError(prepared.error, locale, copy.verifyError)
@@ -281,7 +285,9 @@ export function NewTakeoffForm({
           confirm: true,
         }),
       })
-      const payload = await response.json()
+      const payload = await response.json().catch(() => {
+        throw new Error(copy.queueError)
+      })
       if (!response.ok) {
         if (response.status === 402) {
           const requiredCredits =
