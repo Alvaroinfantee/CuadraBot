@@ -209,8 +209,7 @@ async function proxyCreateRequest(
   return new Promise((resolve, reject) => {
     const upstream = http.request(
       {
-        host: runtime.endpoint.host,
-        port: runtime.endpoint.port,
+        ...processorConnectionOptions(runtime.endpoint),
         method: "POST",
         path: "/v1/jobs",
         headers,
@@ -243,8 +242,7 @@ async function proxyBufferedOrStreamed(
   await new Promise((resolve, reject) => {
     const upstream = http.request(
       {
-        host: runtime.endpoint.host,
-        port: runtime.endpoint.port,
+        ...processorConnectionOptions(runtime.endpoint),
         method,
         path,
         headers: { authorization: `Bearer ${runtime.processorToken}` },
@@ -281,6 +279,13 @@ async function proxyBufferedOrStreamed(
     upstream.end()
     incoming.resume()
   })
+}
+
+export function processorConnectionOptions(endpoint) {
+  if (typeof endpoint?.socketPath === "string" && endpoint.socketPath) {
+    return { socketPath: endpoint.socketPath }
+  }
+  return { host: endpoint.host, port: endpoint.port }
 }
 
 async function requiredRuntime(controller, jobId) {

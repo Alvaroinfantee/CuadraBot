@@ -1,12 +1,25 @@
 import assert from "node:assert/strict"
 import http from "node:http"
 import test from "node:test"
-import { createBrokerServer } from "../src/broker-server.mjs"
+import {
+  createBrokerServer,
+  processorConnectionOptions,
+} from "../src/broker-server.mjs"
 
 const BROKER_TOKEN = "broker-token-that-is-at-least-32-characters"
 const PROCESSOR_TOKEN = "processor-token-distinct-from-egress"
 const EGRESS_TOKEN = "cbe_ephemeral-submit-only-token"
 const PROCESSOR_JOB_ID = "e".repeat(32)
+
+test("broker prefers a private Unix socket and retains TCP test compatibility", () => {
+  assert.deepEqual(processorConnectionOptions({ socketPath: "/private/job.sock" }), {
+    socketPath: "/private/job.sock",
+  })
+  assert.deepEqual(processorConnectionOptions({ host: "127.0.0.1", port: 49152 }), {
+    host: "127.0.0.1",
+    port: 49152,
+  })
+})
 
 test("broker authenticates, sends the egress token only on processor submit, and binds the job", async (t) => {
   const processorRequests = []
