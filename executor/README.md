@@ -103,7 +103,7 @@ budget:
 
 | Job tier | API budget | Output tokens/request |
 | --- | ---: | ---: |
-| `free_sample` | $5 | 12,000 |
+| `free_sample` | $10 | 12,000 |
 | `first_verified` | $10 | 16,000 |
 | `essential` | $20 | 20,000 |
 | `professional` | $35 | 24,000 |
