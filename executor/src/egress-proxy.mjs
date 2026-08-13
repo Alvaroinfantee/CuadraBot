@@ -306,8 +306,13 @@ async function forwardToOpenAI(response, body, options, tokenId) {
   const active = options.activeRequests.get(tokenId) ?? new Set()
   active.add(controller)
   options.activeRequests.set(tokenId, active)
+  let downstreamAvailable = true
   const downstreamClosed = () => {
-    if (!response.writableEnded) controller.abort()
+    // Codex closes a streamed Responses connection after receiving a local
+    // shell tool call, before the upstream response.completed event. Keep
+    // consuming the already-bounded upstream response so exact usage can be
+    // settled before the next turn; simply stop forwarding bytes downstream.
+    downstreamAvailable = false
   }
   response.once("close", downstreamClosed)
   const overall = setTimeout(() => controller.abort(), options.upstreamTimeoutMs)
@@ -366,7 +371,12 @@ async function forwardToOpenAI(response, body, options, tokenId) {
           throw new Error("OpenAI response exceeded the proxy limit")
         }
         captured.push(buffered)
-        if (!response.write(buffered)) {
+        if (
+          downstreamAvailable &&
+          !response.destroyed &&
+          !response.writableEnded &&
+          !response.write(buffered)
+        ) {
           await new Promise((resolve, reject) => {
             response.once("drain", resolve)
             response.once("error", reject)
