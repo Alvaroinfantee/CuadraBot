@@ -47,6 +47,11 @@ test("processor lifecycle command has every isolation flag and no egress credent
   assert.equal(args.at(-1), IMAGE)
   assert.doesNotMatch(joined, /OPENAI_API_KEY|cbe_|sk-/)
   assert.equal(args.filter((value) => value === "--mount").length, 1)
+  const mountIndex = args.indexOf("--mount")
+  assert.equal(
+    args[mountIndex + 1],
+    `type=bind,src=${path.join(root, record.executionId)},dst=/data`
+  )
   assert.equal(args.filter((value) => value === "--network").length, 1)
 })
 

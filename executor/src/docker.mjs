@@ -352,7 +352,7 @@ export function processorRunArgs(config, record, { jobDirectory, processorToken 
     "--tmpfs",
     `/tmp:rw,noexec,nosuid,nodev,size=${config.processorTmpfs},uid=${config.processorUid},gid=${config.processorGid},mode=700`,
     "--mount",
-    `type=bind,src=${path.resolve(jobDirectory)},dst=/data,rw`,
+    `type=bind,src=${path.resolve(jobDirectory)},dst=/data`,
     "--env",
     "TAKEOFF_ENV=production",
     "--env",
