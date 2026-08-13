@@ -1,4 +1,5 @@
 import * as tus from "tus-js-client"
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 
 export const SUPABASE_TUS_CHUNK_SIZE_BYTES = 6 * 1024 * 1024
 export const SUPABASE_TUS_RETRY_DELAYS_MS = [
@@ -27,6 +28,11 @@ export type ResumableUploadTask = {
   upload: tus.Upload
   start: () => Promise<void>
   cancel: () => Promise<void>
+}
+
+type TusErrorResponse = {
+  getStatus?: () => number
+  getBody?: () => string
 }
 
 export function resumableUploadFingerprint(
@@ -130,6 +136,34 @@ export function createSignedResumableUploadTask(options: {
       }
     },
   }
+}
+
+export async function uploadSmallFileToSignedUrl(options: {
+  file: File
+  grant: SignedResumableUploadGrant
+}) {
+  const { file, grant } = options
+  const supabase = createSupabaseBrowserClient()
+  const { error } = await supabase.storage
+    .from(grant.bucket)
+    .uploadToSignedUrl(grant.path, grant.token, file, {
+      contentType: "application/pdf",
+      cacheControl: "3600",
+    })
+
+  if (error) throw error
+}
+
+export function signedTusNeedsStandardFallback(error: unknown) {
+  if (!(error instanceof Error)) return false
+
+  const response = (
+    error as Error & { originalResponse?: TusErrorResponse | null }
+  ).originalResponse
+  const status = response?.getStatus?.()
+  const body = response?.getBody?.() ?? error.message
+
+  return status === 400 && body.includes("Invalid Compact JWS")
 }
 
 function previousUploadTimestamp(value: string | null | undefined) {

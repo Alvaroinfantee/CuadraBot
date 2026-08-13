@@ -4,6 +4,7 @@ import path from "node:path"
 import test from "node:test"
 import {
   resumableUploadFingerprint,
+  signedTusNeedsStandardFallback,
   SUPABASE_TUS_CHUNK_SIZE_BYTES,
   SUPABASE_TUS_RETRY_DELAYS_MS,
 } from "../src/lib/supabase/resumable-upload"
@@ -25,6 +26,25 @@ test("uses the hosted direct Storage TUS endpoint and required six MiB chunks", 
   assert.throws(() =>
     getSupabaseResumableUploadEndpoint("http://project-ref.supabase.co")
   )
+})
+
+test("only falls back when Supabase rejects its signed TUS compact JWS", () => {
+  const rejectedToken = Object.assign(new Error("TUS creation failed"), {
+    originalResponse: {
+      getStatus: () => 400,
+      getBody: () => '{"message":"Invalid Compact JWS"}',
+    },
+  })
+  const unrelatedFailure = Object.assign(new Error("Network unavailable"), {
+    originalResponse: {
+      getStatus: () => 503,
+      getBody: () => "Service unavailable",
+    },
+  })
+
+  assert.equal(signedTusNeedsStandardFallback(rejectedToken), true)
+  assert.equal(signedTusNeedsStandardFallback(unrelatedFailure), false)
+  assert.equal(signedTusNeedsStandardFallback(new Error("Invalid Compact JWS")), false)
 })
 
 test("pause and retry retain the same draft job path and resumable fingerprint", () => {
@@ -85,6 +105,7 @@ test("signed TUS uploads are non-upserting and preserve server verification", ()
   )
 
   assert.match(resumable, /"x-signature": grant\.token/)
+  assert.match(resumable, /uploadToSignedUrl\(grant\.path, grant\.token, file/)
   assert.doesNotMatch(resumable, /x-upsert|authorization/i)
   assert.match(resumable, /findPreviousUploads\(\)/)
   assert.match(resumable, /resumeFromPreviousUpload/)
