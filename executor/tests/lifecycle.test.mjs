@@ -36,15 +36,22 @@ test("processor lifecycle command has every isolation flag and no egress credent
     "--memory 6g",
     "--memory-swap 6g",
     "--user 10001:10001",
-    "--publish 127.0.0.1::8000",
     "--restart no",
+    "--health-cmd curl --fail --silent --unix-socket /data/processor.sock http://localhost/readyz || exit 1",
     "noexec,nosuid,nodev",
     "com.cuadrabot.executor.role=processor",
     "TAKEOFF_SERVICE_API_TOKEN=processor-only-token",
   ]) {
     assert.match(joined, new RegExp(escapeRegExp(expected)))
   }
-  assert.equal(args.at(-1), IMAGE)
+  const imageIndex = args.indexOf(IMAGE)
+  assert.ok(imageIndex > 0)
+  assert.deepEqual(args.slice(imageIndex + 1), [
+    "sh",
+    "-c",
+    "umask 000; exec uvicorn app.main:app --uds /data/processor.sock",
+  ])
+  assert.equal(args.includes("--publish"), false)
   assert.doesNotMatch(joined, /OPENAI_API_KEY|cbe_|sk-/)
   assert.equal(args.filter((value) => value === "--mount").length, 1)
   const mountIndex = args.indexOf("--mount")
@@ -87,34 +94,16 @@ test("bind paths and identifiers reject traversal", () => {
   )
 })
 
-test("Docker endpoint accepts one dynamic loopback binding and rejects exposure", async () => {
+test("Docker endpoint uses a contained private Unix socket", () => {
   const record = runtimeRecord("c".repeat(32))
-  const valid = new DockerLifecycle(
-    dockerConfig("C:/executor-test/jobs"),
-    runnerReturning(
-      JSON.stringify([{ HostIp: "127.0.0.1", HostPort: "49152" }])
-    )
-  )
-  assert.deepEqual(await valid.processorEndpoint(record), {
-    host: "127.0.0.1",
-    port: 49_152,
-    origin: "http://127.0.0.1:49152",
+  const lifecycle = new DockerLifecycle(dockerConfig("C:/executor-test/jobs"))
+  assert.deepEqual(lifecycle.processorEndpoint(record), {
+    socketPath: path.join(
+      path.resolve("C:/executor-test/jobs"),
+      record.executionId,
+      "processor.sock"
+    ),
   })
-
-  for (const binding of [
-    [{ HostIp: "0.0.0.0", HostPort: "49152" }],
-    [
-      { HostIp: "127.0.0.1", HostPort: "49152" },
-      { HostIp: "::", HostPort: "49152" },
-    ],
-    [{ HostIp: "127.0.0.1", HostPort: "0" }],
-  ]) {
-    const lifecycle = new DockerLifecycle(
-      dockerConfig("C:/executor-test/jobs"),
-      runnerReturning(JSON.stringify(binding))
-    )
-    await assert.rejects(lifecycle.processorEndpoint(record), /loopback|exactly one/i)
-  }
 })
 
 test("Docker removal treats already-removed objects as idempotent", async () => {
@@ -133,7 +122,7 @@ test("Docker removal treats already-removed objects as idempotent", async () => 
   assert.equal(calls.length, 3)
 })
 
-test("runtime attestation requires live processor, one internal network, loopback, and egress", () => {
+test("runtime attestation requires live processor, no host ports, one internal network, and egress", () => {
   const record = runtimeRecord("8".repeat(32))
   const valid = inspectionFixture(record)
   assert.equal(attestRuntime(valid), true)
@@ -147,8 +136,14 @@ test("runtime attestation requires live processor, one internal network, loopbac
   assert.equal(attestRuntime(publicNetwork), false)
 
   const publicPort = structuredClone(valid)
-  publicPort.container.NetworkSettings.Ports["8000/tcp"][0].HostIp = "0.0.0.0"
+  publicPort.container.NetworkSettings.Ports["8000/tcp"] = [
+    { HostIp: "127.0.0.1", HostPort: "49152" },
+  ]
   assert.equal(attestRuntime(publicPort), false)
+
+  const wrongCommand = structuredClone(valid)
+  wrongCommand.container.Config.Cmd = ["uvicorn", "app.main:app"]
+  assert.equal(attestRuntime(wrongCommand), false)
 
   const missingEgress = structuredClone(valid)
   delete missingEgress.network.Containers.egress
@@ -421,6 +416,17 @@ function inspectionFixture(record) {
     container: {
       State: { Running: true },
       Config: {
+        Cmd: [
+          "sh",
+          "-c",
+          "umask 000; exec uvicorn app.main:app --uds /data/processor.sock",
+        ],
+        Healthcheck: {
+          Test: [
+            "CMD-SHELL",
+            "curl --fail --silent --unix-socket /data/processor.sock http://localhost/readyz || exit 1",
+          ],
+        },
         Labels: {
           "com.cuadrabot.executor.managed": "true",
           "com.cuadrabot.executor.role": "processor",
@@ -428,13 +434,14 @@ function inspectionFixture(record) {
         },
       },
       HostConfig: {
+        PortBindings: {},
         ReadonlyRootfs: true,
         NetworkMode: record.networkName,
       },
       NetworkSettings: {
         Networks: { [record.networkName]: {} },
         Ports: {
-          "8000/tcp": [{ HostIp: "127.0.0.1", HostPort: "49152" }],
+          "8000/tcp": null,
         },
       },
     },
@@ -452,10 +459,6 @@ function inspectionFixture(record) {
       },
     },
   }
-}
-
-function runnerReturning(stdout) {
-  return { async run() { return { stdout, stderr: "", exitCode: 0 } } }
 }
 
 function escapeRegExp(value) {

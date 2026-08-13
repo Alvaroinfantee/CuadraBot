@@ -1,4 +1,5 @@
 import crypto from "node:crypto"
+import http from "node:http"
 import { isBudgetClass } from "./budget-policy.mjs"
 import {
   assertSafeId,
@@ -321,11 +322,15 @@ export class BrokerController {
     let lastError
     while (this.clock() < deadline) {
       try {
-        const response = await this.fetchImpl(new URL("/readyz", endpoint.origin), {
-          signal: AbortSignal.timeout(5_000),
-        })
-        if (response.ok) return
-        lastError = new Error(`Processor readiness returned ${response.status}`)
+        const status = endpoint.socketPath
+          ? await unixSocketStatus(endpoint.socketPath, "/readyz", 5_000)
+          : (
+              await this.fetchImpl(new URL("/readyz", endpoint.origin), {
+                signal: AbortSignal.timeout(5_000),
+              })
+            ).status
+        if (status >= 200 && status < 300) return
+        lastError = new Error(`Processor readiness returned ${status}`)
       } catch (error) {
         lastError = error
       }
@@ -341,4 +346,21 @@ export class BrokerController {
     this.#queue = pending.catch(() => undefined)
     return pending
   }
+}
+
+function unixSocketStatus(socketPath, requestPath, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const request = http.request(
+      { socketPath, path: requestPath, method: "GET", timeout: timeoutMs },
+      (response) => {
+        response.resume()
+        response.once("end", () => resolve(response.statusCode ?? 502))
+      }
+    )
+    request.once("timeout", () =>
+      request.destroy(new Error("Processor readiness timed out"))
+    )
+    request.once("error", reject)
+    request.end()
+  })
 }

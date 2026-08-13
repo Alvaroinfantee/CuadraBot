@@ -347,10 +347,16 @@ if [[ "$mode" == full ]]; then
       || fail "$processor isolation flags mismatch"
     jq -e --argjson memory "$expected_processor_memory_bytes" --argjson nano_cpus "$expected_processor_nano_cpus" --argjson pids "$expected_processor_pids" '.HostConfig.Memory == $memory and .HostConfig.MemorySwap == $memory and .HostConfig.NanoCpus == $nano_cpus and .HostConfig.PidsLimit == $pids' <<<"$processor_json" >/dev/null \
       || fail "$processor resource limits mismatch"
-    jq -e '(.NetworkSettings.Ports | keys) == ["8000/tcp"] and (.NetworkSettings.Ports["8000/tcp"] | length) == 1 and .NetworkSettings.Ports["8000/tcp"][0].HostIp == "127.0.0.1" and (.NetworkSettings.Ports["8000/tcp"][0].HostPort | test("^[1-9][0-9]{0,4}$"))' <<<"$processor_json" >/dev/null \
-      || fail "$processor has an unsafe/non-single loopback binding"
+    jq -e '.Config.Cmd == ["sh", "-c", "umask 000; exec uvicorn app.main:app --uds /data/processor.sock"] and .Config.Healthcheck.Test == ["CMD-SHELL", "curl --fail --silent --unix-socket /data/processor.sock http://localhost/readyz || exit 1"] and ([.NetworkSettings.Ports[]? | select(. != null) | .[]?] | length) == 0 and ([.HostConfig.PortBindings[]? | .[]?] | length) == 0' <<<"$processor_json" >/dev/null \
+      || fail "$processor publishes a host port or lacks the private Unix socket command"
     jq -e --arg jobs "$CUADRABOT_ROOT/executor/state/jobs/" '(.Mounts | any(.RW == true and .Type == "bind" and (.Source | startswith($jobs)) and .Destination == "/data")) and (.Mounts | all(if .RW then (.Type == "bind" and (.Source | startswith($jobs)) and .Destination == "/data") else true end))' <<<"$processor_json" >/dev/null \
       || fail "$processor has a writable sibling/shared mount"
+    processor_data_dir="$(jq -r '.Mounts[] | select(.Destination == "/data" and .Type == "bind" and .RW == true) | .Source' <<<"$processor_json")"
+    runuser -u "$CUADRABOT_EXECUTOR_USER" -- test -S "$processor_data_dir/processor.sock" \
+      || fail "$processor Unix socket is missing"
+    runuser -u "$CUADRABOT_EXECUTOR_USER" -- curl --fail --silent --max-time 5 \
+      --unix-socket "$processor_data_dir/processor.sock" http://localhost/readyz >/dev/null \
+      || fail "$processor Unix socket readiness failed"
     mapfile -t job_networks < <(jq -r '.NetworkSettings.Networks | keys[]' <<<"$processor_json")
     [[ "${#job_networks[@]}" -eq 1 ]] || fail "$processor must have exactly one job network"
     for network in "${job_networks[@]}"; do

@@ -135,8 +135,8 @@ Do not route public jobs until full validation passes. Specifically verify:
 - no public listener other than restricted SSH;
 - broker `127.0.0.1:8090` and egress control `127.0.0.1:8092` are ready;
 - data port 8091 is not host-published;
-- an active processor has exactly one dynamic
-  `127.0.0.1:<host-port>:8000` mapping and one internal job network;
+- an active processor publishes no host port, exposes its API only through the
+  private `/data/processor.sock`, and has one internal job network;
 - processor memory and memory+swap are both 6 GiB;
 - worker, broker, egress, and three required timers are active;
 - Admin Health receives fresh worker/processor/reconciler/retention/archive

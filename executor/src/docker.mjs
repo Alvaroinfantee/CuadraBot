@@ -4,6 +4,11 @@ import path from "node:path"
 import { assertSafeId, ensurePrivateDirectory, safeChild } from "./util.mjs"
 
 const MANAGED_LABEL = "com.cuadrabot.executor.managed=true"
+const PROCESSOR_SOCKET_NAME = "processor.sock"
+const PROCESSOR_COMMAND =
+  "umask 000; exec uvicorn app.main:app --uds /data/processor.sock"
+const PROCESSOR_HEALTH_COMMAND =
+  "curl --fail --silent --unix-socket /data/processor.sock http://localhost/readyz || exit 1"
 
 export class CommandError extends Error {
   constructor(message, { exitCode, stderr }) {
@@ -135,24 +140,21 @@ export class DockerLifecycle {
         processorToken,
       })
       await this.runner.run(args, { timeoutMs: 120_000 })
-      return await this.processorEndpoint(record)
+      return this.processorEndpoint(record)
     } catch (error) {
       await this.remove(record).catch(() => undefined)
       throw error
     }
   }
 
-  async processorEndpoint(record) {
+  processorEndpoint(record) {
     validateRuntimeRecord(record)
-    const format = "{{json (index .NetworkSettings.Ports \"8000/tcp\")}}"
-    const result = await this.runner.run([
-      "inspect",
-      "--format",
-      format,
-      record.containerName,
-    ])
-    const { host, port } = parsePortBinding(result.stdout)
-    return { host, port, origin: `http://${host === "::1" ? "[::1]" : host}:${port}` }
+    const jobDirectory = safeChild(
+      this.config.jobsRoot,
+      record.executionId,
+      "execution identifier"
+    )
+    return { socketPath: path.join(jobDirectory, PROCESSOR_SOCKET_NAME) }
   }
 
   async attest(record) {
@@ -253,10 +255,14 @@ export function attestRuntime({ container, network, record, egressContainer }) {
     const members = Object.values(network?.Containers ?? {}).map(
       (member) => member?.Name
     )
-    const binding = JSON.stringify(
-      container?.NetworkSettings?.Ports?.["8000/tcp"] ?? null
-    )
-    parsePortBinding(binding)
+    const publishedPorts = Object.values(
+      container?.NetworkSettings?.Ports ?? {}
+    ).flatMap((bindings) => bindings ?? [])
+    const configuredPortBindings = Object.values(
+      container?.HostConfig?.PortBindings ?? {}
+    ).flatMap((bindings) => bindings ?? [])
+    const command = container?.Config?.Cmd
+    const healthcheck = container?.Config?.Healthcheck
     return (
       container?.State?.Running === true &&
       labels["com.cuadrabot.executor.managed"] === "true" &&
@@ -264,6 +270,17 @@ export function attestRuntime({ container, network, record, egressContainer }) {
       labels["com.cuadrabot.executor.execution"] === record.executionId &&
       container?.HostConfig?.ReadonlyRootfs === true &&
       container?.HostConfig?.NetworkMode === record.networkName &&
+      publishedPorts.length === 0 &&
+      configuredPortBindings.length === 0 &&
+      Array.isArray(command) &&
+      command.length === 3 &&
+      command[0] === "sh" &&
+      command[1] === "-c" &&
+      command[2] === PROCESSOR_COMMAND &&
+      Array.isArray(healthcheck?.Test) &&
+      healthcheck.Test.length === 2 &&
+      healthcheck.Test[0] === "CMD-SHELL" &&
+      healthcheck.Test[1] === PROCESSOR_HEALTH_COMMAND &&
       Object.keys(networks).length === 1 &&
       Object.hasOwn(networks, record.networkName) &&
       network?.Name === record.networkName &&
@@ -279,30 +296,6 @@ export function attestRuntime({ container, network, record, egressContainer }) {
   } catch {
     return false
   }
-}
-
-function parsePortBinding(serialized) {
-  let bindings
-  try {
-    bindings = JSON.parse(serialized)
-  } catch {
-    throw new Error("Processor port binding was invalid")
-  }
-  if (!Array.isArray(bindings) || bindings.length !== 1) {
-    throw new Error("Processor must expose exactly one loopback binding")
-  }
-  const binding = bindings[0]
-  const host = binding?.HostIp
-  const port = Number(binding?.HostPort)
-  if (
-    !["127.0.0.1", "::1"].includes(host) ||
-    !Number.isSafeInteger(port) ||
-    port < 1 ||
-    port > 65_535
-  ) {
-    throw new Error("Processor API was not bound safely to loopback")
-  }
-  return { host, port }
 }
 
 export function processorRunArgs(config, record, { jobDirectory, processorToken }) {
@@ -326,8 +319,6 @@ export function processorRunArgs(config, record, { jobDirectory, processorToken 
     `com.cuadrabot.executor.expires_at=${record.expiresAt}`,
     "--network",
     record.networkName,
-    "--publish",
-    "127.0.0.1::8000",
     "--user",
     `${config.processorUid}:${config.processorGid}`,
     "--read-only",
@@ -349,6 +340,16 @@ export function processorRunArgs(config, record, { jobDirectory, processorToken 
     "30",
     "--restart",
     "no",
+    "--health-cmd",
+    PROCESSOR_HEALTH_COMMAND,
+    "--health-interval",
+    "30s",
+    "--health-timeout",
+    "5s",
+    "--health-start-period",
+    "15s",
+    "--health-retries",
+    "3",
     "--tmpfs",
     `/tmp:rw,noexec,nosuid,nodev,size=${config.processorTmpfs},uid=${config.processorUid},gid=${config.processorGid},mode=700`,
     "--mount",
@@ -368,6 +369,9 @@ export function processorRunArgs(config, record, { jobDirectory, processorToken 
     "--env",
     `TAKEOFF_MAX_TOTAL_UPLOAD_BYTES=${config.maxUploadBytes}`,
     config.processorImage,
+    "sh",
+    "-c",
+    PROCESSOR_COMMAND,
   ]
 }
 

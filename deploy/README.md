@@ -61,7 +61,7 @@ CuadraBot App Platform (public HTTPS)
           +-- 127.0.0.1:8092 egress control plane
           |
           +-- one disposable processor container
-                 - only an engine-assigned 127.0.0.1 host port to container 8000
+                 - no host port; broker uses the private /data/processor.sock
                  - read-only root
                  - unique job-only bind and internal network
                  - no default route/general egress
@@ -80,9 +80,8 @@ The broker creates a fresh `--internal` Docker network per job, temporarily
 connects the egress proxy under the `openai-egress` alias, and destroys the
 processor container, network, token, and job directory at completion or TTL.
 The validation script fails if an active job is attached to a non-internal
-network or publishes anything except one engine-assigned
-`127.0.0.1:<dynamic>:8000` mapping. There are no non-loopback/public processor
-ports.
+network, publishes any host port, or lacks the private
+`/data/processor.sock`. There are no public processor ports.
 
 Host duties are split across four identities: `cuadrabot` (SSH/deployment),
 `cuadraexec` (the trusted broker, egress, and rootless-Docker control plane),

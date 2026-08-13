@@ -14,9 +14,10 @@ The OpenAI master key exists only in the separate egress proxy container.
 - Egress control API: container port `8092`, published only as
   `127.0.0.1:8092`; every `/control/*` mutation requires
   `EGRESS_CONTROL_TOKEN`. `GET /healthz` and `GET /readyz` are loopback probes.
-- Processor API: container port `8000` is published to one Docker-assigned
-  loopback port. The broker rejects non-loopback or multiple bindings and
-  substitutes a unique processor bearer token on every request.
+- Processor API: the isolated container listens on `/data/processor.sock`.
+  The broker reaches that Unix-domain socket through the job's private bind
+  directory, publishes no host TCP port, and substitutes a unique processor
+  bearer token on every request.
 
 The processor has no public port and only its internal job network. The egress
 proxy is the only other member and separately has outbound connectivity. The
@@ -156,7 +157,7 @@ npm run test:executor
 The local tests cover auth, route/model/tool/tier restrictions, header stripping,
 stable pseudonyms, exact USD class budgets, representative multi-MiB plan-image
 admission, durable usage accounting, pre-body global/per-token concurrency,
-byte/time bounds, Docker flags, loopback binding validation, traversal, restart
+byte/time bounds, Docker flags, private-socket validation, traversal, restart
 reconciliation, response-loss recovery, cleanup idempotency, submit-only token
 delivery, and worker cleanup. A deployment must
 also run the rootless-Docker smoke test because local Windows development does
