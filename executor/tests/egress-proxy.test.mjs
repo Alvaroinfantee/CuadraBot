@@ -73,6 +73,7 @@ test("control auth, Responses-only routing, header stripping, and safety injecti
       tools: [{ type: "function", name: "inspect_page" }],
       service_tier: "auto",
       max_output_tokens: 4_096,
+      prompt_cache_key: "codex-generated-cache-key",
       store: true,
       safety_identifier: "attacker-selected",
     }),
@@ -89,6 +90,7 @@ test("control auth, Responses-only routing, header stripping, and safety injecti
   assert.equal(forwarded.body.store, false)
   assert.equal(forwarded.body.service_tier, "default")
   assert.equal(forwarded.body.max_output_tokens, 4_096)
+  assert.equal(forwarded.body.prompt_cache_key, undefined)
 })
 
 test("a multi-MiB plan image is admitted as vision input and SSE usage is debited", async (t) => {

@@ -153,6 +153,11 @@ test("job cleanup uses the pinned processor image without network or privilege",
     `type=bind,src=${path.join(root, executionId)},dst=/cleanup`
   )
   assert.equal(args[args.indexOf(IMAGE) + 1], "python")
+  assert.match(
+    args.at(-1),
+    /item\.is_dir\(\) and not item\.is_symlink\(\)/
+  )
+  assert.match(args.at(-1), /item\.unlink\(\)/)
   assert.equal(args.includes("--privileged"), false)
 })
 

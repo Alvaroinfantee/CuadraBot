@@ -94,7 +94,9 @@ admits only one data request globally and one per token, synchronously before
 body buffering. A data image may decode to at most 11 MiB; at most eight are
 allowed in one request. Hard configuration ceilings are 24 MiB per request,
 32 MiB per response, two global in-flight requests, and 32,000 output tokens
-per request.
+per request. Codex-generated `prompt_cache_key` values are stripped before
+forwarding, so isolated processor requests remain stateless and all input is
+accounted for as uncached.
 
 The trusted application job tier (never customer text) selects an atomic USD
 budget:
