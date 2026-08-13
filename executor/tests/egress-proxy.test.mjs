@@ -206,6 +206,7 @@ test("a response is not completed downstream before usage is settled", async (t)
 
   releaseAccounting()
   assert.equal((await first).status, 200)
+  assert.equal(fixture.options.admission.total, 0)
   const second = await fetch(`${fixture.dataUrl}/v1/responses`, {
     method: "POST",
     headers: {

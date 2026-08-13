@@ -35,9 +35,16 @@ export function createEgressServers(options) {
       sendError(response, error)
       return
     }
-    void handleDataRequest(request, response, options)
-      .catch((error) => sendError(response, error))
-      .finally(release)
+    void handleDataRequest(request, response, options).then(
+      () => {
+        release()
+        if (!response.writableEnded && !response.destroyed) response.end()
+      },
+      (error) => {
+        release()
+        sendError(response, error)
+      }
+    )
   })
   const controlServer = http.createServer((request, response) => {
     void handleControlRequest(request, response, options).catch((error) => {
@@ -191,7 +198,6 @@ export async function handleDataRequest(request, response, options) {
         authorization.reservationId
       )
     }
-    response.end()
     return
   }
   if (!result.usage) {
@@ -216,10 +222,9 @@ export async function handleDataRequest(request, response, options) {
       .catch(() => undefined)
     throw error
   }
-  // Do not tell Codex that the response is complete until its token usage has
-  // been durably settled. Otherwise Codex can issue the next turn while the
-  // previous reservation still exists and receive a false 409 rejection.
-  response.end()
+  // The server wrapper releases the concurrency slot and then ends the
+  // response. Codex therefore cannot start its next turn while either the
+  // usage reservation or the admission slot from this turn is still active.
 }
 
 function validateToolPolicy(tools) {
