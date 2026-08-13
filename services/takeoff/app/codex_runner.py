@@ -778,6 +778,32 @@ def build_prompt(
         "Exit code 1 means surfaced warnings that must also appear in "
         "methodology/limitations; exit code 2 is a structural failure.",
         "",
+        "Efficient local execution (mandatory):",
+        "- Keep the model/tool loop bounded. Complete the normal workflow in "
+        "no more than six shell tool invocations unless a validator reports a "
+        "specific failure; combine independent reads, queries, image setup, "
+        "artifact generation, and validation instead of issuing one command "
+        "per question.",
+        "- Use Python's standard-library sqlite3 module for drawings.db; the "
+        "sqlite3 command-line program is not installed.",
+        "- Use Python with Pillow for raster dimensions, crops, and inspection "
+        "mosaics; ImageMagick commands such as identify and convert are not "
+        "installed.",
+        "- Read manifest.json and call Pillow Image.open(...).size before "
+        "choosing crop coordinates. PDF display points and rendered-image "
+        "pixels are different coordinate spaces.",
+        "- In the first shell invocation, batch the required skill/index-guide "
+        "reads with the manifest, DRAWINGS.md, relevant extracted text and "
+        "positioned words, database schema/summary queries, and page raster "
+        "dimensions. Create any initial inspection crops or a compact mosaic "
+        "in that same invocation.",
+        "- Reuse the prepared text, positioned words, contact sheets, and page "
+        "rasters. Do not repeatedly print large evidence files or reopen the "
+        "same image in separate turns when a compact crop or summary suffices.",
+        "- After visual review, use one deterministic Python build pass to "
+        "update the index and write all required artifacts, then run the index "
+        "and artifact validators together in one final validation invocation.",
+        "",
         "Inputs:",
         f"- drawings: {drawing}",
     ]
