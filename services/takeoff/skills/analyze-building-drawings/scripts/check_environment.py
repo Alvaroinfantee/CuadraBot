@@ -21,6 +21,7 @@ def main() -> int:
         if importlib.util.find_spec(module) is None
     ]
     pdftoppm = shutil.which("pdftoppm")
+    pdftotext = shutil.which("pdftotext")
     tesseract = shutil.which("tesseract")
     requirements = Path(__file__).with_name("requirements.txt")
 
@@ -32,6 +33,7 @@ def main() -> int:
         + ("ok" if not missing_modules else f"missing {', '.join(missing_modules)}")
     )
     print(f"  pdftoppm (required): {pdftoppm or 'missing'}")
+    print(f"  pdftotext (required): {pdftotext or 'missing'}")
     print(f"  tesseract (optional): {tesseract or 'missing'}")
 
     if missing_modules:
@@ -45,12 +47,17 @@ def main() -> int:
             "Install Poppler for the host operating system so pdftoppm is on PATH.",
             file=sys.stderr,
         )
+    if not pdftotext:
+        print(
+            "Install Poppler for the host operating system so pdftotext is on PATH.",
+            file=sys.stderr,
+        )
     if not tesseract:
         print(
             "Optional: install Tesseract to OCR scanned or text-poor pages.",
             file=sys.stderr,
         )
-    return 2 if missing_modules or not pdftoppm else 0
+    return 2 if missing_modules or not pdftoppm or not pdftotext else 0
 
 
 if __name__ == "__main__":

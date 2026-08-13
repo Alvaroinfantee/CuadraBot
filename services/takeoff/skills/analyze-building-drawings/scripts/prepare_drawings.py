@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import shutil
 import sqlite3
@@ -13,6 +14,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from xml.etree import ElementTree
 
 try:
     import pdfplumber
@@ -134,6 +136,102 @@ def render_page(pdf_path: Path, page_number: int, output_png: Path, dpi: int) ->
     result = subprocess.run(command, capture_output=True, text=True)
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or "pdftoppm failed")
+
+
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _required_float(element: ElementTree.Element, attribute: str) -> float:
+    value = element.get(attribute)
+    if value is None:
+        raise RuntimeError(f"pdftotext output is missing {attribute}")
+    number = float(value)
+    if not math.isfinite(number) or number < 0:
+        raise RuntimeError(f"pdftotext output has invalid {attribute}")
+    return number
+
+
+def parse_poppler_bbox(xml_text: str) -> tuple[str, list[dict], float, float]:
+    """Parse one `pdftotext -bbox-layout` page without loading PDF graphics."""
+    try:
+        root = ElementTree.fromstring(xml_text)
+    except ElementTree.ParseError as exc:
+        raise RuntimeError("pdftotext returned malformed bbox XML") from exc
+    page = next(
+        (element for element in root.iter() if _xml_local_name(element.tag) == "page"),
+        None,
+    )
+    if page is None:
+        raise RuntimeError("pdftotext bbox output has no page")
+    page_width = _required_float(page, "width")
+    page_height = _required_float(page, "height")
+    if page_width == 0 or page_height == 0:
+        raise RuntimeError("pdftotext returned invalid page dimensions")
+
+    words: list[dict] = []
+    text_lines: list[str] = []
+    for line in (
+        element for element in page.iter() if _xml_local_name(element.tag) == "line"
+    ):
+        line_text: list[str] = []
+        for element in line.iter():
+            if _xml_local_name(element.tag) != "word":
+                continue
+            text = "".join(element.itertext()).strip()
+            if not text:
+                continue
+            x0 = _required_float(element, "xMin")
+            x1 = _required_float(element, "xMax")
+            top = _required_float(element, "yMin")
+            bottom = _required_float(element, "yMax")
+            if x1 < x0 or bottom < top:
+                raise RuntimeError("pdftotext returned an inverted word bbox")
+            words.append(
+                {
+                    "text": text,
+                    "x0": x0,
+                    "x1": x1,
+                    "top": top,
+                    "bottom": bottom,
+                    "upright": True,
+                    "height": bottom - top,
+                    "width": x1 - x0,
+                    "direction": "ltr",
+                }
+            )
+            line_text.append(text)
+        if line_text:
+            text_lines.append(" ".join(line_text))
+    return "\n".join(text_lines), words, page_width, page_height
+
+
+def extract_positioned_text(
+    pdf_path: Path, page_number: int
+) -> tuple[str, list[dict], float, float]:
+    pdftotext = shutil.which("pdftotext")
+    if not pdftotext:
+        raise RuntimeError("pdftotext is required to extract drawing text")
+    result = subprocess.run(
+        [
+            pdftotext,
+            "-f",
+            str(page_number),
+            "-l",
+            str(page_number),
+            "-bbox-layout",
+            "-cropbox",
+            str(pdf_path),
+            "-",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "pdftotext failed")
+    return parse_poppler_bbox(result.stdout)
 
 
 def run_ocr(image_path: Path) -> str:
@@ -332,42 +430,32 @@ def main() -> int:
                 except Exception as exc:
                     errors.append(f"{pdf_path.name} p.{page_index}: render failed: {exc}")
 
-                # pdftoppm renders the visible CropBox.  Crop pdfplumber to the
-                # same box and normalize positioned words back to a (0, 0)
-                # displayed-page top-left origin so every downstream geometry
-                # source uses one coordinate space, including non-zero boxes.
+                # pdftoppm and pdftotext both use the visible CropBox.  Keep
+                # vector-heavy CAD content out of pdfplumber's object parser:
+                # Poppler extracts one page at a time in a bounded child
+                # process and reports displayed-page top-left coordinates.
                 visible_page = page.crop(page.cropbox, strict=False)
-                crop_x0, crop_top, _, _ = visible_page.bbox
-                vector_text = (
-                    visible_page.extract_text(x_tolerance=2, y_tolerance=2)
-                    or ""
-                )
                 try:
-                    extracted_words = visible_page.extract_words(
-                        x_tolerance=2,
-                        y_tolerance=2,
-                        keep_blank_chars=False,
-                        use_text_flow=False,
+                    (
+                        vector_text,
+                        words,
+                        page_width_points,
+                        page_height_points,
+                    ) = extract_positioned_text(
+                        pdf_path,
+                        page_index,
                     )
-                    words = []
-                    for word in extracted_words:
-                        normalized_word = dict(word)
-                        for key in ("x0", "x1"):
-                            if key in normalized_word:
-                                normalized_word[key] -= crop_x0
-                        for key in ("top", "bottom"):
-                            if key in normalized_word:
-                                normalized_word[key] -= crop_top
-                        normalized_word.pop("doctop", None)
-                        words.append(normalized_word)
                 except Exception as exc:
+                    vector_text = ""
                     words = []
-                    errors.append(f"{pdf_path.name} p.{page_index}: word extraction failed: {exc}")
+                    page_width_points = float(visible_page.width)
+                    page_height_points = float(visible_page.height)
+                    errors.append(f"{pdf_path.name} p.{page_index}: text extraction failed: {exc}")
                 words_payload = {
                     "source_pdf": str(pdf_path),
                     "source_page": page_index,
-                    "page_width_points": visible_page.width,
-                    "page_height_points": visible_page.height,
+                    "page_width_points": page_width_points,
+                    "page_height_points": page_height_points,
                     "coordinate_space": "pdf_display_points_top_left",
                     "words": words,
                 }

@@ -27,7 +27,7 @@ Before the first run on a new machine, check the portable runtime requirements:
 python3 <skill-dir>/scripts/check_environment.py
 ```
 
-The preprocessing script requires Python with `pdfplumber` and Pillow plus the Poppler `pdftoppm` executable. Tesseract is optional and enables OCR on text-poor pages. If Python packages are missing, install `scripts/requirements.txt` into the Python environment Codex will use. Install missing system executables with the host operating system's package manager. Do not install software silently; report the missing dependency when installation is not authorized.
+The preprocessing script requires Python with `pdfplumber` and Pillow plus the Poppler `pdftoppm` and `pdftotext` executables. Tesseract is optional and enables OCR on text-poor pages. If Python packages are missing, install `scripts/requirements.txt` into the Python environment Codex will use. Install missing system executables with the host operating system's package manager. Do not install software silently; report the missing dependency when installation is not authorized.
 
 Create the index beside the source package unless the user chooses another location:
 
