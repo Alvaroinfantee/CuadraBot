@@ -33,7 +33,7 @@ VENDORED_SKILL_DIR = (
 
 EXPECTED_SKILL_FILES = {
     "SKILL.md": (
-        "764d8f0d792110a512c8c9d0d7c2643f6f42ac2de7008d543135a9ebdb728c9b"
+        "aca2b68d935f1bc27a5cfe0039d5e4bc83ec1e0a384edfbcae051c38bbf60615"
     ),
     "agents/openai.yaml": (
         "b53f7ba81929dc3932d6f394e8d466109e40ed2bc865df07e2940a1d5370b961"
@@ -45,10 +45,10 @@ EXPECTED_SKILL_FILES = {
         "98185a695728cc4225e9f4d4f2f98555e6c558c4099cebd494ca213f4d2706ac"
     ),
     "scripts/check_environment.py": (
-        "8bde0d8e81a92e164d7961b19a8daf1ff5dc0cef908f84e4797135afb19ae1eb"
+        "30541eea35bd0da492e4985f94d82cae24ca0e4f72fcef1d60ec9f0d445c28eb"
     ),
     "scripts/prepare_drawings.py": (
-        "66fcc973e215592789d2a2ca6fb7c7d85fdedcd135419704820cb5ad9c12b8f4"
+        "9b9cc21966de3fa7bfe93b1e52d6c414647c2f0d2797b04ce8be2c8856a415c9"
     ),
     "scripts/requirements.txt": (
         "f9c0de4620fc0226cbe21e26afb6d8644e2926d9cc1b801e7cff37908da11544"
@@ -58,7 +58,7 @@ EXPECTED_SKILL_FILES = {
     ),
 }
 EXPECTED_SKILL_SHA256 = (
-    "97c0046d4a773617f03467dcc61234d1390cefa94f65fe27994d761943b353c2"
+    "b6a46fb755e93ac63ada01db2612c22050b89beb2317ddf4a6f1541ce58ffd73"
 )
 
 MAX_INDEX_FILES = 25_000
