@@ -75,6 +75,38 @@ test("accepts each canonical GPT-5.6 takeoff rate snapshot", () => {
   }
 })
 
+test("accepts current standard and priority pricing snapshots", () => {
+  const currentStandard = {
+    ...validUsage,
+    pricing_as_of: "2026-08-13",
+  }
+  const currentPriority = {
+    ...validUsage,
+    pricing_as_of: "2026-08-13",
+    estimated_cost_usd: 1.145,
+    estimated_cost_usd_all_input_uncached: 1.3,
+    rate_snapshot_usd_per_million: {
+      input: 10,
+      cached_input: 1,
+      cache_write: 12.5,
+      output: 60,
+    },
+  }
+
+  assert.equal(parseTakeoffProcessorUsage(currentStandard).success, true)
+  assert.equal(parseTakeoffProcessorUsage(currentPriority).success, true)
+  assert.equal(
+    parseTakeoffProcessorUsage({
+      ...currentPriority,
+      rate_snapshot_usd_per_million: {
+        ...currentPriority.rate_snapshot_usd_per_million,
+        output: 30,
+      },
+    }).success,
+    false
+  )
+})
+
 test("accepts the processor's half-up eight-decimal cost rounding", () => {
   assert.equal(
     parseTakeoffProcessorUsage({

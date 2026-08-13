@@ -147,6 +147,7 @@ test("a multi-MiB plan image is admitted as vision input and SSE usage is debite
   await response.text()
   assert.equal(forwarded.input[0].content[1].image_url.length, imageUrl.length)
   assert.equal(forwarded.input[0].content[1].detail, "high")
+  assert.equal(forwarded.service_tier, "priority")
   await waitFor(() => {
     const record = fixture.state.snapshot().tokens[credential.tokenId]
     return record.spentCostMicros > 0 && !Object.keys(record.reservations).length
@@ -154,6 +155,44 @@ test("a multi-MiB plan image is admitted as vision input and SSE usage is debite
   const record = fixture.state.snapshot().tokens[credential.tokenId]
   assert.equal(record.accountingFailed, false)
   assert.equal(record.actualOutputTokens, 100)
+})
+
+test("free samples use priority processing with priority cost enforcement", async (t) => {
+  let forwarded
+  const upstream = http.createServer(async (request, response) => {
+    const chunks = []
+    for await (const chunk of request) chunks.push(chunk)
+    forwarded = JSON.parse(Buffer.concat(chunks).toString("utf8"))
+    response.writeHead(200, { "content-type": "application/json" })
+    response.end(
+      '{"id":"resp_priority","status":"completed","usage":{"input_tokens":120,"output_tokens":40}}'
+    )
+  })
+  const upstreamUrl = await listen(upstream)
+  t.after(() => close(upstream))
+  const fixture = await egressFixture(t, {
+    upstreamOrigin: new URL(upstreamUrl),
+  })
+  const credential = await fixture.registry.register({
+    ...registration(),
+    budgetClass: "free_sample",
+  })
+
+  const response = await fetch(`${fixture.dataUrl}/v1/responses`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${credential.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ model: MODEL, input: "priority sample" }),
+  })
+  assert.equal(response.status, 200)
+  await response.text()
+  assert.equal(forwarded.service_tier, "priority")
+
+  const record = fixture.state.snapshot().tokens[credential.tokenId]
+  assert.equal(record.spentCostMicros, 5_400)
+  assert.equal(record.accountingFailed, false)
 })
 
 test("a response is not completed downstream before usage is settled", async (t) => {

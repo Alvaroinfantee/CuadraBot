@@ -13,7 +13,7 @@ from pypdf import PdfWriter
 from app.config import Settings
 from app.codex_runner import CodexRunOutcome
 from app.models import JobRecord, JobStatus, RequestedScope
-from app.pipeline import PipelineManager
+from app.pipeline import PipelineManager, _openai_service_tier
 from app.store import JobStore
 
 
@@ -327,6 +327,7 @@ def test_pipeline_keeps_processor_usage_out_of_public_metrics(
 
     def fake_run_codex(**_kwargs: object) -> CodexRunOutcome:
         assert _kwargs["analysis_skill_sha256"] == "a" * 64
+        assert _kwargs["service_tier"] == "default"
         assert str(_kwargs["analysis_profile"].value) == (
             "analyze-building-drawings@2026-08-06"
         )
@@ -453,6 +454,21 @@ def test_pipeline_keeps_processor_usage_out_of_public_metrics(
     assert failed.processor_usage.estimated_cost_usd == 0.5725
     assert failed.processor_usage.estimated_cost_usd_all_input_uncached == 0.65
     assert "estimated_cost_usd" not in failed.metrics
+
+
+def test_pipeline_selects_priority_only_for_free_samples() -> None:
+    paid = JobRecord(
+        id="paid", status=JobStatus.queued, model="gpt-5.6-sol"
+    )
+    free = JobRecord(
+        id="free",
+        status=JobStatus.queued,
+        model="gpt-5.6-sol",
+        free_sample=True,
+    )
+
+    assert _openai_service_tier(free) == "priority"
+    assert _openai_service_tier(paid) == "default"
 
 
 def test_pipeline_keeps_diagnostics_private_and_public_error_generic(
