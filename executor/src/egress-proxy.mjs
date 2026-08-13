@@ -35,9 +35,16 @@ export function createEgressServers(options) {
       sendError(response, error)
       return
     }
-    void handleDataRequest(request, response, options)
-      .catch((error) => sendError(response, error))
-      .finally(release)
+    void handleDataRequest(request, response, options).then(
+      () => {
+        release()
+        if (!response.writableEnded && !response.destroyed) response.end()
+      },
+      (error) => {
+        release()
+        sendError(response, error)
+      }
+    )
   })
   const controlServer = http.createServer((request, response) => {
     void handleControlRequest(request, response, options).catch((error) => {
@@ -198,7 +205,7 @@ export async function handleDataRequest(request, response, options) {
       authorization.tokenId,
       authorization.reservationId
     )
-    return
+    throw new Error("OpenAI response usage was unavailable")
   }
   try {
     await options.registry.recordUsage(
@@ -215,6 +222,9 @@ export async function handleDataRequest(request, response, options) {
       .catch(() => undefined)
     throw error
   }
+  // The server wrapper releases the concurrency slot and then ends the
+  // response. Codex therefore cannot start its next turn while either the
+  // usage reservation or the admission slot from this turn is still active.
 }
 
 function validateToolPolicy(tools) {
@@ -364,7 +374,6 @@ async function forwardToOpenAI(response, body, options, tokenId) {
         }
       }
     }
-    response.end()
     return {
       status: upstream.status,
       usage: extractUsage(Buffer.concat(captured, bytes), contentType),

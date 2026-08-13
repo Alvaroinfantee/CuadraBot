@@ -624,24 +624,11 @@ def build_permission_overrides(
             'model_providers.cuadrabot-egress.env_key="CODEX_API_KEY"'
         ),
         'model_providers.cuadrabot-egress.wire_api="responses"',
-        'default_permissions="workspace-only"',
-        'permissions.workspace-only.extends=":workspace"',
-        (
-            "permissions.workspace-only.filesystem="
-            '{":root"="deny",":minimal"="read",'
-            '":tmpdir"="deny",":slash_tmp"="deny",'
-            '":workspace_roots"={'
-            '"."="write","job.json"="deny","inputs"="read",'
-            '"artifacts"="write","work"="write",'
-            '".agents"="read",'
-            '"work/.codex"="deny","work/home"="deny",'
-            '"work/codex-final.json"="deny",'
-            '"work/codex-events.jsonl"="deny",'
-            '"work/codex-stderr.log"="deny",'
-            '"work/codex-policy.toml"="deny",'
-            '"work/pipeline-error.log"="deny"}}'
-        ),
-        "permissions.workspace-only.network.enabled=false",
+        # The processor already runs inside a disposable, non-root, read-only
+        # container with a single job bind mount and proxy-only egress. Asking
+        # Codex to create another Linux namespace inside that container fails
+        # on hosts that correctly disable unprivileged user namespaces.
+        'default_permissions=":danger-full-access"',
         "allow_login_shell=false",
         'web_search="disabled"',
         'shell_environment_policy.inherit="none"',
@@ -667,36 +654,9 @@ def build_policy_document(
     )
     return "\n".join(
         [
-            'default_permissions = "workspace-only"',
+            'default_permissions = ":danger-full-access"',
             'allow_login_shell = false',
             'web_search = "disabled"',
-            "",
-            "[permissions.workspace-only]",
-            'extends = ":workspace"',
-            "",
-            "[permissions.workspace-only.filesystem]",
-            '":root" = "deny"',
-            '":minimal" = "read"',
-            '":tmpdir" = "deny"',
-            '":slash_tmp" = "deny"',
-            "",
-            '[permissions.workspace-only.filesystem.":workspace_roots"]',
-            '"." = "write"',
-            '"job.json" = "deny"',
-            '"inputs" = "read"',
-            '"artifacts" = "write"',
-            '"work" = "write"',
-            '".agents" = "read"',
-            '"work/.codex" = "deny"',
-            '"work/home" = "deny"',
-            '"work/codex-final.json" = "deny"',
-            '"work/codex-events.jsonl" = "deny"',
-            '"work/codex-stderr.log" = "deny"',
-            '"work/codex-policy.toml" = "deny"',
-            '"work/pipeline-error.log" = "deny"',
-            "",
-            "[permissions.workspace-only.network]",
-            "enabled = false",
             "",
             "[shell_environment_policy]",
             'inherit = "none"',

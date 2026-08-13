@@ -126,24 +126,18 @@ def test_api_key_is_only_passed_in_isolated_child_environment(
         'model_providers.cuadrabot-egress.wire_api="responses"'
         in combined
     )
-    assert 'default_permissions="workspace-only"' in combined
-    assert 'permissions.workspace-only.extends=":workspace"' in combined
-    assert '":root"="deny"' in combined
-    assert '":minimal"="read"' in combined
-    assert '":tmpdir"="deny"' in combined
-    assert '":slash_tmp"="deny"' in combined
-    assert '"job.json"="deny"' in combined
-    assert '"inputs"="read"' in combined
-    assert "permissions.workspace-only.network.enabled=false" in combined
+    assert 'default_permissions=":danger-full-access"' in combined
+    assert "permissions.workspace-only" not in combined
     assert "allow_login_shell=false" in combined
     assert 'shell_environment_policy.inherit="none"' in combined
     assert "CODEX_API_KEY" in combined
     assert secret not in combined
     policy = (tmp_path / "work" / "codex-policy.toml").read_text()
-    assert '":root" = "deny"' in policy
-    assert '"job.json" = "deny"' in policy
-    assert '".agents" = "read"' in policy
-    assert "enabled = false" in policy
+    assert 'default_permissions = ":danger-full-access"' in policy
+    assert "permissions.workspace-only" not in policy
+    assert 'inherit = "none"' in policy
+    assert "CODEX_API_KEY" in policy
+    assert secret not in policy
     assert outcome.result["status"] == "completed"
     assert outcome.metrics == {
         "schema_version": 1,
