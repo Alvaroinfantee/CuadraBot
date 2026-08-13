@@ -21,9 +21,13 @@ The OpenAI master key exists only in the separate egress proxy container.
 
 The processor has no public port and only its internal job network. The egress
 proxy is the only other member and separately has outbound connectivity. The
-processor image runs as UID/GID 10001 with a read-only root, all capabilities
-dropped, `no-new-privileges`, fixed PID/CPU/memory/no-swap limits, a bounded
-`noexec` tmpfs, one exact job bind, and no sibling-job mount.
+embedded Codex process uses the server-owned `cuadrabot-egress` model provider,
+whose Responses API base URL is `http://openai-egress:8091/v1` and whose
+short-lived credential comes only from `CODEX_API_KEY` in the isolated child
+environment. It cannot fall back to direct OpenAI internet access.
+The processor image runs as UID/GID 10001 with a read-only root, all
+capabilities dropped, `no-new-privileges`, fixed PID/CPU/memory/no-swap limits,
+a bounded `noexec` tmpfs, one exact job bind, and no sibling-job mount.
 
 ## Build
 
@@ -78,8 +82,11 @@ Default production limits are one concurrent job, 2 CPUs, 6 GiB memory,
 6 GiB memory-swap (equal values prohibit extra swap), 256 PIDs, 512 MiB tmpfs,
 and an 8-hour TTL. On explicit cleanup, TTL expiry, or startup reconciliation,
 the broker revokes the token, force-removes the container, disconnects/removes
-the internal network, and removes the validated job directory. Cleanup is
-authenticated and idempotent. Startup also removes `starting`, `cleaning`, and
+the internal network, and removes the validated job directory. A networkless,
+unprivileged helper from the same immutable processor image deletes files owned
+by the rootless-Docker remapped processor UID before the host removes the now-
+empty exact bind directory. Cleanup is authenticated and idempotent. Startup
+also removes `starting`, `cleaning`, and
 `running` records that were never bound to a processor job.
 
 The egress defaults cap each JSON request and streamed response at 16 MiB. It

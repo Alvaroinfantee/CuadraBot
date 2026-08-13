@@ -614,6 +614,16 @@ def build_permission_overrides(
         executable_path=executable_path,
     )
     return [
+        'model_provider="cuadrabot-egress"',
+        'model_providers.cuadrabot-egress.name="CuadraBot OpenAI egress"',
+        (
+            'model_providers.cuadrabot-egress.base_url='
+            '"http://openai-egress:8091/v1"'
+        ),
+        (
+            'model_providers.cuadrabot-egress.env_key="CODEX_API_KEY"'
+        ),
+        'model_providers.cuadrabot-egress.wire_api="responses"',
         'default_permissions="workspace-only"',
         'permissions.workspace-only.extends=":workspace"',
         (
