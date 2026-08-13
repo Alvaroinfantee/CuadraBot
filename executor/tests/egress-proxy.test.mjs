@@ -219,6 +219,71 @@ test("a response is not completed downstream before usage is settled", async (t)
   await second.text()
 })
 
+test("client close after a tool call still captures completed usage", async (t) => {
+  let requestCount = 0
+  const upstream = http.createServer(async (_request, response) => {
+    requestCount += 1
+    response.writeHead(200, { "content-type": "text/event-stream" })
+    response.write(
+      `data: ${JSON.stringify({
+        type: "response.output_item.done",
+        item: { type: "custom_tool_call", name: "shell" },
+      })}\n\n`
+    )
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    response.end(
+      `data: ${JSON.stringify({
+        type: "response.completed",
+        response: {
+          usage: { input_tokens: 2_000, output_tokens: 100 },
+        },
+      })}\n\n`
+    )
+  })
+  const upstreamUrl = await listen(upstream)
+  t.after(() => close(upstream))
+  const fixture = await egressFixture(t, {
+    upstreamOrigin: new URL(upstreamUrl),
+  })
+  const credential = await fixture.registry.register(registration())
+
+  const first = await fetch(`${fixture.dataUrl}/v1/responses`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${credential.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ model: MODEL, input: "first" }),
+  })
+  const reader = first.body.getReader()
+  const chunk = await reader.read()
+  assert.equal(chunk.done, false)
+  await reader.cancel()
+
+  await waitFor(() => {
+    const record = fixture.state.snapshot().tokens[credential.tokenId]
+    return (
+      record.actualOutputTokens === 100 &&
+      !Object.keys(record.reservations).length
+    )
+  })
+  const settled = fixture.state.snapshot().tokens[credential.tokenId]
+  assert.equal(settled.accountingFailed, false)
+  assert.ok(settled.spentCostMicros > 0)
+
+  const second = await fetch(`${fixture.dataUrl}/v1/responses`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${credential.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ model: MODEL, input: "second" }),
+  })
+  assert.equal(second.status, 200)
+  await second.text()
+  assert.equal(requestCount, 2)
+})
+
 test("model, built-in tools, service tier, and output ceiling fail closed", async (t) => {
   const fixture = await egressFixture(t)
   const token = (await fixture.registry.register(registration())).token
