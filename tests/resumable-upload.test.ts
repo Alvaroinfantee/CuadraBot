@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import {
+  getStandardSignedUploadUrl,
   resumableUploadFingerprint,
   signedTusNeedsStandardFallback,
   SUPABASE_TUS_CHUNK_SIZE_BYTES,
@@ -45,6 +46,21 @@ test("only falls back when Supabase rejects its signed TUS compact JWS", () => {
   assert.equal(signedTusNeedsStandardFallback(rejectedToken), true)
   assert.equal(signedTusNeedsStandardFallback(unrelatedFailure), false)
   assert.equal(signedTusNeedsStandardFallback(new Error("Invalid Compact JWS")), false)
+})
+
+test("builds the small-file signed URL without public browser credentials", () => {
+  const url = getStandardSignedUploadUrl({
+    endpoint:
+      "https://Project-Ref.storage.supabase.co/storage/v1/upload/resumable",
+    bucket: "takeoff-uploads",
+    path: "user/job/plan set.pdf",
+    token: "signed.token/value",
+  })
+
+  assert.equal(
+    url.toString(),
+    "https://project-ref.supabase.co/storage/v1/object/upload/sign/takeoff-uploads/user/job/plan%20set.pdf?token=signed.token%2Fvalue"
+  )
 })
 
 test("pause and retry retain the same draft job path and resumable fingerprint", () => {
@@ -103,10 +119,17 @@ test("signed TUS uploads are non-upserting and preserve server verification", ()
   const artifactRoute = read(
     "src/app/api/internal/worker/takeoff/jobs/[id]/artifacts/route.ts"
   )
+  const tusOptions = resumable.slice(
+    resumable.indexOf("const upload = new tus.Upload"),
+    resumable.indexOf("return {", resumable.indexOf("const upload = new tus.Upload"))
+  )
 
   assert.match(resumable, /"x-signature": grant\.token/)
-  assert.match(resumable, /uploadToSignedUrl\(grant\.path, grant\.token, file/)
-  assert.doesNotMatch(resumable, /x-upsert|authorization/i)
+  assert.match(resumable, /method: "PUT"/)
+  assert.match(resumable, /getStandardSignedUploadUrl\(grant\)/)
+  assert.doesNotMatch(resumable, /createSupabaseBrowserClient/)
+  assert.match(resumable, /headers: \{ "x-upsert": "false" \}/)
+  assert.doesNotMatch(tusOptions, /x-upsert|authorization/i)
   assert.match(resumable, /findPreviousUploads\(\)/)
   assert.match(resumable, /resumeFromPreviousUpload/)
   assert.match(resumable, /upload\.abort\(false\)/)

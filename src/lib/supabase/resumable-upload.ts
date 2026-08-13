@@ -1,5 +1,4 @@
 import * as tus from "tus-js-client"
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 
 export const SUPABASE_TUS_CHUNK_SIZE_BYTES = 6 * 1024 * 1024
 export const SUPABASE_TUS_RETRY_DELAYS_MS = [
@@ -143,15 +142,42 @@ export async function uploadSmallFileToSignedUrl(options: {
   grant: SignedResumableUploadGrant
 }) {
   const { file, grant } = options
-  const supabase = createSupabaseBrowserClient()
-  const { error } = await supabase.storage
-    .from(grant.bucket)
-    .uploadToSignedUrl(grant.path, grant.token, file, {
-      contentType: "application/pdf",
-      cacheControl: "3600",
-    })
+  const body = new FormData()
+  body.append("cacheControl", "3600")
+  body.append("", file)
 
-  if (error) throw error
+  const response = await fetch(getStandardSignedUploadUrl(grant), {
+    method: "PUT",
+    headers: { "x-upsert": "false" },
+    body,
+  })
+
+  if (!response.ok) {
+    throw new Error("Could not upload the plan set.")
+  }
+}
+
+export function getStandardSignedUploadUrl(
+  grant: SignedResumableUploadGrant
+) {
+  const endpoint = new URL(grant.endpoint)
+  const hostname = endpoint.hostname.match(
+    /^([a-z0-9-]+)\.storage\.supabase\.co$/i
+  )
+
+  if (endpoint.protocol !== "https:" || !hostname?.[1]) {
+    throw new Error("The signed upload endpoint is invalid.")
+  }
+
+  const objectPath = [grant.bucket, ...grant.path.split("/")]
+    .map((segment) => encodeURIComponent(segment))
+    .join("/")
+  const signedUrl = new URL(
+    `https://${hostname[1].toLowerCase()}.supabase.co/storage/v1/object/upload/sign/${objectPath}`
+  )
+  signedUrl.searchParams.set("token", grant.token)
+
+  return signedUrl
 }
 
 export function signedTusNeedsStandardFallback(error: unknown) {
