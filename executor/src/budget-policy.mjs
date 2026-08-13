@@ -9,7 +9,7 @@ export const BUDGET_CLASSES = Object.freeze([
 
 export const BUDGET_PROFILES = deepFreeze({
   free_sample: {
-    maxCostMicros: 5_000_000,
+    maxCostMicros: 10_000_000,
     maxRequestBytes: 256 * 1024 * 1024,
     maxOutputTokens: 80_000,
     maxOutputTokensPerRequest: 12_000,

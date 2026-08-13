@@ -44,7 +44,7 @@ test("trusted pricing classes enforce conservative source-job USD ceilings atomi
       ])
     ),
     {
-      free_sample: 5_000_000,
+      free_sample: 10_000_000,
       first_verified: 10_000_000,
       essential: 20_000_000,
       professional: 35_000_000,
@@ -72,7 +72,7 @@ test("trusted pricing classes enforce conservative source-job USD ceilings atomi
   await assert.rejects(
     fixture.registry.authorizeAndReserve(free.token, MODEL, {
       requestBytes: 1_000,
-      estimatedInputTokens: 500_000,
+      estimatedInputTokens: 800_000,
       maxOutputTokens: 1,
     }),
     /USD cost budget/i
@@ -239,7 +239,7 @@ test("source-job budget survives token revocation and a new worker attempt", asy
   await assert.rejects(
     fixture.registry.authorizeAndReserve(retry.token, MODEL, {
       requestBytes: 1_000,
-      estimatedInputTokens: 100_000,
+      estimatedInputTokens: 500_000,
       maxOutputTokens: 1_000,
     }),
     /USD cost budget/i
