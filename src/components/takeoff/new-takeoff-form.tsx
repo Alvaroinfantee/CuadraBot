@@ -46,8 +46,11 @@ import { buttonVariants } from "@/components/ui/button"
 import {
   createSignedResumableUploadTask,
   ResumableUploadCancelledError,
+  signedTusNeedsStandardFallback,
+  SUPABASE_TUS_CHUNK_SIZE_BYTES,
   type ResumableUploadTask,
   type SignedResumableUploadGrant,
+  uploadSmallFileToSignedUrl,
 } from "@/lib/supabase/resumable-upload"
 import type { TakeoffPricingTier } from "@/lib/takeoff-pricing"
 import {
@@ -216,18 +219,34 @@ export function NewTakeoffForm({
 
       setProgress(20)
       if (!uploadComplete) {
-        const uploadTask = createSignedResumableUploadTask({
-          file,
-          grant: currentDraft,
-          onProgress(bytesUploaded, bytesTotal) {
-            const uploadedFraction =
-              bytesTotal > 0 ? bytesUploaded / bytesTotal : 0
-            setProgress(20 + Math.round(uploadedFraction * 55))
-          },
-        })
-        activeUploadTask.current = uploadTask
-        await uploadTask.start()
-        activeUploadTask.current = null
+        if (file.size <= SUPABASE_TUS_CHUNK_SIZE_BYTES) {
+          await uploadSmallFileToSignedUrl({ file, grant: currentDraft })
+          setProgress(75)
+        } else {
+          const uploadTask = createSignedResumableUploadTask({
+            file,
+            grant: currentDraft,
+            onProgress(bytesUploaded, bytesTotal) {
+              const uploadedFraction =
+                bytesTotal > 0 ? bytesUploaded / bytesTotal : 0
+              setProgress(20 + Math.round(uploadedFraction * 55))
+            },
+          })
+          activeUploadTask.current = uploadTask
+          try {
+            await uploadTask.start()
+          } catch (error) {
+            if (!signedTusNeedsStandardFallback(error)) throw error
+            activeUploadTask.current = null
+            setProgress(55)
+            await uploadSmallFileToSignedUrl({
+              file,
+              grant: currentDraft,
+            })
+            setProgress(75)
+          }
+          activeUploadTask.current = null
+        }
         setUploadComplete(true)
       }
 
