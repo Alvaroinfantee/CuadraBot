@@ -446,6 +446,7 @@ class PipelineManager:
                 drawings_path=drawings,
                 artifacts_dir=artifacts_dir,
                 inputs_dir=inputs_dir,
+                allow_codex_compatibility=(replay_takeoff is None),
             )
             if takeoff.source.sha256 != source_hash:
                 raise ValueError(

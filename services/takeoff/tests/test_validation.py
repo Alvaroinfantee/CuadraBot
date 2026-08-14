@@ -347,6 +347,90 @@ def test_takeoff_and_workbook_reconcile(tmp_path: Path) -> None:
     assert pages == 1
 
 
+def test_codex_compatibility_normalizes_only_known_redundant_shapes(
+    tmp_path: Path,
+) -> None:
+    inputs = tmp_path / "inputs"
+    artifacts = tmp_path / "artifacts"
+    inputs.mkdir()
+    artifacts.mkdir()
+    drawings = inputs / "drawings.pdf"
+    payload = takeoff_payload(make_source_pdf(drawings))
+    payload["legend_entries"][0]["method"] = "explicit"
+    payload["legend_entries"][0]["confidence"] = "high"
+    asset = payload["assets"][0]
+    asset["geometry"] = {
+        "bbox": {"x0": 45, "y0": 35, "x1": 55, "y1": 45}
+    }
+    asset.pop("x")
+    asset.pop("y")
+    payload["unresolved_symbols"] = [
+        {
+            "page": 1,
+            "sheet": "A-101",
+            "bbox": {"x0": 60, "y0": 60, "x1": 70, "y1": 70},
+            "visible_label": "Unknown symbol",
+            "reason": "No legend match",
+            "confidence": "low",
+        }
+    ]
+    takeoff_path = artifacts / "takeoff.json"
+    takeoff_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        ArtifactValidationError,
+        match="does not satisfy the output schema",
+    ):
+        validate_takeoff_artifact(
+            takeoff_path,
+            drawings_path=drawings,
+            artifacts_dir=artifacts,
+            inputs_dir=inputs,
+        )
+
+    document, _pages = validate_takeoff_artifact(
+        takeoff_path,
+        drawings_path=drawings,
+        artifacts_dir=artifacts,
+        inputs_dir=inputs,
+        allow_codex_compatibility=True,
+    )
+
+    assert document.legend_entries[0].model_extra is None
+    assert document.assets[0].bbox is not None
+    assert document.assets[0].model_extra == {}
+    assert document.unresolved_symbols[0].unresolved_symbol_id == (
+        "UNRESOLVED-SERVER-0001"
+    )
+    assert json.loads(takeoff_path.read_text(encoding="utf-8")) == payload
+
+
+def test_codex_compatibility_does_not_discard_unknown_shape_variants(
+    tmp_path: Path,
+) -> None:
+    inputs = tmp_path / "inputs"
+    artifacts = tmp_path / "artifacts"
+    inputs.mkdir()
+    artifacts.mkdir()
+    drawings = inputs / "drawings.pdf"
+    payload = takeoff_payload(make_source_pdf(drawings))
+    payload["legend_entries"][0]["method"] = "inferred"
+    takeoff_path = artifacts / "takeoff.json"
+    takeoff_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        ArtifactValidationError,
+        match="does not satisfy the output schema",
+    ):
+        validate_takeoff_artifact(
+            takeoff_path,
+            drawings_path=drawings,
+            artifacts_dir=artifacts,
+            inputs_dir=inputs,
+            allow_codex_compatibility=True,
+        )
+
+
 def test_takeoff_validation_accepts_duplicate_page_mode(
     tmp_path: Path,
 ) -> None:
