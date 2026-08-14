@@ -18,6 +18,7 @@ from .drawing_skill import (
     DrawingIndexValidation,
     DrawingSkillIndex,
     prepare_drawing_index,
+    synchronize_takeoff_index,
     validate_drawing_index,
     validate_takeoff_index_alignment,
 )
@@ -450,26 +451,6 @@ class PipelineManager:
                 raise ValueError(
                     "takeoff.json source SHA-256 does not match the uploaded PDF"
                 )
-            if drawing_index is not None:
-                drawing_index_validation = validate_drawing_index(
-                    drawing_index
-                )
-                _require_completed_drawing_index(
-                    drawing_index_validation,
-                    mapped_assets=len(takeoff.assets),
-                )
-                drawing_index_alignment = validate_takeoff_index_alignment(
-                    drawing_index,
-                    takeoff,
-                )
-                _record_drawing_skill_provenance(
-                    methodology_path,
-                    artifacts_dir=artifacts_dir,
-                    profile=record.analysis_profile.value,
-                    drawing_index=drawing_index,
-                    validation=drawing_index_validation,
-                    alignment=drawing_index_alignment,
-                )
             if (
                 any(
                     asset.measurement_kind == "count"
@@ -492,6 +473,27 @@ class PipelineManager:
                 raise ValueError(
                     "takeoff.json contains linear runs outside the trusted "
                     "requested scopes"
+                )
+            if drawing_index is not None:
+                synchronize_takeoff_index(drawing_index, takeoff)
+                drawing_index_validation = validate_drawing_index(
+                    drawing_index
+                )
+                _require_completed_drawing_index(
+                    drawing_index_validation,
+                    mapped_assets=len(takeoff.assets),
+                )
+                drawing_index_alignment = validate_takeoff_index_alignment(
+                    drawing_index,
+                    takeoff,
+                )
+                _record_drawing_skill_provenance(
+                    methodology_path,
+                    artifacts_dir=artifacts_dir,
+                    profile=record.analysis_profile.value,
+                    drawing_index=drawing_index,
+                    validation=drawing_index_validation,
+                    alignment=drawing_index_alignment,
                 )
             use_canonical_workbook = (
                 not (inputs_dir / "template.xlsx").exists()

@@ -17,6 +17,7 @@ from app.drawing_skill import (
     EXPECTED_SKILL_SHA256,
     DrawingSkillError,
     prepare_drawing_index,
+    synchronize_takeoff_index,
     validate_drawing_index,
     validate_skill_bundle,
     validate_takeoff_index_alignment,
@@ -406,6 +407,48 @@ def test_post_model_validation_returns_structured_coverage(
         database.close()
     with pytest.raises(DrawingSkillError, match="instance-of relationship"):
         validate_takeoff_index_alignment(result, make_takeoff(source_hash))
+
+
+def test_server_synchronizes_validated_takeoff_into_fresh_index(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    job_dir, drawings, source_hash = make_job(tmp_path)
+    _calls, fake_run = fake_skill_subprocess(drawings)
+    monkeypatch.setattr("app.drawing_skill._run_bounded", fake_run)
+    monkeypatch.setattr(
+        "app.drawing_skill.validate_skill_bundle",
+        lambda *_args, **_kwargs: EXPECTED_SKILL_SHA256,
+    )
+    result = prepare_drawing_index(
+        job_dir=job_dir,
+        drawings_path=drawings,
+        expected_sha256=source_hash,
+    )
+    takeoff = make_takeoff(source_hash)
+
+    synchronize_takeoff_index(result, takeoff)
+
+    validation = validate_drawing_index(result)
+    alignment = validate_takeoff_index_alignment(result, takeoff)
+    assert validation.pending_pages == 0
+    assert validation.visually_reviewed_pages == 1
+    assert validation.object_count == 2
+    assert validation.fact_count == 2
+    assert validation.evidence_count == 2
+    assert alignment == drawing_skill.DrawingIndexAlignment(
+        legend_objects=1,
+        asset_objects=1,
+        quantity_facts=1,
+        instance_relationships=1,
+    )
+    assert "| drawings.pdf | 1 | E-101 |" in (
+        result.drawings_markdown_path.read_text(encoding="utf-8")
+    )
+    wiki = result.index_dir / "wiki" / "takeoff-summary.md"
+    assert "| HM01 | Test fixture | 1 |" in wiki.read_text(encoding="utf-8")
+
+    with pytest.raises(DrawingSkillError, match="unexpected takeoff object"):
+        synchronize_takeoff_index(result, takeoff)
 
 
 def test_alignment_rejects_asset_evidence_with_wrong_geometry(

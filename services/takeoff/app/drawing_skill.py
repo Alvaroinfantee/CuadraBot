@@ -14,6 +14,7 @@ import subprocess
 import sys
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 from urllib.parse import quote
@@ -1081,6 +1082,385 @@ def _geometry_bbox(asset: TakeoffAsset) -> tuple[float, float, float, float]:
         ys = [float(point.y) for point in asset.path]
         return min(xs), min(ys), max(xs), max(ys)
     raise DrawingSkillError(f"{asset.unit_id} has no indexable geometry")
+
+
+def _bbox_json(bounds: tuple[float, float, float, float]) -> str:
+    return json.dumps(
+        dict(zip(("x0", "y0", "x1", "y1"), bounds)),
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+
+
+def _markdown_cell(value: object) -> str:
+    return (
+        str(value or "")
+        .replace("|", "\\|")
+        .replace("\r", " ")
+        .replace("\n", " ")
+    )
+
+
+def _atomic_text(path: Path, content: str) -> None:
+    if path.exists() and (path.is_symlink() or not path.is_file()):
+        raise DrawingSkillError(f"{path.name} is not a regular file")
+    replacement = path.parent / f".{path.name}-{uuid.uuid4().hex}.tmp"
+    descriptor = os.open(
+        replacement,
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = -1
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(replacement, path)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        replacement.unlink(missing_ok=True)
+
+
+def synchronize_takeoff_index(
+    index_or_dir: DrawingSkillIndex | Path,
+    takeoff: TakeoffDocument,
+) -> None:
+    """Persist validated takeoff evidence without model-generated SQL.
+
+    The prepared index remains the model's read-only evidence workspace. Once
+    the server has validated takeoff.json, this function atomically creates the
+    canonical legend/asset graph and marks the reviewed sheet register. This
+    keeps database integrity and provenance in trusted application code.
+    """
+    if not isinstance(takeoff, TakeoffDocument):
+        raise DrawingSkillError("takeoff must be a validated TakeoffDocument")
+    if isinstance(index_or_dir, DrawingSkillIndex):
+        index_dir = index_or_dir.index_dir
+        expected_source_sha256 = index_or_dir.source_sha256
+    else:
+        index_dir = Path(index_or_dir)
+        expected_source_sha256 = takeoff.source.sha256
+    index_dir = _require_directory(index_dir, label="drawing index")
+    _counts, _warnings, source_hash, source_pages = (
+        _strict_manifest_and_database(
+            index_dir,
+            expected_source_sha256=expected_source_sha256,
+        )
+    )
+    if (
+        not hmac.compare_digest(source_hash, takeoff.source.sha256)
+        or source_pages != takeoff.source.page_count
+    ):
+        raise DrawingSkillError(
+            "drawing index source does not match the validated takeoff"
+        )
+
+    page_sheets: dict[int, str] = {}
+    indexed_items = (
+        *takeoff.legend_entries,
+        *takeoff.assets,
+        *takeoff.unresolved_symbols,
+    )
+    for item in indexed_items:
+        previous = page_sheets.setdefault(item.page, item.sheet)
+        if previous != item.sheet:
+            raise DrawingSkillError(
+                "takeoff assigns conflicting sheet numbers to source page "
+                f"{item.page}"
+            )
+
+    database_path = index_dir / "drawings.db"
+    created_at = datetime.now(timezone.utc).isoformat()
+    try:
+        connection = sqlite3.connect(database_path)
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA trusted_schema = OFF")
+        connection.execute("BEGIN IMMEDIATE")
+        collision = connection.execute(
+            """
+            SELECT canonical_key FROM objects
+            WHERE substr(canonical_key, 1, 7)='legend.'
+               OR substr(canonical_key, 1, 6)='asset.'
+            LIMIT 1
+            """
+        ).fetchone()
+        if collision is not None:
+            raise DrawingSkillError(
+                "prepared drawing index contains an unexpected takeoff object"
+            )
+
+        sheet_rows = connection.execute(
+            "SELECT id, source_page FROM sheets ORDER BY source_page"
+        ).fetchall()
+        sheet_ids = {int(page): int(sheet_id) for sheet_id, page in sheet_rows}
+        if set(sheet_ids) != set(range(1, takeoff.source.page_count + 1)):
+            raise DrawingSkillError("drawing index sheet register is incomplete")
+        for page, sheet_id in sheet_ids.items():
+            connection.execute(
+                """
+                UPDATE sheets
+                SET sheet_number=COALESCE(?, sheet_number),
+                    review_status='visually-reviewed'
+                WHERE id=?
+                """,
+                (page_sheets.get(page), sheet_id),
+            )
+
+        legend_object_ids: dict[str, int] = {}
+        legend_evidence_ids: dict[str, int] = {}
+        for entry in takeoff.legend_entries:
+            evidence_id = connection.execute(
+                """
+                INSERT INTO evidence (
+                    sheet_id, evidence_kind, citation_label, excerpt,
+                    bbox_json, visual_checked, created_at
+                ) VALUES (?, 'legend', ?, ?, ?, 1, ?)
+                """,
+                (
+                    sheet_ids[entry.page],
+                    (
+                        f"{entry.sheet}, source PDF p.{entry.page}, "
+                        f"legend {entry.code}"
+                    ),
+                    entry.description,
+                    _bbox_json(
+                        (
+                            float(entry.bbox.x0),
+                            float(entry.bbox.y0),
+                            float(entry.bbox.x1),
+                            float(entry.bbox.y1),
+                        )
+                    ),
+                    created_at,
+                ),
+            ).lastrowid
+            object_id = connection.execute(
+                """
+                INSERT INTO objects (
+                    canonical_key, object_type, trade, name, description, status
+                ) VALUES (?, 'legend-entry', 'electrical', ?, ?, 'active')
+                """,
+                (
+                    f"legend.{entry.legend_entry_id}",
+                    entry.code,
+                    entry.description,
+                ),
+            ).lastrowid
+            if evidence_id is None or object_id is None:
+                raise DrawingSkillError(
+                    "could not create canonical legend evidence"
+                )
+            connection.execute(
+                """
+                INSERT INTO facts (
+                    object_id, topic, property, raw_value, method, confidence,
+                    evidence_id
+                ) VALUES (?, 'electrical', 'legend_code', ?, 'explicit',
+                          'high', ?)
+                """,
+                (object_id, entry.code, evidence_id),
+            )
+            legend_object_ids[entry.legend_entry_id] = int(object_id)
+            legend_evidence_ids[entry.legend_entry_id] = int(evidence_id)
+
+        quantities_by_legend: dict[str, float] = {
+            entry.legend_entry_id: 0 for entry in takeoff.legend_entries
+        }
+        for asset in takeoff.assets:
+            evidence_id = connection.execute(
+                """
+                INSERT INTO evidence (
+                    sheet_id, evidence_kind, citation_label, excerpt,
+                    bbox_json, visual_checked, created_at
+                ) VALUES (?, 'geometry', ?, ?, ?, 1, ?)
+                """,
+                (
+                    sheet_ids[asset.page],
+                    f"{asset.sheet}, source PDF p.{asset.page}, {asset.unit_id}",
+                    asset.visible_label or asset.description,
+                    _bbox_json(_geometry_bbox(asset)),
+                    created_at,
+                ),
+            ).lastrowid
+            object_id = connection.execute(
+                """
+                INSERT INTO objects (
+                    canonical_key, object_type, trade, name, description,
+                    location, status
+                ) VALUES (?, ?, 'electrical', ?, ?, ?, 'active')
+                """,
+                (
+                    f"asset.{asset.unit_id}",
+                    "fixture-placement"
+                    if asset.measurement_kind == "count"
+                    else "linear-run",
+                    asset.unit_id,
+                    asset.description,
+                    asset.area,
+                ),
+            ).lastrowid
+            if evidence_id is None or object_id is None:
+                raise DrawingSkillError(
+                    "could not create canonical asset evidence"
+                )
+            fact_method = (
+                "counted" if asset.measurement_kind == "count" else "scaled"
+            )
+            connection.execute(
+                """
+                INSERT INTO facts (
+                    object_id, topic, property, raw_value, numeric_value,
+                    normalized_unit, method, confidence, evidence_id,
+                    assumptions
+                ) VALUES (?, 'electrical', 'quantity', ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    object_id,
+                    f"{asset.quantity:g} {asset.unit}",
+                    asset.quantity,
+                    asset.unit,
+                    fact_method,
+                    asset.confidence,
+                    evidence_id,
+                    asset.method + (f"; {asset.notes}" if asset.notes else ""),
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO relationships (
+                    source_object_id, relationship_type, target_object_id,
+                    evidence_id, confidence
+                ) VALUES (?, 'instance-of', ?, ?, ?)
+                """,
+                (
+                    object_id,
+                    legend_object_ids[asset.legend_entry_id],
+                    evidence_id,
+                    asset.confidence,
+                ),
+            )
+            quantities_by_legend[asset.legend_entry_id] += asset.quantity
+
+        for symbol in takeoff.unresolved_symbols:
+            connection.execute(
+                """
+                INSERT INTO unresolved_references (
+                    sheet_id, reference_text, expected_target, reason, status
+                ) VALUES (?, ?, ?, ?, 'open')
+                """,
+                (
+                    sheet_ids[symbol.page],
+                    symbol.visible_label or symbol.unresolved_symbol_id,
+                    symbol.candidate_code,
+                    symbol.reason,
+                ),
+            )
+
+        topic_id = connection.execute(
+            """
+            INSERT INTO wiki_topics (slug, title, summary, markdown_path)
+            VALUES ('takeoff-summary', 'Takeoff summary', ?,
+                    'wiki/takeoff-summary.md')
+            """,
+            (
+                f"{len(takeoff.assets)} source-grounded asset records across "
+                f"{takeoff.source.page_count} drawing page(s).",
+            ),
+        ).lastrowid
+        if topic_id is None:
+            raise DrawingSkillError("could not create drawing index topic")
+        for entry in takeoff.legend_entries:
+            quantity = quantities_by_legend[entry.legend_entry_id]
+            connection.execute(
+                """
+                INSERT INTO wiki_entries (
+                    topic_id, heading, content, evidence_id, confidence
+                ) VALUES (?, ?, ?, ?, 'high')
+                """,
+                (
+                    topic_id,
+                    entry.code,
+                    f"{entry.description}: {quantity:g} mapped unit(s).",
+                    legend_evidence_ids[entry.legend_entry_id],
+                ),
+            )
+        connection.commit()
+    except DrawingSkillError:
+        if "connection" in locals():
+            connection.rollback()
+        raise
+    except sqlite3.Error as exc:
+        if "connection" in locals():
+            connection.rollback()
+        raise DrawingSkillError(
+            "could not synchronize validated takeoff index"
+        ) from exc
+    finally:
+        if "connection" in locals():
+            connection.close()
+
+    uri_path = quote(database_path.resolve(strict=True).as_posix(), safe="/:")
+    database = sqlite3.connect(f"file:{uri_path}?mode=ro", uri=True)
+    try:
+        rows = database.execute(
+            """
+            SELECT s.source_page, s.sheet_number, s.title, s.discipline,
+                   s.revision, s.issue_status, s.review_status, sf.filename
+            FROM sheets s JOIN source_files sf ON sf.id=s.source_file_id
+            ORDER BY s.source_page
+            """
+        ).fetchall()
+    finally:
+        database.close()
+    register_lines = [
+        "# Drawing Register",
+        "",
+        "| Source | PDF page | Sheet | Title | Discipline | Revision | Issue status | Review |",
+        "|---|---:|---|---|---|---|---|---|",
+    ]
+    for page, sheet, title, discipline, revision, issue, review, filename in rows:
+        register_lines.append(
+            "| " + " | ".join(
+                _markdown_cell(value)
+                for value in (
+                    filename,
+                    page,
+                    sheet or "Unknown",
+                    title or "Unknown",
+                    discipline or "Unknown",
+                    revision or "Unknown",
+                    issue or "Unknown",
+                    review,
+                )
+            ) + " |"
+        )
+    _atomic_text(index_dir / "DRAWINGS.md", "\n".join(register_lines) + "\n")
+
+    wiki_lines = [
+        "# Takeoff summary",
+        "",
+        f"Source SHA-256: `{takeoff.source.sha256}`",
+        "",
+        "| Code | Description | Quantity |",
+        "|---|---|---:|",
+    ]
+    for entry in takeoff.legend_entries:
+        wiki_lines.append(
+            f"| {_markdown_cell(entry.code)} | {_markdown_cell(entry.description)} | "
+            f"{quantities_by_legend[entry.legend_entry_id]:g} |"
+        )
+    if takeoff.limitations:
+        wiki_lines.extend(["", "## Limitations", ""])
+        wiki_lines.extend(f"- {item}" for item in takeoff.limitations)
+    _atomic_text(
+        index_dir / "wiki" / "takeoff-summary.md",
+        "\n".join(wiki_lines) + "\n",
+    )
 
 
 def _bbox_matches(
