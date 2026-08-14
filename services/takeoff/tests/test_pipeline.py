@@ -359,6 +359,10 @@ def test_pipeline_keeps_processor_usage_out_of_public_metrics(
         fake_prepare_drawing_index,
     )
     monkeypatch.setattr(
+        "app.pipeline.synchronize_takeoff_index",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
         "app.pipeline.validate_drawing_index",
         lambda *_args, **_kwargs: drawing_validation,
     )
