@@ -431,6 +431,9 @@ def test_customer_scope_is_normalized_and_json_quoted(tmp_path: Path) -> None:
     assert "as read-only evidence" in prompt
     assert "do not generate or execute SQL" in prompt
     assert "server-owned post-processing" in prompt
+    assert "Never add method or confidence to a legend entry" in prompt
+    assert "Never use a geometry wrapper" in prompt
+    assert "requires a unique unresolved_symbol_id" in prompt
     assert "Python with Pillow" in prompt
     assert "ImageMagick commands" in prompt
     assert "Image.open(...).size" in prompt

@@ -5,6 +5,7 @@ import math
 import re
 import stat
 import zipfile
+from copy import deepcopy
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -405,6 +406,7 @@ def validate_takeoff_artifact(
     drawings_path: Path,
     artifacts_dir: Path,
     inputs_dir: Path,
+    allow_codex_compatibility: bool = False,
 ) -> tuple[TakeoffDocument, int]:
     require_regular_file(
         drawings_path,
@@ -413,6 +415,8 @@ def validate_takeoff_artifact(
         magic=b"%PDF-",
     )
     raw = validate_json_artifact(takeoff_path, artifacts_dir)
+    if allow_codex_compatibility:
+        raw = _normalize_codex_takeoff(raw)
     try:
         takeoff = TakeoffDocument.model_validate(raw)
     except Exception as exc:
@@ -621,6 +625,69 @@ def validate_takeoff_artifact(
             label="by_area",
         )
     return takeoff, actual_pages
+
+
+def _normalize_codex_takeoff(raw: Any) -> Any:
+    """Normalize only known, redundant Codex output-shape variants.
+
+    The normalized value still passes through the complete Pydantic, PDF,
+    geometry, summary, and legend-exemplar validation path. Replay/customer
+    artifacts remain strict because the pipeline enables this only for a fresh
+    model-generated takeoff.
+    """
+    if not isinstance(raw, dict):
+        return raw
+    normalized = deepcopy(raw)
+
+    legend_entries = normalized.get("legend_entries")
+    if isinstance(legend_entries, list):
+        for entry in legend_entries:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("method") == "explicit":
+                entry.pop("method")
+            if entry.get("confidence") == "high":
+                entry.pop("confidence")
+
+    assets = normalized.get("assets")
+    if isinstance(assets, list):
+        for asset in assets:
+            if not isinstance(asset, dict):
+                continue
+            geometry = asset.get("geometry")
+            if (
+                asset.get("measurement_kind", "count") == "count"
+                and "bbox" not in asset
+                and "x" not in asset
+                and "y" not in asset
+                and "path" not in asset
+                and isinstance(geometry, dict)
+                and set(geometry) == {"bbox"}
+                and isinstance(geometry["bbox"], dict)
+            ):
+                asset["bbox"] = geometry["bbox"]
+                asset.pop("geometry")
+
+    unresolved = normalized.get("unresolved_symbols")
+    if isinstance(unresolved, list):
+        used_ids = {
+            item.get("unresolved_symbol_id")
+            for item in unresolved
+            if isinstance(item, dict)
+            and isinstance(item.get("unresolved_symbol_id"), str)
+        }
+        next_id = 1
+        for item in unresolved:
+            if not isinstance(item, dict) or "unresolved_symbol_id" in item:
+                continue
+            while True:
+                candidate = f"UNRESOLVED-SERVER-{next_id:04d}"
+                next_id += 1
+                if candidate not in used_ids:
+                    break
+            item["unresolved_symbol_id"] = candidate
+            used_ids.add(candidate)
+    return normalized
 
 
 def reject_secret_material(path: Path, *, secret: str) -> None:

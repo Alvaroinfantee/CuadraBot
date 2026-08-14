@@ -791,6 +791,15 @@ def build_prompt(
         "- Each legend bbox and asset geometry must use exact displayed-page "
         "pdf_display_points_top_left coordinates. For counts, supply a tight "
         "bbox or exact x/y point; for linear work, supply the complete path.",
+        "- takeoff.json must use the exact server schema shapes: source may "
+        "contain only pdf (optional), sha256, and page_count; each legend entry "
+        "may contain only legend_entry_id, code, description, page, sheet, "
+        "bbox, and coordinate_space. Never add method or confidence to a "
+        "legend entry.",
+        "- Count asset geometry is top-level: use either bbox or the x and y "
+        "fields directly on the asset. Never use a geometry wrapper. Every "
+        "unresolved_symbols row requires a unique unresolved_symbol_id in "
+        "addition to page, sheet, bbox, reason, and confidence low.",
         "- Do not rerun preprocessing and do not run validate_index.py; index "
         "synchronization and validation are server-owned post-processing.",
         "",
