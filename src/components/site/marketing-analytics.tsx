@@ -174,6 +174,10 @@ function sendGoogleAdsFunnelConversion(eventName: MarketingEventName) {
       window.dataLayer?.push(args)
     })
   window.gtag("event", "conversion", { send_to: destination })
+  document.documentElement.setAttribute(
+    "data-google-ads-last-conversion",
+    eventName
+  )
 }
 
 async function deleteMarketingIdentity() {

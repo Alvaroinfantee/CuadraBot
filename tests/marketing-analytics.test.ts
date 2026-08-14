@@ -114,7 +114,10 @@ test("consent is versioned and raw cookie or IP values are never collected", () 
   assert.doesNotMatch(migration, /interval '365 days'/)
   assert.match(migration, /revoke all on table public\.marketing_events from public, anon, authenticated/)
   assert.match(route, /marketingCollectionIsPermitted/)
-  assert.match(read("src/components/site/google-ads.tsx"), /regulatedMarketingCountryCodes/)
+  assert.match(
+    read("src/lib/google-ads-bootstrap.ts"),
+    /regulatedMarketingCountryCodes/
+  )
   assert.match(tracker, /legacyGoogleConsentCookieName/)
   assert.match(
     read("src/lib/privacy-region-server.ts"),
