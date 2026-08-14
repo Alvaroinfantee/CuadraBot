@@ -7,7 +7,7 @@ function read(relativePath: string) {
 }
 
 const layout = read("src/app/layout.tsx")
-const globalTag = read("src/components/site/google-ads.tsx")
+const consentBootstrap = read("src/lib/google-ads-bootstrap.ts")
 const googleAdsConfig = read("src/lib/google-ads.ts")
 const consent = read("src/components/site/google-ads-consent.tsx")
 const conversion = read("src/components/site/google-ads-conversion.tsx")
@@ -20,14 +20,16 @@ const signupAction = read("src/app/auth/actions.ts")
 const takeoffForm = read("src/components/takeoff/new-takeoff-form.tsx")
 const checkoutButton = read("src/components/billing/checkout-button.tsx")
 
-test("the Google tag is global and initializes Consent Mode v2 first", () => {
+test("the Google tag is global and executes Consent Mode v2 in the initial head", () => {
   assert.match(layout, /<GoogleAdsTag locale=\{locale\}/)
-  assert.match(globalTag, /strategy="beforeInteractive"/)
-  assert.match(globalTag, /gtag\/js\?id=/)
-  assert.match(globalTag, /window\.gtag\('config'/)
+  assert.match(layout, /<head>/)
+  assert.match(layout, /id="google-ads-consent-default"/)
+  assert.match(layout, /dangerouslySetInnerHTML/)
+  assert.match(layout, /gtag\/js\?id=/)
+  assert.match(consentBootstrap, /window\.gtag\('config'/)
   assert.ok(
-    globalTag.indexOf("window.gtag('config'") <
-      globalTag.indexOf('id="google-ads-library"')
+    layout.indexOf('id="google-ads-consent-default"') <
+      layout.indexOf('id="google-ads-library"')
   )
 
   for (const consentType of [
@@ -36,13 +38,14 @@ test("the Google tag is global and initializes Consent Mode v2 first", () => {
     "ad_user_data",
     "ad_personalization",
   ]) {
-    assert.match(globalTag, new RegExp(`'${consentType}'`))
+    assert.match(consentBootstrap, new RegExp(`'${consentType}'`))
     assert.match(consent, new RegExp(`${consentType}: state`))
   }
 
-  assert.match(globalTag, /ads_data_redaction/)
-  assert.match(globalTag, /marketingConsentCookieName/)
-  assert.match(globalTag, /globalPrivacyControl/)
+  assert.match(consentBootstrap, /ads_data_redaction/)
+  assert.match(consentBootstrap, /marketingConsentCookieName/)
+  assert.match(consentBootstrap, /globalPrivacyControl/)
+  assert.match(consentBootstrap, /data-google-ads-ready/)
   assert.match(consent, /Max-Age=31536000/)
   assert.match(consent, /Cookie settings/)
   assert.match(consent, /marketingConsentChangedEvent/)
@@ -86,6 +89,7 @@ test("intermediate funnel conversions are consented, deduplicated, and remain se
   assert.match(marketingAnalytics, /sign_up_completed/)
   assert.match(marketingAnalytics, /takeoff_started/)
   assert.match(marketingAnalytics, /checkout_started/)
+  assert.match(marketingAnalytics, /data-google-ads-last-conversion/)
   assert.match(signupAction, /marketingAccountCreatedCookieName/)
   assert.match(read("src/app/auth/confirm/route.ts"), /accountCreated/)
   assert.match(takeoffForm, /"takeoff_started"/)

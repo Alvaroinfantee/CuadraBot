@@ -3,6 +3,11 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { headers } from "next/headers"
 import { Toaster } from "@/components/ui/sonner"
 import { GoogleAdsTag } from "@/components/site/google-ads"
+import { buildGoogleAdsConsentBootstrap } from "@/lib/google-ads-bootstrap"
+import {
+  googleAdsConfigurationIsValid,
+  googleAdsId,
+} from "@/lib/google-ads"
 import { normalizeLocale } from "@/lib/i18n"
 import "./globals.css"
 
@@ -78,6 +83,23 @@ export default async function RootLayout({
       lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      {googleAdsConfigurationIsValid ? (
+        <head>
+          <script
+            id="google-ads-consent-default"
+            dangerouslySetInnerHTML={{
+              __html: buildGoogleAdsConsentBootstrap(),
+            }}
+          />
+          <script
+            async
+            id="google-ads-library"
+            src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(
+              googleAdsId
+            )}`}
+          />
+        </head>
+      ) : null}
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster />
