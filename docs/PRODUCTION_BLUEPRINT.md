@@ -6,7 +6,7 @@ Launch market: Spain · Spanish and English · metric · drywall/plasterboard on
 
 ## Release decision
 
-The application code is production-built and the local browser acceptance pass is green. The launch remains **externally gated** until the live Stripe and DigitalOcean sessions are connected, the Stripe product/webhook and deployment secrets are installed, the legal business identity is filled in, and one safe end-to-end payment test succeeds.
+The application code is production-built and the Spanish/English browser acceptance pass is green. The live Stripe product, webhook, Supabase migration and DigitalOcean deployment variables are configured. The code cutover remains **gated** until the legal business identity and Spanish VAT-registration position are confirmed, the release is merged and deployed, and one safe end-to-end payment test succeeds.
 
 Do not start the first €100 Google Ads campaign before every mandatory gate in the readiness matrix is green.
 
@@ -155,9 +155,10 @@ NEXT_PUBLIC_SITE_URL=https://cuadrabot.com
 | Dependency security | `npm audit --omit=dev` reports zero vulnerabilities | Ready |
 | Browser UX | 1440 px landing/order run; no console errors; screenshots captured | Ready |
 | Database DDL | Additive migration applied to production; tables, RLS, private buckets and legal-hold column verified | Ready |
-| Stripe account | Current connector/browser session requires sign-in | Blocked externally |
-| Stripe product/webhook | Requires authenticated account selection and live/test configuration | Blocked externally |
-| DigitalOcean deployment | Requires authenticated dashboard session and environment update | Blocked externally |
+| Stripe account | Authenticated live account selected in the owner's Chrome session | Ready |
+| Stripe product/webhook | Live EUR 149 one-time Price configured; production webhook active for 15 checkout, payment, refund and dispute events | Ready |
+| DigitalOcean configuration | Seven drywall variables installed; encrypted portal secret generated; configuration deployment completed successfully and health check passed | Ready |
+| DigitalOcean code cutover | Service remains pinned to archived commit `1aa8b22` with autodeploy off until the remaining mandatory gates are cleared | Pending final gate |
 | Transactional email | Code is ready; sending domain/key must be verified in production | Blocked externally |
 | Legal identity | Draft policies exist; controller/company name, tax ID and address require owner/counsel approval | Mandatory owner input |
 | Real payment acceptance | Must complete one Stripe test-mode purchase and webhook/portal/delivery check | Mandatory final gate |
@@ -165,12 +166,12 @@ NEXT_PUBLIC_SITE_URL=https://cuadrabot.com
 
 ## Final acceptance runbook
 
-1. Sign in to Stripe and DigitalOcean in the prepared browser tabs.
-2. Confirm the Stripe account and whether an active Spanish tax registration exists.
-3. Create the one-time tax-exclusive EUR 149.00 Product/Price and restricted server key.
-4. Create/update `https://cuadrabot.com/api/stripe/webhook` with Checkout, refund, dispute and existing billing events.
-5. Apply the additive Supabase migration; verify RLS, bucket privacy and advisors.
-6. Add the required secrets/variables to DigitalOcean without exposing their values in logs.
+1. [Complete] Sign in to Stripe and DigitalOcean in the owner's Chrome session.
+2. [Owner input required] Confirm whether an active Spanish VAT registration exists.
+3. [Complete] Create the one-time tax-exclusive EUR 149.00 Product/Price and retain the existing encrypted production Stripe server credential.
+4. [Complete] Update `https://cuadrabot.com/api/stripe/webhook` for Checkout, refunds, disputes and delayed payments (15 events total).
+5. [Complete] Apply the additive Supabase migration; verify RLS, bucket privacy and advisors.
+6. [Complete] Add the required secrets/variables to DigitalOcean without exposing secret values.
 7. Merge the release to `main`; watch the DigitalOcean build and health check.
 8. Smoke-test `/`, `/en`, samples, consent, `/pedido`, `/en/order`, custom-review branches and reciprocal legal routes.
 9. In Stripe test mode, upload a safe PDF, pay, verify one order/event/email, open the portal, publish both deliverables, download them and request the included correction.
@@ -180,4 +181,4 @@ NEXT_PUBLIC_SITE_URL=https://cuadrabot.com
 
 ## Deferred from launch
 
-OCR, automatic wall recognition, automatic scale inference, a browser measurement editor, material assemblies, other trades, subscriptions, team accounts, English/imperial support, a public API and an embedded AI chatbot are not launch dependencies.
+OCR, automatic wall recognition, automatic scale inference, a browser measurement editor, material assemblies, other trades, subscriptions, team accounts, imperial-unit support, a public API and an embedded AI chatbot are not launch dependencies.
