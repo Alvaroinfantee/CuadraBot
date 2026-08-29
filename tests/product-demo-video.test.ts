@@ -11,12 +11,14 @@ function read(relativePath: string) {
 
 const component = read("src/components/site/product-demo-video.tsx")
 
-test("the product walkthrough is shown on both localized homepages", () => {
-  assert.match(read("src/app/page.tsx"), /<ProductDemoVideo\s*\/>/)
-  assert.match(
-    read("src/app/es/page.tsx"),
-    /<ProductDemoVideo locale="es"\s*\/>/
-  )
+test("the production landing publishes inspectable PDF and workbook samples", () => {
+  const landing = read("src/components/takeoff/takeoff-landing.tsx")
+  assert.match(read("src/app/page.tsx"), /<TakeoffLanding\s+locale="es"\s*\/>/)
+  assert.match(read("src/app/es/page.tsx"), /<TakeoffLanding\s+locale="es"\s*\/>/)
+  assert.match(read("src/app/en/page.tsx"), /<TakeoffLanding\s+locale="en"\s*\/>/)
+  assert.match(landing, /cuadrabot-plano-original-muestra\.pdf/)
+  assert.match(landing, /cuadrabot-plano-marcado-muestra\.pdf/)
+  assert.match(landing, /cuadrabot-mediciones-muestra\.xlsx/)
 })
 
 test("the walkthrough uses accessible, browser-compatible video controls", () => {

@@ -13,6 +13,27 @@ export const maxUploadMb =
     : launchUploadCeilingMb
 export const maxUploadBytes = maxUploadMb * 1024 * 1024
 export const maxPlanPages = Number(process.env.MAX_PLAN_PAGES ?? "250")
+const configuredDrywallUploadMb = Number(
+  process.env.DRYWALL_MAX_UPLOAD_MB ?? "500"
+)
+export const drywallMaxUploadMb =
+  Number.isSafeInteger(configuredDrywallUploadMb) &&
+  configuredDrywallUploadMb > 0
+    ? Math.min(configuredDrywallUploadMb, 500)
+    : 500
+export const drywallMaxUploadBytes = drywallMaxUploadMb * 1024 * 1024
+export const drywallMaxFiles = Math.min(
+  Math.max(Number(process.env.DRYWALL_MAX_FILES ?? "10"), 1),
+  10
+)
+export const drywallMaxSelectedPages = Math.min(
+  Math.max(Number(process.env.DRYWALL_MAX_SELECTED_PAGES ?? "20"), 1),
+  20
+)
+export const drywallUploadBucket =
+  process.env.DRYWALL_UPLOAD_BUCKET ?? "drywall-customer-files"
+export const drywallResultBucket =
+  process.env.DRYWALL_RESULT_BUCKET ?? "drywall-deliverables"
 export const ownerRequestEmail =
   process.env.OWNER_REQUEST_EMAIL ?? process.env.ADMIN_EMAIL ?? "ainfante@cuadrabot.com"
 export const simulationEmailToken = process.env.SIMULATION_EMAIL_TOKEN ?? null

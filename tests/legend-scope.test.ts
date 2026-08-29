@@ -97,7 +97,8 @@ describe("legend-driven takeoff scopes", () => {
         new RegExp(`source:\\s*"${source.replaceAll("/", "\\/")}"`)
       )
     }
-    assert.equal((nextConfig.match(/permanent:\s*true/g) ?? []).length, 6)
+    assert.match(nextConfig, /source:\s*"\/es"[\s\S]*?destination:\s*"\/"/)
+    assert.equal((nextConfig.match(/permanent:\s*true/g) ?? []).length, 7)
   })
 
   it("documents cable evidence requirements and a no-guess rule", () => {

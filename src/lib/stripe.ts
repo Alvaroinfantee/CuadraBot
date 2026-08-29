@@ -3,7 +3,7 @@ import "server-only"
 import Stripe from "stripe"
 import { getOptionalEnv } from "@/lib/config"
 
-export const STRIPE_API_VERSION = "2026-04-22.dahlia" as const
+export const STRIPE_API_VERSION = "2026-07-29.dahlia" as const
 
 let stripeClient: Stripe | null = null
 

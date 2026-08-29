@@ -6,13 +6,18 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/es",
+        destination: "/",
+        permanent: true,
+      },
+      {
         source: "/flooring-takeoff",
         destination: "/fixture-takeoff",
         permanent: true,
       },
       {
         source: "/drywall-takeoff",
-        destination: "/fixture-takeoff",
+        destination: "/",
         permanent: true,
       },
       {
@@ -27,13 +32,23 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/es/drywall-takeoff",
-        destination: "/es/fixture-takeoff",
+        destination: "/",
         permanent: true,
       },
       {
         source: "/es/door-window-takeoff",
         destination: "/es/fixture-takeoff",
         permanent: true,
+      },
+      {
+        source: "/order",
+        destination: "/pedido",
+        permanent: false,
+      },
+      {
+        source: "/es/order",
+        destination: "/pedido",
+        permanent: false,
       },
     ];
   },

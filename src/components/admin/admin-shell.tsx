@@ -18,6 +18,7 @@ import {
   ScrollTextIcon,
   SettingsIcon,
   ShieldAlertIcon,
+  RulerIcon,
   UsersIcon,
 } from "lucide-react"
 import {
@@ -35,6 +36,7 @@ const nav = [
   ["/admin", "Overview", GaugeIcon],
   ["/admin/users", "Users & companies", UsersIcon],
   ["/admin/jobs", "Jobs & exceptions", BriefcaseBusinessIcon],
+  ["/admin/drywall", "Drywall orders", RulerIcon],
   ["/admin/documents", "Document archive", FilesIcon],
   ["/admin/billing", "Billing & credits", CreditCardIcon],
   ["/admin/growth", "Funnel & growth", BarChart3Icon],

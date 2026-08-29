@@ -4,23 +4,20 @@ import test from "node:test"
 
 const read = (path: string) => readFileSync(path, "utf8")
 
-test("the public funnel makes the no-card free trial unmistakable", () => {
+test("the public funnel makes the fixed-price Spanish product unmistakable", () => {
   const home = read("src/app/page.tsx")
   const spanishHome = read("src/app/es/page.tsx")
-  const signup = read("src/app/signup/page.tsx")
-  const header = read("src/components/site/site-header.tsx")
+  const landing = read("src/components/takeoff/takeoff-landing.tsx")
+  const order = read("src/components/takeoff/local-order-flow.tsx")
 
-  assert.match(home, /Free trial · one real sheet · no credit card/)
-  assert.match(home, /Upload one sheet free/)
-  assert.match(spanishHome, /Prueba gratis · una hoja real · sin tarjeta/)
-  assert.match(signup, /Your free trial is included/)
-  assert.match(signup, /One trial per user/)
-  assert.match(signup, /Company \(optional\)/)
-  assert.doesNotMatch(
-    signup,
-    /name="companyName"[\s\S]{0,120}\brequired\b/
-  )
-  assert.match(header, /freeTrialSignupPath/)
+  assert.match(home, /<TakeoffLanding/)
+  assert.match(spanishHome, /<TakeoffLanding/)
+  assert.match(landing, /Precio fijo: 149 € \+ IVA/)
+  assert.match(landing, /Hasta 20 hojas relevantes/)
+  assert.match(landing, /Sin suscripcion/)
+  assert.match(landing, /Excel de cantidades y un PDF marcado/)
+  assert.match(order, /Pago protegido por Stripe/)
+  assert.match(landing, /sin crear contraseña/i)
 })
 
 test("signup and confirmation preserve the free upload destination", () => {

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto"
 import { NextResponse } from "next/server"
 import type Stripe from "stripe"
 import { getAppFeatures } from "@/lib/app-settings"
@@ -241,11 +242,6 @@ export async function POST(request: Request) {
           mode: catalogItem.checkoutMode,
           locale,
           customer: stripeCustomerId,
-          // Browser conversion measurement can only confirm payments while the
-          // buyer is returning from Checkout. Keep Checkout on Stripe's
-          // immediate card rail (including supported card wallets) so a
-          // multi-day delayed bank debit cannot finish after that browser flow.
-          payment_method_types: ["card"],
           client_reference_id: billingOrderId,
           line_items: [{ price: catalogItem.priceId, quantity: 1 }],
           metadata,
@@ -261,6 +257,7 @@ export async function POST(request: Request) {
             enabled: true,
           },
           allow_promotion_codes: true,
+          integration_identifier: `cuadrabot_billing_${randomLetters(8)}`,
           success_url: successUrl,
           cancel_url: cancelUrl,
           ...(catalogItem.kind === "credit_pack"
@@ -372,6 +369,12 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+}
+
+function randomLetters(length: number) {
+  return Array.from(randomBytes(length), (byte) =>
+    String.fromCharCode(97 + (byte % 26))
+  ).join("")
 }
 
 async function loadAndValidateBillingPlan(

@@ -26,40 +26,39 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cuadrabot.com"
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Cuadrabot | Legend-driven fixture takeoffs",
+    default: "Cuadrabot | Mediciones de pladur desde planos PDF",
     template: "%s | Cuadrabot",
   },
   description:
-    "Upload PDF plans with a readable legend and receive source-linked fixture, device, and supported cable or conduit quantities in hours.",
+    "Mediciones de pladur revisadas en dos días laborables: Excel de cantidades y PDF marcado desde 149 € más IVA.",
   applicationName: "Cuadrabot",
   keywords: [
-    "fixture takeoff",
-    "electrical fixture takeoff",
-    "lighting fixture count",
-    "PDF symbol counting",
-    "legend based takeoff",
-    "cable takeoff from PDF",
+    "mediciones de pladur",
+    "medición de tabiques",
+    "medición desde planos PDF",
+    "cuadro de mediciones Excel",
+    "planos marcados",
   ],
   openGraph: {
     type: "website",
     siteName: "Cuadrabot",
-    title: "Legend-driven fixture takeoffs in hours.",
+    title: "Mediciones de pladur revisadas en dos días laborables.",
     description:
-      "Upload PDF plans with a readable legend and receive source-linked counts, a marked PDF, and Excel quantities.",
+      "Sube tus planos PDF y recibe un Excel de cantidades y un PDF marcado.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Cuadrabot legend-driven fixture takeoff with source-linked evidence",
+        alt: "Cuadrabot, mediciones de pladur desde planos PDF",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Legend-driven fixture takeoffs in hours.",
+    title: "Mediciones de pladur revisadas en dos días laborables.",
     description:
-      "Upload PDF plans with a readable legend and receive source-linked counts, a marked PDF, and Excel quantities.",
+      "Sube tus planos PDF y recibe un Excel de cantidades y un PDF marcado.",
     images: ["/opengraph-image"],
   },
   robots: {
@@ -81,6 +80,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
+      data-google-ads-ready={googleAdsConfigurationIsValid ? "true" : undefined}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       {googleAdsConfigurationIsValid ? (

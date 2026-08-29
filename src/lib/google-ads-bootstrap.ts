@@ -19,6 +19,10 @@ export function buildGoogleAdsConsentBootstrap() {
       });
       var legacyChoice = legacyMatch ? decodeURIComponent(legacyMatch.slice(legacyCookieName.length + 1)) : null;
       var globalPrivacyControl = navigator.globalPrivacyControl === true;
+      var measurementUrl = new URL(window.location.href);
+      ['token', 'session_id', 'access_token', 'code'].forEach(function (name) {
+        measurementUrl.searchParams.delete(name);
+      });
       var explicitState = choice === 'granted' ? 'granted' : (choice === 'denied' || legacyChoice === 'denied') ? 'denied' : null;
       var globalState = globalPrivacyControl ? 'denied' : (explicitState || 'granted');
       var regulatedState = globalPrivacyControl ? 'denied' : (explicitState || 'denied');
@@ -41,7 +45,9 @@ export function buildGoogleAdsConsentBootstrap() {
       });
       window.gtag('set', 'ads_data_redaction', true);
       window.gtag('js', new Date());
-      window.gtag('config', ${JSON.stringify(googleAdsId)});
+      window.gtag('config', ${JSON.stringify(googleAdsId)}, {
+        'page_location': measurementUrl.toString()
+      });
       document.documentElement.setAttribute('data-google-ads-ready', 'true');
     })();
   `

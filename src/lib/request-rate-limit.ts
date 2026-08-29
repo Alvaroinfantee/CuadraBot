@@ -3,7 +3,13 @@ import { isIP } from "node:net"
 import type { createSupabaseAdminClient } from "@/lib/supabase/admin"
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>
-type RateLimitAction = "create_takeoff" | "verify_takeoff"
+type RateLimitAction =
+  | "create_takeoff"
+  | "verify_takeoff"
+  | "create_drywall_order"
+  | "verify_drywall_order"
+  | "checkout_drywall_order"
+  | "revise_drywall_order"
 
 type RateLimitResult = {
   allowed: boolean
@@ -23,6 +29,26 @@ const policies: Record<
   verify_takeoff: {
     userLimit: 12,
     ipLimit: 40,
+    windowSeconds: 60 * 60,
+  },
+  create_drywall_order: {
+    userLimit: 6,
+    ipLimit: 12,
+    windowSeconds: 60 * 60,
+  },
+  verify_drywall_order: {
+    userLimit: 8,
+    ipLimit: 16,
+    windowSeconds: 60 * 60,
+  },
+  checkout_drywall_order: {
+    userLimit: 8,
+    ipLimit: 16,
+    windowSeconds: 60 * 60,
+  },
+  revise_drywall_order: {
+    userLimit: 5,
+    ipLimit: 10,
     windowSeconds: 60 * 60,
   },
 }
