@@ -2,7 +2,7 @@
 
 Version: 2026-08-29
 Product policy: `PLADUR-ES-1.0`
-Launch market: Spain · Spanish · metric · drywall/plasterboard only
+Launch market: Spain · Spanish and English · metric · drywall/plasterboard only
 
 ## Release decision
 
@@ -44,10 +44,11 @@ Hospitals, airports, major industrial projects and selections above 20 sheets ar
 ## Implemented architecture
 
 ```text
-Spanish customer
+Spanish or English customer
   │
-  ├─ /              offer, scope, samples, consent and attribution
-  ├─ /pedido        passwordless draft, private direct upload, scope, Checkout
+  ├─ / · /en        localized offer, scope, samples, consent and attribution
+  ├─ /pedido · /en/order
+  │                 passwordless draft, private direct upload, scope, Checkout
   └─ /portal/:id    verified payment return, status, signed downloads, correction
           │
           ▼
@@ -76,8 +77,8 @@ There is no OpenAI API integration in the new fixed-price customer flow. Codex i
 
 | Surface | Route | Production behavior |
 |---|---|---|
-| Acquisition landing | `/` | Spanish canonical, Google Ads consent/attribution, sample PDF/XLSX downloads |
-| Order | `/pedido` | Passwordless project, browser checksum/page inspection, signed direct upload, server qpdf verification |
+| Acquisition landing | `/` and `/en` | Reciprocal Spanish/English pages; Spanish x-default, Google Ads consent/attribution, sample PDF/XLSX downloads |
+| Order | `/pedido` and `/en/order` | Localized passwordless project, browser checksum/page inspection, signed direct upload, server qpdf verification |
 | Checkout | `/api/drywall/orders/:id/checkout` | Enforces verified files, exact scope and active one-time `14900 EUR` tax-exclusive Stripe Price |
 | Webhook | `/api/stripe/webhook` | Signature verification, event inbox/idempotency, payment/refund state, deadlines and email notifications |
 | Customer portal | `/portal/:id` | Access only through a verified paid Checkout return or expiring HMAC link |
@@ -92,6 +93,8 @@ There is no OpenAI API integration in the new fixed-price customer flow. Codex i
 Migration: `supabase/migrations/20260829140932_drywall_guest_checkout.sql`.
 
 Tables: `drywall_takeoff_customers`, `drywall_takeoff_projects`, `drywall_takeoff_files`, `drywall_takeoff_orders`, `drywall_takeoff_deliverables`, `drywall_takeoff_events`, and `drywall_takeoff_revision_requests`.
+
+Each project stores a validated `es|en` customer locale used by Stripe Checkout, the private portal, correction workflow and transactional customer email. Existing projects default safely to Spanish.
 
 Every table has RLS enabled. `anon` and `authenticated` have no direct table rights; public/customer access is mediated by bounded server routes using the service role. Buckets `drywall-customer-files` and `drywall-deliverables` are private, MIME-limited and capped at 500 MB per object.
 
@@ -148,7 +151,7 @@ NEXT_PUBLIC_SITE_URL=https://cuadrabot.com
 |---|---|---|
 | Legacy preservation | Remote archive branch + annotated tag at the pre-release SHA | Ready |
 | Production compilation | Next.js optimized build and TypeScript complete | Ready |
-| Automated checks | 167 passing app tests, 34 passing executor tests, lint clean, one intentional qpdf native skip | Ready |
+| Automated checks | 168 passing app tests, 34 passing executor tests, lint clean, one intentional qpdf native skip | Ready |
 | Dependency security | `npm audit --omit=dev` reports zero vulnerabilities | Ready |
 | Browser UX | 1440 px landing/order run; no console errors; screenshots captured | Ready |
 | Database DDL | Additive migration applied to production; tables, RLS, private buckets and legal-hold column verified | Ready |
@@ -169,7 +172,7 @@ NEXT_PUBLIC_SITE_URL=https://cuadrabot.com
 5. Apply the additive Supabase migration; verify RLS, bucket privacy and advisors.
 6. Add the required secrets/variables to DigitalOcean without exposing their values in logs.
 7. Merge the release to `main`; watch the DigitalOcean build and health check.
-8. Smoke-test `/`, samples, consent, `/pedido`, custom-review branch and legal routes.
+8. Smoke-test `/`, `/en`, samples, consent, `/pedido`, `/en/order`, custom-review branches and reciprocal legal routes.
 9. In Stripe test mode, upload a safe PDF, pay, verify one order/event/email, open the portal, publish both deliverables, download them and request the included correction.
 10. Verify the Google Ads `purchase` conversion uses the Stripe Checkout Session ID and exact paid total once.
 11. Fill and approve the legal business identity and sender domain.

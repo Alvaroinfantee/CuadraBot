@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
       project_type: parsed.data.projectType,
       desired_bid_date: parsed.data.bidDate || null,
       customer_notes: parsed.data.notes || null,
+      locale: parsed.data.locale,
       marketing_attribution: parsed.data.marketing,
       session_identifier: parsed.data.sessionId || null,
     })

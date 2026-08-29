@@ -17,6 +17,11 @@ import {
 } from "@/lib/request-body"
 import { getSiteUrl, ownerRequestEmail } from "@/lib/config"
 import { escapeEmailHtml, sendDrywallEmail } from "@/lib/drywall-email"
+import {
+  drywallPortalUrlPath,
+  drywallText,
+  normalizeDrywallLocale,
+} from "@/lib/drywall-i18n"
 import { createDrywallPortalToken } from "@/lib/drywall-portal"
 
 export const dynamic = "force-dynamic"
@@ -506,7 +511,7 @@ async function handleDrywallCheckoutSession(
   const [{ data: order, error: orderError }, { data: project, error: projectError }] =
     await Promise.all([
       supabase.from("drywall_takeoff_orders").select("*").eq("id", orderId).maybeSingle(),
-      supabase.from("drywall_takeoff_projects").select("id,customer_id,project_name,status").eq("id", projectId).maybeSingle(),
+      supabase.from("drywall_takeoff_projects").select("id,customer_id,project_name,status,locale").eq("id", projectId).maybeSingle(),
     ])
   if (orderError || projectError || !order || !project || order.project_id !== project.id) {
     throw new Error(`Drywall Checkout Session ${session.id} references a missing order.`)
@@ -587,12 +592,17 @@ async function handleDrywallCheckoutSession(
     metadata: { stripe_event_id: eventId, stripe_checkout_session_id: session.id, amount_total_cents: session.amount_total },
   })
 
-  const portalUrl = `${getSiteUrl()}/portal/${project.id}?token=${encodeURIComponent(createDrywallPortalToken(project.id))}`
+  const customerLocale = normalizeDrywallLocale(project.locale)
+  const portalUrl = `${getSiteUrl()}${drywallPortalUrlPath(project.id, customerLocale, {
+    token: createDrywallPortalToken(project.id),
+  })}`
+  const t = (spanish: string, english: string) => drywallText(customerLocale, spanish, english)
+  const dueDate = new Intl.DateTimeFormat(customerLocale === "en" ? "en-GB" : "es-ES", { dateStyle: "full", timeZone: "Europe/Madrid" }).format(new Date(dueAt))
   const notifications = await Promise.allSettled([
     sendDrywallEmail({
       to: customer.email,
-      subject: `Pedido ${order.order_number} confirmado`,
-      html: `<p>Hemos recibido tu pedido de medición de pladur.</p><p><strong>${escapeEmailHtml(project.project_name)}</strong><br>Entrega prevista: ${escapeEmailHtml(new Intl.DateTimeFormat("es-ES", { dateStyle: "full", timeZone: "Europe/Madrid" }).format(new Date(dueAt)))}</p><p><a href="${portalUrl}">Abrir el portal privado del pedido</a></p>`,
+      subject: t(`Pedido ${order.order_number} confirmado`, `Order ${order.order_number} confirmed`),
+      html: `<p>${t("Hemos recibido tu pedido de medición de pladur.", "We have received your drywall takeoff order.")}</p><p><strong>${escapeEmailHtml(project.project_name)}</strong><br>${t("Entrega prevista", "Expected delivery")}: ${escapeEmailHtml(dueDate)}</p><p><a href="${portalUrl}">${t("Abrir el portal privado del pedido", "Open the private order portal")}</a></p>`,
     }),
     sendDrywallEmail({
       to: ownerRequestEmail,

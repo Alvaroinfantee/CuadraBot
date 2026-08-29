@@ -1,5 +1,5 @@
 import { TakeoffLanding } from "@/components/takeoff/takeoff-landing"
 
 export default function SpanishHomePage() {
-  return <TakeoffLanding />
+  return <TakeoffLanding locale="es" />
 }

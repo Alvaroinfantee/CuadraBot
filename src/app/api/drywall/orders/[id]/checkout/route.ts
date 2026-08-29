@@ -9,6 +9,11 @@ import {
   stripeAutomaticTaxEnabled,
 } from "@/lib/config"
 import { escapeEmailHtml, sendDrywallEmail } from "@/lib/drywall-email"
+import {
+  drywallPath,
+  drywallPortalUrlPath,
+  normalizeDrywallLocale,
+} from "@/lib/drywall-i18n"
 import { verifyDrywallDraftToken } from "@/lib/drywall-portal"
 import { drywallCheckoutSchema } from "@/lib/drywall-takeoff-schemas"
 import { jsonError } from "@/lib/http"
@@ -122,12 +127,14 @@ export async function POST(request: Request, context: Context) {
     file_id: selection.fileId,
     page_numbers: [...new Set(selection.pageNumbers)].sort((a, b) => a - b),
   }))
+  const customerLocale = normalizeDrywallLocale(parsed.data.locale)
   const { error: projectUpdateError } = await supabase
     .from("drywall_takeoff_projects")
     .update({
       scope_answers: parsed.data.scope,
       selected_pages: selectedPages,
       selected_sheet_count: selectedCount,
+      locale: customerLocale,
       status: customReview ? "custom_review" : "awaiting_payment",
     })
     .eq("id", id)
@@ -165,7 +172,7 @@ export async function POST(request: Request, context: Context) {
     if (order?.payment_status === "paid") {
       return NextResponse.json({
         paid: true,
-        url: `${getSiteUrl()}/portal/${id}`,
+        url: `${getSiteUrl()}${drywallPortalUrlPath(id, customerLocale)}`,
       })
     }
     let checkoutAttempt = "initial"
@@ -206,12 +213,13 @@ export async function POST(request: Request, context: Context) {
       drywall_order_id: order.id,
       order_number: order.order_number,
       measurement_policy: "PLADUR-ES-1.0",
+      customer_locale: customerLocale,
     }
     const integrationIdentifier = `cuadrabot_drywall_${randomLetters(8)}`
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
-        locale: "es",
+        locale: customerLocale,
         customer: stripeCustomerId,
         customer_update: { address: "auto", name: "auto" },
         billing_address_collection: "required",
@@ -228,8 +236,8 @@ export async function POST(request: Request, context: Context) {
           metadata,
           receipt_email: customer.email,
         },
-        success_url: `${getSiteUrl()}/portal/${id}?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${getSiteUrl()}/pedido?order=${id}&checkout=cancelled`,
+        success_url: `${getSiteUrl()}${drywallPortalUrlPath(id, customerLocale)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${getSiteUrl()}${drywallPath(customerLocale, "order")}?order=${id}&checkout=cancelled`,
         integration_identifier: integrationIdentifier,
       },
       { idempotencyKey: `drywall-checkout-${order.id}-${checkoutAttempt}` }

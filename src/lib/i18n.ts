@@ -39,6 +39,14 @@ const authPagePathSet = new Set([
   "/forgot-password",
   "/reset-password",
 ])
+const spanishDrywallPathSet = new Set([
+  "/pedido",
+  "/alcance",
+  "/terminos",
+  "/privacidad",
+  "/reembolsos",
+  "/confidencialidad",
+])
 
 export function isLocale(value: unknown): value is Locale {
   return value === "en" || value === "es"
@@ -106,6 +114,13 @@ export function localeForRequestPath(
   // the bare domain. The remaining legacy marketing routes keep reciprocal
   // EN/ES paths until they are migrated to the fixed-price product.
   if (pathname === "/") return "es"
+  if (pathname === "/en" || pathname.startsWith("/en/")) return "en"
+  if (pathname.startsWith("/portal/")) {
+    return isLocale(explicitLocale) ? explicitLocale : "es"
+  }
+  if (spanishDrywallPathSet.has(pathname)) {
+    return "es"
+  }
   if (spanishPublicPathToEnglish(pathname)) return "es"
   if (publicMarketingPathSet.has(pathname)) return "en"
   if (

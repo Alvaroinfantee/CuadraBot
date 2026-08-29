@@ -1,6 +1,6 @@
 import { LegalPage } from "@/components/takeoff/legal-page"
 
-export const metadata = { title: "Terminos del servicio" }
+export const metadata = { title: "Terminos del servicio", alternates: { canonical: "/terminos", languages: { es: "/terminos", en: "/en/terms" } } }
 export default function TermsPage() { return <LegalPage eyebrow="Condiciones" title="Terminos del servicio de medicion" intro="Cuadrabot entrega cantidades de pladur trazables a partir de los documentos facilitados por el cliente. Este texto define el servicio estandar de 149 € + IVA." sections={[
   { title: "Servicio contratado", bullets: ["Un proyecto y hasta 20 hojas PDF seleccionadas.", "Tabiques de pladur y techos de placa cuando existan planos de techo.", "Excel de cantidades, PDF marcado, supuestos, exclusiones y una correccion.", "Compromiso de dos dias laborables desde pago e informacion completa."] },
   { title: "Responsabilidad del cliente", paragraphs: ["El cliente confirma que puede compartir los planos, identifica la revision aplicable y responde con diligencia a las aclaraciones. Debe comprobar las cantidades antes de comprar materiales o presentar una oferta vinculante."] },

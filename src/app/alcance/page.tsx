@@ -1,6 +1,6 @@
 import { LegalPage } from "@/components/takeoff/legal-page"
 
-export const metadata = { title: "Alcance y exclusiones" }
+export const metadata = { title: "Alcance y exclusiones", alternates: { canonical: "/alcance", languages: { es: "/alcance", en: "/en/scope" } } }
 export default function ScopePage() { return <LegalPage eyebrow="Producto estandar" title="Alcance y exclusiones" intro="El cliente compra cantidades revisadas y evidencia marcada, no un presupuesto completo de construccion." sections={[
   { title: "Incluido", bullets: ["Un proyecto, hasta 20 hojas seleccionadas, tabiques y techos de placa de yeso.", "Cantidades por planta, plano y tipo; Excel, PDF marcado y una correccion.", "Longitud de eje, areas a una y dos caras, huecos y perimetros de techo cuando corresponda."] },
   { title: "No incluido", bullets: ["Precios, mano de obra, proveedores o listas completas de compra.", "Montantes, tornillos, canales, pasta, accesorios o aislamiento.", "Demolicion, estructura, fabrica, suelos, pintura, MEP, BIM, IFC, CAD, diseno o verificacion de obra.", "Cambios posteriores, superficies curvas o complejas salvo aceptacion manual."] },

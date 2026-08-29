@@ -4,6 +4,11 @@ import { z } from "zod"
 import { getCurrentProfile } from "@/lib/auth"
 import { drywallResultBucket, getRequiredEnv, getSiteUrl } from "@/lib/config"
 import { escapeEmailHtml, sendDrywallEmail } from "@/lib/drywall-email"
+import {
+  drywallPortalUrlPath,
+  drywallText,
+  normalizeDrywallLocale,
+} from "@/lib/drywall-i18n"
 import { createDrywallPortalToken } from "@/lib/drywall-portal"
 import { jsonError, sanitizeFilename } from "@/lib/http"
 import { readRequestJsonWithLimit, requestBodyLimits } from "@/lib/request-body"
@@ -49,7 +54,7 @@ export async function POST(request: Request, context: Context) {
   const supabase = createSupabaseAdminClient()
   const { data: project } = await supabase
     .from("drywall_takeoff_projects")
-    .select("id,customer_id,project_name,status")
+    .select("id,customer_id,project_name,status,locale")
     .eq("id", id)
     .maybeSingle()
   const { data: order } = await supabase
@@ -153,9 +158,13 @@ export async function POST(request: Request, context: Context) {
   const { data: customer } = await supabase.from("drywall_takeoff_customers").select("email").eq("id", project.customer_id).maybeSingle()
   let emailSent = false
   if (customer?.email) {
-    const portalUrl = `${getSiteUrl()}/portal/${id}?token=${encodeURIComponent(createDrywallPortalToken(id))}`
+    const customerLocale = normalizeDrywallLocale(project.locale)
+    const portalUrl = `${getSiteUrl()}${drywallPortalUrlPath(id, customerLocale, {
+      token: createDrywallPortalToken(id),
+    })}`
+    const t = (spanish: string, english: string) => drywallText(customerLocale, spanish, english)
     try {
-      const result = await sendDrywallEmail({ to: customer.email, subject: `${version > 1 ? "Corrección" : "Medición"} lista · ${order.order_number}`, html: `<p>Los archivos revisados de <strong>${escapeEmailHtml(project.project_name)}</strong> ya están disponibles.</p><p><a href="${portalUrl}">Descargar desde el portal privado</a></p>` })
+      const result = await sendDrywallEmail({ to: customer.email, subject: `${version > 1 ? t("Corrección", "Correction") : t("Medición", "Takeoff")} ${t("lista", "ready")} · ${order.order_number}`, html: `<p>${t("Los archivos revisados de", "The reviewed files for")} <strong>${escapeEmailHtml(project.project_name)}</strong> ${t("ya están disponibles.", "are now available.")}</p><p><a href="${portalUrl}">${t("Descargar desde el portal privado", "Download from the private portal")}</a></p>` })
       emailSent = result.sent
     } catch (error) { console.error("Delivery email failed.", { projectId: id, error }) }
   }

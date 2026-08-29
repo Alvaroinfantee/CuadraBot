@@ -18,6 +18,8 @@ test("drywall drafts enforce PDF metadata, file count and aggregate size", () =>
     files: [{ filename: "planos.pdf", mimeType: "application/pdf", sizeBytes: 1024, checksum, pageCount: 20 }],
   }
   assert.equal(drywallDraftSchema.safeParse(base).success, true)
+  assert.equal(drywallDraftSchema.parse({ ...base, locale: "en" }).locale, "en")
+  assert.equal(drywallDraftSchema.safeParse({ ...base, locale: "fr" }).success, false)
   assert.equal(drywallDraftSchema.safeParse({ ...base, files: [{ ...base.files[0], mimeType: "image/png" }] }).success, false)
   assert.equal(drywallDraftSchema.safeParse({ ...base, files: Array.from({ length: 11 }, (_, index) => ({ ...base.files[0], filename: `${index}.pdf` })) }).success, false)
   assert.equal(drywallDraftSchema.safeParse({ ...base, files: [{ ...base.files[0], sizeBytes: 300 * 1024 * 1024 }, { ...base.files[0], filename: "b.pdf", sizeBytes: 300 * 1024 * 1024 }] }).success, false)
@@ -32,6 +34,7 @@ test("checkout requires explicit scope and upload authority", () => {
     scope: { partitions: "si", ceilings: "si", wallSchedules: "si", reflectedCeilings: "si", visibleScale: "si", defaultHeight: "2.70", deductOpenings: "si", supersededDrawings: "", excludedAreas: "", estimatorNotes: "" },
   }
   assert.equal(drywallCheckoutSchema.safeParse(checkout).success, true)
+  assert.equal(drywallCheckoutSchema.parse({ ...checkout, locale: "en" }).locale, "en")
   assert.equal(drywallCheckoutSchema.safeParse({ ...checkout, acceptedScope: false }).success, false)
   assert.equal(drywallCheckoutSchema.safeParse({ ...checkout, uploadAuthority: false }).success, false)
 })
@@ -45,6 +48,23 @@ test("drywall storage and tables are private and service mediated", () => {
   assert.match(migration, /'drywall-customer-files'[\s\S]*false/)
   assert.match(migration, /'drywall-deliverables'[\s\S]*false/)
   assert.match(migration, /legal_hold boolean not null default false/)
+  assert.match(read("supabase/migrations/20260829161500_add_drywall_customer_locale.sql"), /locale text not null default 'es'/)
+})
+
+test("the fixed-price product has complete reciprocal Spanish and English customer routes", () => {
+  for (const route of ["page", "order/page", "scope/page", "terms/page", "privacy/page", "refunds/page", "confidentiality/page"]) {
+    assert.match(read(`src/app/en/${route}.tsx`), /English|locale="en"|title:/)
+  }
+  const landing = read("src/components/takeoff/takeoff-landing.tsx")
+  const order = read("src/components/takeoff/local-order-flow.tsx")
+  const checkout = read("src/app/api/drywall/orders/[id]/checkout/route.ts")
+  const portal = read("src/app/portal/[id]/page.tsx")
+  assert.match(landing, /Drywall takeoffs from your plans/)
+  assert.match(order, /Your drywall takeoff/)
+  assert.match(checkout, /locale: customerLocale/)
+  assert.match(checkout, /drywallPath\(customerLocale, "order"\)/)
+  assert.match(checkout, /drywallPortalUrlPath\(id, customerLocale\)/)
+  assert.match(portal, /Private portal/)
 })
 
 test("paid orders require a verified Stripe webhook and verified ad return", () => {

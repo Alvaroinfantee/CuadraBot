@@ -36,6 +36,7 @@ export const drywallDraftSchema = z
     ]),
     bidDate: z.string().date().optional().or(z.literal("")),
     notes: z.string().trim().max(4_000).optional().default(""),
+    locale: z.enum(["es", "en"]).optional().default("es"),
     sessionId: z.string().trim().max(160).optional().default(""),
     marketing: z.record(z.string(), attributionValue).optional().default({}),
     files: z.array(drywallFileSchema).min(1).max(drywallMaxFiles),
@@ -57,6 +58,7 @@ export const drywallCheckoutSchema = z.object({
   accessToken: z.string().min(32).max(256),
   acceptedScope: z.literal(true),
   uploadAuthority: z.literal(true),
+  locale: z.enum(["es", "en"]).optional().default("es"),
   selectedPages: z
     .array(
       z.object({

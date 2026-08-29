@@ -80,6 +80,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
+      data-google-ads-ready={googleAdsConfigurationIsValid ? "true" : undefined}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       {googleAdsConfigurationIsValid ? (
