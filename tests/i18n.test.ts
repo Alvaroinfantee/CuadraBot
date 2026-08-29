@@ -44,7 +44,7 @@ const expectedPublicPaths = [
   "/refund-policy",
 ] as const satisfies readonly PublicMarketingPath[]
 
-test("the public route manifest has exactly 13 reciprocal EN/ES pairs", () => {
+test("the public route manifest keeps legacy pairs and a Spanish-first canonical home", () => {
   assert.deepEqual(publicMarketingPaths, expectedPublicPaths)
   assert.equal(new Set(publicMarketingPaths).size, 13)
   assert.deepEqual(locales, ["en", "es"])
@@ -70,6 +70,11 @@ test("the public route manifest has exactly 13 reciprocal EN/ES pairs", () => {
 
     const englishPage = readFileSync(pageFile(publicPath, "en"), "utf8")
     const spanishPage = readFileSync(pageFile(publicPath, "es"), "utf8")
+    if (publicPath === "/") {
+      assert.match(englishPage, /<TakeoffLanding/)
+      assert.match(spanishPage, /<TakeoffLanding/)
+      continue
+    }
     for (const [locale, page] of [
       ["en", englishPage],
       ["es", spanishPage],
@@ -135,6 +140,7 @@ test("locale switching preserves query strings and hashes without overmatching",
 })
 
 test("request locale rules keep public canonicals explicit and private routes stable", () => {
+  assert.equal(localeForRequestPath("/", "en"), "es")
   assert.equal(isLocale("en"), true)
   assert.equal(isLocale("es"), true)
   assert.equal(isLocale("fr"), false)
@@ -242,13 +248,19 @@ test("Spanish subscription labels do not leak English tier names", () => {
   )
 })
 
-test("the sitemap publishes all 26 canonical URLs with reciprocal alternates", () => {
+test("the sitemap consolidates the Spanish-first home and keeps reciprocal legacy URLs", () => {
   const base = getSiteUrl()
   const entries = sitemap()
-  assert.equal(entries.length, publicMarketingPaths.length * locales.length)
+  assert.equal(entries.length, publicMarketingPaths.length * locales.length - 1)
   assert.equal(new Set(entries.map((entry) => entry.url)).size, entries.length)
 
   for (const publicPath of publicMarketingPaths) {
+    if (publicPath === "/") {
+      const entry = entries.find((candidate) => candidate.url === base)
+      assert.ok(entry, "Missing canonical Spanish home")
+      assert.deepEqual(entry.alternates?.languages, { es: base, "x-default": base })
+      continue
+    }
     const englishUrl = `${base}${localizedPublicPath(publicPath, "en")}`
     const spanishUrl = `${base}${localizedPublicPath(publicPath, "es")}`
     const expectedLanguages = {

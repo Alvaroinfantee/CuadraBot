@@ -8,6 +8,11 @@ export const requestBodyLimits = Object.freeze({
   workerStatusJson: 16 * 1024,
   workerResultJson: 64 * 1024,
   stripeWebhook: 1 * 1024 * 1024,
+  drywallDraftJson: 64 * 1024,
+  drywallVerifyJson: 4 * 1024,
+  drywallCheckoutJson: 64 * 1024,
+  drywallRevisionJson: 16 * 1024,
+  drywallAdminDeliveryJson: 16 * 1024,
 })
 
 export type BoundedRequestBodyResult<T> =

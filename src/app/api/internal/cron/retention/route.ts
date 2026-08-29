@@ -61,6 +61,8 @@ type RetentionOutcome = {
   fileBatchTruncated: boolean
   marketingEventsDeleted: number
   marketingEventBatchTruncated: boolean
+  drywallProjectsPurged: number
+  drywallObjectsPurged: number
   failures: string[]
 }
 
@@ -94,10 +96,13 @@ async function runProjectFileRetention(request: Request) {
     fileBatchTruncated: false,
     marketingEventsDeleted: 0,
     marketingEventBatchTruncated: false,
+    drywallProjectsPurged: 0,
+    drywallObjectsPurged: 0,
     failures: [],
   }
 
   await purgeBoardScheduledMarketingEvents(supabase, outcome)
+  await purgeDrywallProjectFiles(supabase, outcome)
 
   const { data: setting, error: settingError } = await supabase
     .from("app_settings")
@@ -394,6 +399,8 @@ async function finishRetentionRun(
         fileBatchTruncated: outcome.fileBatchTruncated,
         marketingEventsDeleted: outcome.marketingEventsDeleted,
         marketingEventBatchTruncated: outcome.marketingEventBatchTruncated,
+        drywallProjectsPurged: outcome.drywallProjectsPurged,
+        drywallObjectsPurged: outcome.drywallObjectsPurged,
         failures: outcome.failures,
         alertWriteFailed,
       },
@@ -424,10 +431,144 @@ async function finishRetentionRun(
       fileBatchTruncated: outcome.fileBatchTruncated,
       marketingEventsDeleted: outcome.marketingEventsDeleted,
       marketingEventBatchTruncated: outcome.marketingEventBatchTruncated,
+      drywallProjectsPurged: outcome.drywallProjectsPurged,
+      drywallObjectsPurged: outcome.drywallObjectsPurged,
       failures: outcome.failures,
     },
     { status: outcome.failures.length ? 500 : 200 }
   )
+}
+
+async function purgeDrywallProjectFiles(
+  supabase: SupabaseAdmin,
+  outcome: RetentionOutcome
+) {
+  const now = new Date()
+  const abandonedBefore = new Date(
+    now.getTime() - 24 * 60 * 60 * 1000
+  ).toISOString()
+  const [scheduledResult, abandonedResult] = await Promise.all([
+    supabase
+      .from("drywall_takeoff_projects")
+      .select("id,status")
+      .in("status", ["delivered", "revised", "completed", "refunded", "cancelled"])
+      .eq("legal_hold", false)
+      .not("retention_delete_at", "is", null)
+      .lte("retention_delete_at", now.toISOString())
+      .order("retention_delete_at", { ascending: true })
+      .limit(25),
+    supabase
+      .from("drywall_takeoff_projects")
+      .select("id,status")
+      .eq("status", "upload_incomplete")
+      .eq("legal_hold", false)
+      .lte("created_at", abandonedBefore)
+      .order("created_at", { ascending: true })
+      .limit(25),
+  ])
+  if (scheduledResult.error || abandonedResult.error) {
+    outcome.failures.push("drywall_retention_query_failed")
+    return
+  }
+
+  const candidates = new Map<string, { id: string; status: string }>()
+  for (const project of [
+    ...(scheduledResult.data ?? []),
+    ...(abandonedResult.data ?? []),
+  ]) {
+    candidates.set(project.id, project)
+  }
+  for (const project of candidates.values()) {
+    const [sourceResult, deliveryResult] = await Promise.all([
+      supabase
+        .from("drywall_takeoff_files")
+        .select("id,bucket,storage_path")
+        .eq("project_id", project.id),
+      supabase
+        .from("drywall_takeoff_deliverables")
+        .select("id,bucket,storage_path")
+        .eq("project_id", project.id),
+    ])
+    if (sourceResult.error || deliveryResult.error) {
+      outcome.failures.push("drywall_retention_file_query_failed")
+      continue
+    }
+    const objects = [
+      ...(sourceResult.data ?? []),
+      ...(deliveryResult.data ?? []),
+    ]
+    const byBucket = Map.groupBy(objects, (object) => object.bucket)
+    let storageFailed = false
+    for (const [bucket, bucketObjects] of byBucket) {
+      if (!["drywall-customer-files", "drywall-deliverables"].includes(bucket)) {
+        storageFailed = true
+        outcome.failures.push("drywall_retention_unexpected_bucket")
+        break
+      }
+      const paths = bucketObjects.map((object) => object.storage_path)
+      const { error: removeError } = await supabase.storage
+        .from(bucket)
+        .remove(paths)
+      if (removeError) {
+        storageFailed = true
+        outcome.failures.push("drywall_retention_storage_delete_failed")
+        break
+      }
+      const checks = await Promise.all(
+        paths.map((path) => supabase.storage.from(bucket).exists(path))
+      )
+      if (checks.some((check) => check.error || check.data)) {
+        storageFailed = true
+        outcome.failures.push("drywall_retention_storage_verify_failed")
+        break
+      }
+    }
+    if (storageFailed) continue
+
+    const [sourceDelete, deliveryDelete] = await Promise.all([
+      supabase
+        .from("drywall_takeoff_files")
+        .delete()
+        .eq("project_id", project.id),
+      supabase
+        .from("drywall_takeoff_deliverables")
+        .delete()
+        .eq("project_id", project.id),
+    ])
+    if (sourceDelete.error || deliveryDelete.error) {
+      outcome.failures.push("drywall_retention_metadata_delete_failed")
+      continue
+    }
+    outcome.drywallObjectsPurged += objects.length
+
+    if (project.status === "upload_incomplete") {
+      const { error: projectDeleteError } = await supabase
+        .from("drywall_takeoff_projects")
+        .delete()
+        .eq("id", project.id)
+        .eq("status", "upload_incomplete")
+      if (projectDeleteError) {
+        outcome.failures.push("drywall_abandoned_project_delete_failed")
+        continue
+      }
+    } else {
+      const { error: projectUpdateError } = await supabase
+        .from("drywall_takeoff_projects")
+        .update({ retention_delete_at: null })
+        .eq("id", project.id)
+      if (projectUpdateError) {
+        outcome.failures.push("drywall_retention_project_update_failed")
+        continue
+      }
+      await supabase.from("drywall_takeoff_events").insert({
+        project_id: project.id,
+        event_name: "files_retention_completed",
+        actor: "system",
+        metadata: { object_count: objects.length },
+      })
+    }
+    outcome.drywallProjectsPurged += 1
+  }
 }
 
 async function purgeBoardScheduledMarketingEvents(

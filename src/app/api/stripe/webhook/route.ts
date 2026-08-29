@@ -15,6 +15,9 @@ import {
   readRequestBytesWithLimit,
   requestBodyLimits,
 } from "@/lib/request-body"
+import { getSiteUrl, ownerRequestEmail } from "@/lib/config"
+import { escapeEmailHtml, sendDrywallEmail } from "@/lib/drywall-email"
+import { createDrywallPortalToken } from "@/lib/drywall-portal"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -356,6 +359,9 @@ async function handleCheckoutSession(
   session: Stripe.Checkout.Session,
   eventId: string
 ) {
+  if (session.metadata?.flow === "drywall_takeoff") {
+    return handleDrywallCheckoutSession(supabase, stripe, session, eventId)
+  }
   const billingOrderId = session.metadata?.billing_order_id
 
   if (!billingOrderId) return false
@@ -485,6 +491,208 @@ async function handleCheckoutSession(
   return true
 }
 
+async function handleDrywallCheckoutSession(
+  supabase: SupabaseAdmin,
+  stripe: Stripe,
+  session: Stripe.Checkout.Session,
+  eventId: string
+) {
+  const projectId = session.metadata?.drywall_project_id
+  const orderId = session.metadata?.drywall_order_id
+  if (!projectId || !orderId) {
+    throw new Error(`Drywall Checkout Session ${session.id} has incomplete metadata.`)
+  }
+
+  const [{ data: order, error: orderError }, { data: project, error: projectError }] =
+    await Promise.all([
+      supabase.from("drywall_takeoff_orders").select("*").eq("id", orderId).maybeSingle(),
+      supabase.from("drywall_takeoff_projects").select("id,customer_id,project_name,status").eq("id", projectId).maybeSingle(),
+    ])
+  if (orderError || projectError || !order || !project || order.project_id !== project.id) {
+    throw new Error(`Drywall Checkout Session ${session.id} references a missing order.`)
+  }
+  if (
+    order.stripe_checkout_session_id !== session.id ||
+    session.client_reference_id !== order.id ||
+    session.mode !== "payment"
+  ) {
+    throw new Error(`Drywall Checkout Session ${session.id} does not match its order.`)
+  }
+
+  const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 })
+  const line = lineItems.data[0]
+  if (
+    lineItems.has_more ||
+    lineItems.data.length !== 1 ||
+    line.quantity !== 1 ||
+    line.price?.type !== "one_time" ||
+    line.price.currency.toLowerCase() !== "eur" ||
+    line.price.unit_amount !== 14900 ||
+    session.amount_subtotal !== 14900 ||
+    session.currency?.toLowerCase() !== "eur" ||
+    !Number.isSafeInteger(session.amount_total) ||
+    (session.amount_total ?? 0) < 14900
+  ) {
+    throw new Error(`Drywall Checkout Session ${session.id} failed price validation.`)
+  }
+  if (session.payment_status !== "paid") return true
+
+  const customerId = getStripeId(session.customer)
+  if (order.stripe_customer_id && customerId !== order.stripe_customer_id) {
+    throw new Error(`Drywall Checkout Session ${session.id} has the wrong Stripe customer.`)
+  }
+  const { data: customer, error: customerError } = await supabase
+    .from("drywall_takeoff_customers")
+    .select("email,company")
+    .eq("id", project.customer_id)
+    .maybeSingle()
+  if (customerError || !customer) throw new Error(`Drywall order ${order.id} has no customer.`)
+  if (
+    session.customer_details?.email &&
+    session.customer_details.email.toLowerCase() !== customer.email.toLowerCase()
+  ) {
+    throw new Error(`Drywall Checkout Session ${session.id} has the wrong customer email.`)
+  }
+
+  const paidAt = new Date().toISOString()
+  const dueAt = addBusinessDays(new Date(paidAt), 2).toISOString()
+  const { data: newlyPaid, error: paidError } = await supabase
+    .from("drywall_takeoff_orders")
+    .update({
+      payment_status: "paid",
+      stripe_payment_intent_id: getStripeId(session.payment_intent),
+      stripe_customer_id: customerId,
+      amount_subtotal_cents: session.amount_subtotal,
+      tax_cents: session.total_details?.amount_tax ?? 0,
+      amount_total_cents: session.amount_total,
+      currency: session.currency?.toLowerCase(),
+      paid_at: paidAt,
+    })
+    .eq("id", order.id)
+    .in("payment_status", ["unpaid", "checkout_created"])
+    .select("id")
+    .maybeSingle()
+  if (paidError) throw new Error(`Could not fulfill drywall order: ${paidError.message}`)
+  if (!newlyPaid) return true
+
+  const { error: projectUpdateError } = await supabase
+    .from("drywall_takeoff_projects")
+    .update({ status: "order_received", paid_at: paidAt, due_at: dueAt })
+    .eq("id", project.id)
+  if (projectUpdateError) throw new Error(`Could not schedule drywall order: ${projectUpdateError.message}`)
+  await supabase.from("drywall_takeoff_events").insert({
+    project_id: project.id,
+    event_name: "payment_confirmed",
+    actor: "stripe",
+    metadata: { stripe_event_id: eventId, stripe_checkout_session_id: session.id, amount_total_cents: session.amount_total },
+  })
+
+  const portalUrl = `${getSiteUrl()}/portal/${project.id}?token=${encodeURIComponent(createDrywallPortalToken(project.id))}`
+  const notifications = await Promise.allSettled([
+    sendDrywallEmail({
+      to: customer.email,
+      subject: `Pedido ${order.order_number} confirmado`,
+      html: `<p>Hemos recibido tu pedido de medición de pladur.</p><p><strong>${escapeEmailHtml(project.project_name)}</strong><br>Entrega prevista: ${escapeEmailHtml(new Intl.DateTimeFormat("es-ES", { dateStyle: "full", timeZone: "Europe/Madrid" }).format(new Date(dueAt)))}</p><p><a href="${portalUrl}">Abrir el portal privado del pedido</a></p>`,
+    }),
+    sendDrywallEmail({
+      to: ownerRequestEmail,
+      subject: `Nuevo pedido pagado ${order.order_number}`,
+      html: `<p><strong>${escapeEmailHtml(project.project_name)}</strong><br>${escapeEmailHtml(customer.email)}<br>Total: ${((session.amount_total ?? 0) / 100).toFixed(2)} EUR</p><p><a href="${getSiteUrl()}/admin/drywall/${project.id}">Abrir en operaciones</a></p>`,
+    }),
+  ])
+  const notificationProblem = notifications.some(
+    (result) => result.status === "rejected" || result.value.sent === false
+  )
+  if (notificationProblem) {
+    await createOrTouchAdminAlert(supabase, {
+      dedupeKey: `drywall:payment-email:${project.id}`,
+      severity: "warning",
+      title: "Drywall order email needs attention",
+      message: "The payment was fulfilled, but at least one confirmation email was not sent.",
+      entityType: "drywall_project",
+      entityId: project.id,
+      metadata: { stripe_event_id: eventId, customer_email: customer.email },
+    })
+  }
+  return true
+}
+
+async function handleDrywallCheckoutFailure(
+  supabase: SupabaseAdmin,
+  session: Stripe.Checkout.Session,
+  eventId: string,
+  status: "failed" | "expired"
+) {
+  const orderId = session.metadata?.drywall_order_id
+  const projectId = session.metadata?.drywall_project_id
+  if (!orderId || !projectId) throw new Error(`Drywall Checkout Session ${session.id} has incomplete metadata.`)
+  const { error } = await supabase
+    .from("drywall_takeoff_orders")
+    .update({ payment_status: status === "failed" ? "failed" : "unpaid" })
+    .eq("id", orderId)
+    .eq("project_id", projectId)
+    .neq("payment_status", "paid")
+  if (error) throw new Error(`Could not close drywall Checkout: ${error.message}`)
+  await supabase.from("drywall_takeoff_events").insert({
+    project_id: projectId,
+    event_name: status === "failed" ? "payment_failed" : "checkout_expired",
+    actor: "stripe",
+    metadata: { stripe_event_id: eventId, stripe_checkout_session_id: session.id },
+  })
+  return true
+}
+
+async function handleDrywallRefund(
+  supabase: SupabaseAdmin,
+  stripe: Stripe,
+  refund: Stripe.Refund,
+  paymentIntentId: string,
+  eventId: string
+) {
+  const { data: order, error } = await supabase
+    .from("drywall_takeoff_orders")
+    .select("id,project_id,amount_total_cents,payment_status")
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .maybeSingle()
+  if (error) throw new Error(`Could not inspect drywall refund: ${error.message}`)
+  if (!order) return false
+
+  const succeededTotal = refund.status === "succeeded"
+    ? await getSucceededRefundTotal(stripe, paymentIntentId, refund)
+    : 0
+  const fullRefund =
+    refund.status === "succeeded" && succeededTotal >= order.amount_total_cents
+  if (fullRefund && order.payment_status !== "refunded") {
+    const refundedAt = new Date().toISOString()
+    await Promise.all([
+      supabase.from("drywall_takeoff_orders").update({ payment_status: "refunded", refunded_at: refundedAt }).eq("id", order.id),
+      supabase.from("drywall_takeoff_projects").update({ status: "refunded" }).eq("id", order.project_id),
+      supabase.from("drywall_takeoff_events").insert({ project_id: order.project_id, event_name: "payment_refunded", actor: "stripe", metadata: { stripe_event_id: eventId, stripe_refund_id: refund.id, amount_cents: succeededTotal } }),
+    ])
+  }
+  await createOrTouchAdminAlert(supabase, {
+    dedupeKey: `drywall:refund:${refund.id}`,
+    severity: fullRefund ? "info" : "warning",
+    title: fullRefund ? "Drywall order refunded" : "Drywall refund needs review",
+    message: fullRefund ? "Stripe reported a full refund and the project was closed." : "A partial or failed drywall refund needs an operations review.",
+    entityType: "stripe_refund",
+    entityId: refund.id,
+    metadata: { stripe_event_id: eventId, project_id: order.project_id, succeeded_refund_total: succeededTotal },
+  })
+  return true
+}
+
+function addBusinessDays(start: Date, count: number) {
+  const due = new Date(start)
+  let remaining = count
+  while (remaining > 0) {
+    due.setUTCDate(due.getUTCDate() + 1)
+    const weekday = due.getUTCDay()
+    if (weekday !== 0 && weekday !== 6) remaining -= 1
+  }
+  return due
+}
+
 async function validateCheckoutSession(
   supabase: SupabaseAdmin,
   stripe: Stripe,
@@ -556,6 +764,10 @@ async function handleCheckoutFailure(
 
   if (session.payment_status === "paid") {
     return handleCheckoutSession(supabase, stripe, session, eventId)
+  }
+
+  if (session.metadata?.flow === "drywall_takeoff") {
+    return handleDrywallCheckoutFailure(supabase, session, eventId, status)
   }
 
   const billingOrderId = session.metadata?.billing_order_id
@@ -1066,6 +1278,18 @@ async function handleRefund(
   eventId: string
 ) {
   const paymentIntentId = getStripeId(refund.payment_intent)
+  if (
+    paymentIntentId &&
+    (await handleDrywallRefund(
+      supabase,
+      stripe,
+      refund,
+      paymentIntentId,
+      eventId
+    ))
+  ) {
+    return
+  }
   const paymentIntent = paymentIntentId
     ? refund.payment_intent &&
       typeof refund.payment_intent === "object"

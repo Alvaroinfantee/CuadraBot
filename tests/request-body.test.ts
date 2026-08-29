@@ -102,6 +102,11 @@ test("every API request body is streamed through an explicit byte cap", () => {
     ],
     ["src/app/api/stripe/webhook/route.ts", "requestBodyLimits.stripeWebhook"],
     ["src/app/api/takeoff/jobs/route.ts", "requestBodyLimits.takeoffDraftJson"],
+    ["src/app/api/drywall/orders/route.ts", "requestBodyLimits.drywallDraftJson"],
+    ["src/app/api/drywall/orders/[id]/verify/route.ts", "requestBodyLimits.drywallVerifyJson"],
+    ["src/app/api/drywall/orders/[id]/checkout/route.ts", "requestBodyLimits.drywallCheckoutJson"],
+    ["src/app/api/drywall/orders/[id]/revision/route.ts", "requestBodyLimits.drywallRevisionJson"],
+    ["src/app/api/admin/drywall/[id]/deliverables/route.ts", "requestBodyLimits.drywallAdminDeliveryJson"],
     [
       "src/app/api/takeoff/jobs/[id]/submit/route.ts",
       "requestBodyLimits.takeoffSubmitJson",
@@ -160,6 +165,11 @@ test("every API request body is streamed through an explicit byte cap", () => {
     workerStatusJson: 16 * 1024,
     workerResultJson: 64 * 1024,
     stripeWebhook: 1024 * 1024,
+    drywallDraftJson: 64 * 1024,
+    drywallVerifyJson: 4 * 1024,
+    drywallCheckoutJson: 64 * 1024,
+    drywallRevisionJson: 16 * 1024,
+    drywallAdminDeliveryJson: 16 * 1024,
   })
 
   const portal = read("src/app/api/billing/portal/route.ts")

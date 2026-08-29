@@ -332,7 +332,9 @@ describe("optional secure password generation", () => {
       ])
       const parsed = parseDotenv(contents)
 
-      assert.equal(fileStats.mode & 0o777, 0o600)
+      if (process.platform !== "win32") {
+        assert.equal(fileStats.mode & 0o777, 0o600)
+      }
       assert.equal(
         parsed.CUADRABOT_TEST_ADMIN_EMAIL,
         "admin@cuadrabot.test"

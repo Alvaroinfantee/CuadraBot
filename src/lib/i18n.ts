@@ -102,6 +102,10 @@ export function localeForRequestPath(
   persistedLocale?: string | null,
   explicitLocale?: unknown
 ): Locale {
+  // The production acquisition landing page is Spanish-first and canonical at
+  // the bare domain. The remaining legacy marketing routes keep reciprocal
+  // EN/ES paths until they are migrated to the fixed-price product.
+  if (pathname === "/") return "es"
   if (spanishPublicPathToEnglish(pathname)) return "es"
   if (publicMarketingPathSet.has(pathname)) return "en"
   if (

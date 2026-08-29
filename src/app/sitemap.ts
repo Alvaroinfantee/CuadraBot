@@ -11,7 +11,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const generatedAt = new Date()
   const sitemapLocales = ["en", "es"] as const satisfies readonly Locale[]
 
-  return publicMarketingPaths.flatMap((path) => {
+  const entries: MetadataRoute.Sitemap = []
+  for (const path of publicMarketingPaths) {
+    if (path === "/") {
+      entries.push({
+        url: base,
+        lastModified: generatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 1,
+        alternates: { languages: { es: base, "x-default": base } },
+      })
+      continue
+    }
     const englishUrl = `${base}${localizedPublicPath(path, "en")}`
     const spanishUrl = `${base}${localizedPublicPath(path, "es")}`
     const alternates = {
@@ -22,13 +33,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       },
     }
 
-    return sitemapLocales.map((locale) => ({
+    entries.push(...sitemapLocales.map((locale) => ({
       url: `${base}${localizedPublicPath(path, locale)}`,
       lastModified: generatedAt,
-      changeFrequency:
-        path === "/" ? ("weekly" as const) : ("monthly" as const),
-      priority: path === "/" ? 1 : path === "/pricing" ? 0.9 : 0.7,
+      changeFrequency: "monthly" as const,
+      priority: path === "/pricing" ? 0.9 : 0.7,
       alternates,
-    }))
-  })
+    })))
+  }
+  return entries
 }

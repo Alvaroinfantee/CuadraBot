@@ -19,6 +19,8 @@ const marketingAnalytics = read("src/components/site/marketing-analytics.tsx")
 const signupAction = read("src/app/auth/actions.ts")
 const takeoffForm = read("src/components/takeoff/new-takeoff-form.tsx")
 const checkoutButton = read("src/components/billing/checkout-button.tsx")
+const drywallVerification = read("src/lib/drywall-conversion.ts")
+const drywallPortal = read("src/app/portal/[id]/page.tsx")
 
 test("the Google tag is global and executes Consent Mode v2 in the initial head", () => {
   assert.match(layout, /<GoogleAdsTag locale=\{locale\}/)
@@ -43,6 +45,8 @@ test("the Google tag is global and executes Consent Mode v2 in the initial head"
   }
 
   assert.match(consentBootstrap, /ads_data_redaction/)
+  assert.match(consentBootstrap, /measurementUrl\.searchParams\.delete\(name\)/)
+  assert.match(consentBootstrap, /'page_location': measurementUrl\.toString\(\)/)
   assert.match(consentBootstrap, /marketingConsentCookieName/)
   assert.match(consentBootstrap, /globalPrivacyControl/)
   assert.match(consentBootstrap, /data-google-ads-ready/)
@@ -73,7 +77,11 @@ test("purchase conversion requires a server-verified paid Stripe session", () =>
   assert.match(billingPage, /<CheckoutConversionPoller/)
   assert.match(poller, /router\.refresh\(\)/)
   assert.match(poller, /maxPollAttempts = 30/)
-  assert.match(checkoutRoute, /payment_method_types: \["card"\]/)
+  assert.doesNotMatch(checkoutRoute, /payment_method_types:/)
+  assert.match(checkoutRoute, /integration_identifier:/)
+  assert.match(drywallVerification, /session\.payment_status === "paid"/)
+  assert.match(drywallVerification, /session\.metadata\?\.flow === "drywall_takeoff"/)
+  assert.match(drywallPortal, /<GoogleAdsPurchaseConversion/)
 })
 
 test("the conversion event uses a Stripe transaction id and has no fake fallback value", () => {
@@ -102,4 +110,6 @@ test("intermediate funnel conversions are consented, deduplicated, and remain se
 test("both privacy notices describe Google Ads consent", () => {
   assert.match(read("src/app/privacy/page.tsx"), /Google Ads conversion measurement/)
   assert.match(read("src/app/es/privacy/page.tsx"), /conversiones de Google Ads/)
+  assert.match(read("src/app/privacidad/page.tsx"), /conversiones de Google Ads/)
+  assert.match(consent, /locale === "es" \? "\/privacidad"/)
 })

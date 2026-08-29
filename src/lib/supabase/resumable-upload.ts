@@ -52,9 +52,11 @@ export function resumableUploadFingerprint(
 export function createSignedResumableUploadTask(options: {
   file: File
   grant: SignedResumableUploadGrant
+  contentType?: string
   onProgress?: (bytesUploaded: number, bytesTotal: number) => void
 }): ResumableUploadTask {
   const { file, grant, onProgress } = options
+  const contentType = options.contentType || file.type || "application/octet-stream"
   let cancelled = false
   let settled = false
   let resolveCompletion!: () => void
@@ -91,7 +93,7 @@ export function createSignedResumableUploadTask(options: {
     metadata: {
       bucketName: grant.bucket,
       objectName: grant.path,
-      contentType: "application/pdf",
+      contentType,
       cacheControl: "3600",
     },
     onProgress,

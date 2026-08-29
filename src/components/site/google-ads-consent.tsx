@@ -149,7 +149,7 @@ export function GoogleAdsConsent({
                 : content.body}{" "}
             <Link
               className="font-medium text-primary underline underline-offset-4"
-              href={locale === "es" ? "/es/privacy" : "/privacy"}
+              href={locale === "es" ? "/privacidad" : "/privacy"}
             >
               {content.privacy}
             </Link>
